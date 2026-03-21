@@ -15,7 +15,8 @@ interface AuthContextType {
   loading: boolean;
   selectedStore: StoreInfo | null;
   selectStore: (store: StoreInfo | null) => void;
-  signInWithGoogle: () => Promise<void>;
+  signUp: (email: string, password: string, name: string, storeName: string) => Promise<{ error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   refreshStores: () => Promise<void>;
 }
@@ -26,14 +27,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [stores, setStores] = useState<StoreInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedStore, setSelectedStore] = useState<StoreInfo | null>(null);
+  const [selectedStore, setSelectedStore] = useState<StoreInfo | null>(() => {
+    try {
+      const saved = localStorage.getItem('itamin_selectedStore');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Persist selectedStore to localStorage
+  useEffect(() => {
+    if (selectedStore) {
+      localStorage.setItem('itamin_selectedStore', JSON.stringify(selectedStore));
+    } else {
+      localStorage.removeItem('itamin_selectedStore');
+    }
+  }, [selectedStore]);
 
   const refreshStores = async () => {
     try {
       const data = await api.getStores();
       setStores(data.stores);
+      // Auto-select if only one store and nothing selected (or saved selection no longer valid)
       if (data.stores.length === 1 && !selectedStore) {
         setSelectedStore(data.stores[0]);
+      }
+      // Validate that saved selectedStore still exists in the store list
+      if (selectedStore && !data.stores.find((s: StoreInfo) => s.id === selectedStore.id)) {
+        setSelectedStore(data.stores.length === 1 ? data.stores[0] : null);
       }
     } catch {
       setStores([]);
@@ -66,13 +88,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
-      },
+  const signUp = async (email: string, password: string, name: string, storeName: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } },
     });
+    if (error) return { error: error.message };
+
+    // ユーザー作成後、事業所を自動作成
+    if (data.session) {
+      try {
+        await api.createStore(storeName);
+        await refreshStores();
+      } catch (e: any) {
+        return { error: `アカウント作成済み。事業所登録に失敗: ${e.message}` };
+      }
+    }
+    return {};
+  };
+
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message };
+    return {};
   };
 
   const signOut = async () => {
@@ -89,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, stores, loading, selectedStore,
-      selectStore, signInWithGoogle, signOut, refreshStores,
+      selectStore, signUp, signIn, signOut, refreshStores,
     }}>
       {children}
     </AuthContext.Provider>

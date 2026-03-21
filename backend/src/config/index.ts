@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
-dotenv.config();
+if (process.env.VERCEL !== '1') {
+  dotenv.config();
+}
 
 export const config = {
   port: parseInt(process.env.PORT || '3001', 10),

@@ -29,10 +29,10 @@ export const api = {
   createStore: (name: string, address?: string) =>
     request<any>('/stores', { method: 'POST', body: JSON.stringify({ name, address }) }),
   getStoreStaff: (storeId: string) => request<any>(`/stores/${storeId}/staff`),
-  addStaff: (storeId: string, email: string, role?: string, hourlyWage?: number) =>
+  addStaff: (storeId: string, name: string, email: string, role?: string, hourlyWage?: number) =>
     request<any>(`/stores/${storeId}/staff`, {
       method: 'POST',
-      body: JSON.stringify({ email, role, hourlyWage }),
+      body: JSON.stringify({ name, email, role, hourlyWage }),
     }),
 
   // Timecard
@@ -52,4 +52,20 @@ export const api = {
     if (month !== undefined) params.set('month', String(month));
     return request<any>(`/timecard/${storeId}/monthly?${params}`);
   },
+
+  // Plugin Settings
+  getPluginSettings: (storeId: string) => request<any>(`/plugin-settings/${storeId}`),
+  togglePlugin: (storeId: string, pluginName: string, enabled: boolean) =>
+    request<any>(`/plugin-settings/${storeId}/${pluginName}`, {
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
+    }),
+
+  // Shift
+  getWeeklyShifts: (storeId: string, date: string) =>
+    request<any>(`/shift/${storeId}/weekly?date=${date}`),
+  saveShift: (storeId: string, shift: { staffId: string; date: string; startTime: string; endTime: string }) =>
+    request<any>(`/shift/${storeId}`, { method: 'POST', body: JSON.stringify(shift) }),
+  deleteShift: (storeId: string, shiftId: string) =>
+    request<any>(`/shift/${storeId}/${shiftId}`, { method: 'DELETE' }),
 };

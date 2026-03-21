@@ -51,7 +51,12 @@ router.post('/:storeId/clock-in', requireAuth, async (req: Request, res: Respons
     return;
   }
 
-  res.status(201).json({ record });
+  res.status(201).json({ record: {
+    id: record.id,
+    clockIn: record.clock_in,
+    clockOut: record.clock_out,
+    breakMinutes: record.break_minutes,
+  }});
 });
 
 // 退勤打刻
@@ -94,7 +99,12 @@ router.post('/:storeId/clock-out', requireAuth, async (req: Request, res: Respon
     return;
   }
 
-  res.json({ record });
+  res.json({ record: {
+    id: record.id,
+    clockIn: record.clock_in,
+    clockOut: record.clock_out,
+    breakMinutes: record.break_minutes,
+  }});
 });
 
 // 自分の打刻状態
@@ -118,7 +128,12 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
 
   res.json({
     isClockedIn: !!open,
-    currentRecord: open || null,
+    currentRecord: open ? {
+      id: open.id,
+      clockIn: open.clock_in,
+      clockOut: open.clock_out,
+      breakMinutes: open.break_minutes,
+    } : null,
     staffId,
   });
 });

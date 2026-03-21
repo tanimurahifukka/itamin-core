@@ -11,8 +11,10 @@ const roleLabels: Record<string, string> = {
 export default function StaffPage() {
   const { selectedStore } = useAuth();
   const [staffList, setStaffList] = useState<any[]>([]);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const loadStaff = () => {
     if (!selectedStore) return;
@@ -24,12 +26,19 @@ export default function StaffPage() {
   useEffect(() => { loadStaff(); }, [selectedStore]);
 
   const handleAdd = async () => {
-    if (!selectedStore || !email.trim()) return;
+    if (!selectedStore || !name.trim() || !email.trim()) return;
     setError('');
+    setSuccess('');
     try {
-      await api.addStaff(selectedStore.id, email.trim());
+      const result = await api.addStaff(selectedStore.id, name.trim(), email.trim());
+      setName('');
       setEmail('');
-      loadStaff();
+      if (result.invited) {
+        setSuccess(`${name} さんに招待メールを送信しました`);
+      } else {
+        setSuccess(`${name} さんを追加しました`);
+        loadStaff();
+      }
     } catch (e: any) {
       setError(e.message);
     }
@@ -42,11 +51,9 @@ export default function StaffPage() {
 
         {staffList.map((s: any) => (
           <div key={s.id} className="staff-item">
-            {s.picture ? (
-              <img src={s.picture} alt={s.userName} />
-            ) : (
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#e0e0e0' }} />
-            )}
+            <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', color: '#666', flexShrink: 0 }}>
+              {(s.userName || s.email || '?')[0].toUpperCase()}
+            </div>
             <div className="info">
               <div style={{ fontWeight: 500 }}>{s.userName || s.email}</div>
               <div style={{ fontSize: '0.85rem', color: '#888' }}>{s.email}</div>
@@ -58,25 +65,36 @@ export default function StaffPage() {
         ))}
 
         <div style={{ marginTop: 24, borderTop: '1px solid #f0f0f0', paddingTop: 20 }}>
-          <h4 style={{ marginBottom: 8 }}>スタッフを追加</h4>
+          <h4 style={{ marginBottom: 8 }}>スタッフを招待</h4>
           {error && <div className="error-msg">{error}</div>}
-          <div style={{ display: 'flex', gap: 8 }}>
+          {success && <div style={{ color: '#22c55e', fontSize: '0.9rem', marginBottom: 8 }}>{success}</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <input
-              type="email"
-              placeholder="メールアドレス"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              style={{ flex: 1, padding: '10px 14px', border: '2px solid #e0e0e0', borderRadius: 8 }}
+              type="text"
+              placeholder="名前"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              style={{ padding: '10px 14px', border: '2px solid #e0e0e0', borderRadius: 8 }}
             />
-            <button
-              onClick={handleAdd}
-              style={{ padding: '10px 20px', background: '#e94560', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500 }}
-            >
-              追加
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="email"
+                placeholder="メールアドレス"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                style={{ flex: 1, padding: '10px 14px', border: '2px solid #e0e0e0', borderRadius: 8 }}
+              />
+              <button
+                onClick={handleAdd}
+                style={{ padding: '10px 20px', background: '#e94560', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+              >
+                招待
+              </button>
+            </div>
           </div>
           <p style={{ fontSize: '0.8rem', color: '#999', marginTop: 6 }}>
-            ※ 追加するスタッフは先にGoogleログインが必要です
+            招待メールが届きます。パスワードを設定するだけで利用開始できます。
           </p>
         </div>
       </div>

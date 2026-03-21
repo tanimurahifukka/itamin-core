@@ -16,6 +16,10 @@ export default function PunchClockPage() {
   const [showChecklist, setShowChecklist] = useState(false);
   const [checklistTiming, setChecklistTiming] = useState<'clock_in' | 'clock_out'>('clock_in');
 
+  // 休憩時間入力モーダル
+  const [showBreakModal, setShowBreakModal] = useState(false);
+  const [breakMinutes, setBreakMinutes] = useState(0);
+
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -35,7 +39,21 @@ export default function PunchClockPage() {
   // 打刻ボタン押下 → チェックリスト表示
   const handlePunchRequest = () => {
     if (!selectedStore || loading) return;
-    setChecklistTiming(isClockedIn ? 'clock_out' : 'clock_in');
+    if (isClockedIn) {
+      // 退勤時は休憩入力モーダルを表示
+      setBreakMinutes(0);
+      setShowBreakModal(true);
+    } else {
+      // 出勤時はチェックリストへ
+      setChecklistTiming('clock_in');
+      setShowChecklist(true);
+    }
+  };
+
+  // 休憩入力確定 → チェックリストへ
+  const handleBreakConfirm = () => {
+    setShowBreakModal(false);
+    setChecklistTiming('clock_out');
     setShowChecklist(true);
   };
 
@@ -48,9 +66,10 @@ export default function PunchClockPage() {
 
     try {
       if (isClockedIn) {
-        await api.clockOut(selectedStore.id);
+        await api.clockOut(selectedStore.id, breakMinutes);
         setIsClockedIn(false);
         setClockInTime(null);
+        setBreakMinutes(0);
       } else {
         const data = await api.clockIn(selectedStore.id);
         setIsClockedIn(true);
@@ -94,6 +113,46 @@ export default function PunchClockPage() {
         <div className="punch-status">
           <span className="since">{formatTime(clockInTime)}</span> から勤務中
           （{elapsedH}時間{elapsedM}分）
+        </div>
+      )}
+
+      {/* 休憩時間入力モーダル */}
+      {showBreakModal && (
+        <div className="break-modal-overlay" onClick={() => setShowBreakModal(false)}>
+          <div className="break-modal" onClick={e => e.stopPropagation()}>
+            <h3>休憩時間を入力</h3>
+            <p className="break-modal-desc">退勤前に休憩時間を入力してください</p>
+            <div className="break-input-row">
+              <input
+                type="number"
+                min={0}
+                max={480}
+                value={breakMinutes}
+                onChange={e => setBreakMinutes(Math.max(0, parseInt(e.target.value) || 0))}
+                className="break-input"
+              />
+              <span className="break-unit">分</span>
+            </div>
+            <div className="break-presets">
+              {[0, 15, 30, 45, 60].map(m => (
+                <button
+                  key={m}
+                  className={`break-preset ${breakMinutes === m ? 'active' : ''}`}
+                  onClick={() => setBreakMinutes(m)}
+                >
+                  {m}分
+                </button>
+              ))}
+            </div>
+            <div className="break-modal-actions">
+              <button className="break-cancel" onClick={() => setShowBreakModal(false)}>
+                キャンセル
+              </button>
+              <button className="break-confirm" onClick={handleBreakConfirm}>
+                退勤する
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
