@@ -1,0 +1,10 @@
+{
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/dist",
+  "rewrites": [
+    { "source": "/api/check/(.*)", "destination": "https://itamin-check.vercel.app/api/check/$1" },
+    { "source": "/api/(.*)", "destination": "https://itamin-core-api.vercel.app/api/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "framework": "vite"
+}

@@ -1,0 +1,19 @@
+{
+  "name": "itamin-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ITAMIN - 飲食店向けプラグイン型オールインワン業務・人材育成SaaS",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=backend && npm run build --workspace=frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
