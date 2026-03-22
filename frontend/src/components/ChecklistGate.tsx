@@ -16,6 +16,7 @@ interface Props {
 export default function ChecklistGate({ storeId, staffId, timing, onComplete, onCancel }: Props) {
   const [items, setItems] = useState<CheckItem[]>([]);
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [textValues, setTextValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -44,7 +45,11 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
     });
   };
 
-  const allChecked = items.length > 0 && items.every(item => !item.required || checked.has(item.id));
+  const allChecked = items.length > 0 && items.every(item => {
+    if (!item.required) return true;
+    if (item.type === 'text') return (textValues[item.id] || '').trim().length > 0;
+    return checked.has(item.id);
+  });
 
   const handleSubmit = async () => {
     if (!allChecked || submitting) return;
@@ -53,7 +58,8 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
     const results: CheckResult[] = items.map(item => ({
       item_id: item.id,
       label: item.label,
-      checked: checked.has(item.id),
+      checked: item.type === 'text' ? (textValues[item.id] || '').trim().length > 0 : checked.has(item.id),
+      ...(item.type === 'text' ? { value: textValues[item.id] || '' } : {}),
     }));
 
     try {
@@ -96,7 +102,27 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
         {error && <div className="error-msg">{error}</div>}
 
         <div className="checklist-items">
-          {items.map(item => (
+          {items.map(item => item.type === 'text' ? (
+            <div
+              key={item.id}
+              className={`checklist-item text-input ${(textValues[item.id] || '').trim() ? 'checked' : ''}`}
+            >
+              <div className={`checkbox ${(textValues[item.id] || '').trim() ? 'checked' : ''}`}>
+                {(textValues[item.id] || '').trim() && '✓'}
+              </div>
+              <div className="checklist-text-field">
+                <span className="checklist-text-label">{item.label}</span>
+                <input
+                  type="text"
+                  className="checklist-text-input"
+                  placeholder="入力してください"
+                  value={textValues[item.id] || ''}
+                  onChange={e => setTextValues(prev => ({ ...prev, [item.id]: e.target.value }))}
+                  onClick={e => e.stopPropagation()}
+                />
+              </div>
+            </div>
+          ) : (
             <label
               key={item.id}
               className={`checklist-item ${checked.has(item.id) ? 'checked' : ''}`}
@@ -111,7 +137,7 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
         </div>
 
         <div className="checklist-progress">
-          {checked.size} / {items.length} 完了
+          {items.filter(i => i.type === 'text' ? (textValues[i.id] || '').trim() : checked.has(i.id)).length} / {items.length} 完了
         </div>
 
         <div className="checklist-actions">

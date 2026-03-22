@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import ChecklistGate from '../components/ChecklistGate';
+import { showToast } from '../components/Toast';
 
 export default function PunchClockPage() {
   const { selectedStore } = useAuth();
@@ -19,6 +20,7 @@ export default function PunchClockPage() {
   // 休憩時間入力モーダル
   const [showBreakModal, setShowBreakModal] = useState(false);
   const [breakMinutes, setBreakMinutes] = useState(0);
+  const [punchSuccess, setPunchSuccess] = useState<'in' | 'out' | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -70,11 +72,16 @@ export default function PunchClockPage() {
         setIsClockedIn(false);
         setClockInTime(null);
         setBreakMinutes(0);
+        setPunchSuccess('out');
+        showToast('退勤しました。お疲れさまでした！', 'success');
       } else {
         const data = await api.clockIn(selectedStore.id);
         setIsClockedIn(true);
         setClockInTime(new Date(data.record.clockIn));
+        setPunchSuccess('in');
+        showToast('出勤しました。今日もよろしくお願いします！', 'success');
       }
+      setTimeout(() => setPunchSuccess(null), 2000);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -102,11 +109,11 @@ export default function PunchClockPage() {
       {error && <div className="error-msg">{error}</div>}
 
       <button
-        className={`punch-btn ${isClockedIn ? 'clock-out' : 'clock-in'}`}
+        className={`punch-btn ${isClockedIn ? 'clock-out' : 'clock-in'} ${punchSuccess ? 'punch-success' : ''}`}
         onClick={handlePunchRequest}
         disabled={loading}
       >
-        {loading ? '...' : isClockedIn ? '退勤' : '出勤'}
+        {loading ? '...' : punchSuccess === 'in' ? '✓' : punchSuccess === 'out' ? '✓' : isClockedIn ? '退勤' : '出勤'}
       </button>
 
       {isClockedIn && clockInTime && (

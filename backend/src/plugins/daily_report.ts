@@ -1,0 +1,169 @@
+import { Router, Request, Response } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { supabaseAdmin } from '../config/supabase';
+import type { Express } from 'express';
+import type { Plugin } from '../types';
+import { requireManagedStore } from '../auth/authorization';
+
+const router = Router();
+
+// ============================================================
+// 日報一覧取得（月別）
+// ============================================================
+router.get('/:storeId/reports', requireAuth, async (req: Request, res: Response) => {
+  const storeId = String(req.params.storeId);
+  const membership = await requireManagedStore(req, res, storeId);
+  if (!membership) return;
+
+  const year = Number(req.query.year) || new Date().getFullYear();
+  const month = Number(req.query.month) || new Date().getMonth() + 1;
+
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+  const endDate = month === 12
+    ? `${year + 1}-01-01`
+    : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+
+  const { data, error } = await supabaseAdmin
+    .from('daily_reports')
+    .select('*')
+    .eq('store_id', storeId)
+    .gte('date', startDate)
+    .lt('date', endDate)
+    .order('date', { ascending: false });
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  const reports = (data || []).map((r: any) => ({
+    id: r.id,
+    storeId: r.store_id,
+    date: r.date,
+    sales: r.sales,
+    customerCount: r.customer_count,
+    weather: r.weather,
+    memo: r.memo,
+    createdBy: r.created_by,
+    createdAt: r.created_at,
+  }));
+
+  // 月次サマリー
+  const totalSales = reports.reduce((sum: number, r: any) => sum + (Number(r.sales) || 0), 0);
+  const totalCustomers = reports.reduce((sum: number, r: any) => sum + (Number(r.customerCount) || 0), 0);
+  const avgCustomers = reports.length > 0 ? Math.round(totalCustomers / reports.length) : 0;
+
+  res.json({ reports, summary: { totalSales, totalCustomers, avgCustomers, reportCount: reports.length }, year, month });
+});
+
+// ============================================================
+// 日報取得（1日分）
+// ============================================================
+router.get('/:storeId/reports/:date', requireAuth, async (req: Request, res: Response) => {
+  const storeId = String(req.params.storeId);
+  const date = String(req.params.date);
+  const membership = await requireManagedStore(req, res, storeId);
+  if (!membership) return;
+
+  const { data, error } = await supabaseAdmin
+    .from('daily_reports')
+    .select('*')
+    .eq('store_id', storeId)
+    .eq('date', date)
+    .maybeSingle();
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  if (!data) {
+    res.json({ report: null });
+    return;
+  }
+
+  res.json({
+    report: {
+      id: data.id,
+      storeId: data.store_id,
+      date: data.date,
+      sales: data.sales,
+      customerCount: data.customer_count,
+      weather: data.weather,
+      memo: data.memo,
+      createdBy: data.created_by,
+    },
+  });
+});
+
+// ============================================================
+// 日報作成・更新（upsert）
+// ============================================================
+router.post('/:storeId/reports', requireAuth, async (req: Request, res: Response) => {
+  const storeId = String(req.params.storeId);
+  const membership = await requireManagedStore(req, res, storeId);
+  if (!membership) return;
+
+  const { date, sales, customerCount, weather, memo } = req.body;
+
+  if (!date) {
+    res.status(400).json({ error: '日付は必須です' });
+    return;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('daily_reports')
+    .upsert({
+      store_id: storeId,
+      date,
+      sales: sales ?? 0,
+      customer_count: customerCount ?? 0,
+      weather: weather || '',
+      memo: memo || '',
+      created_by: (req as any).userId,
+    }, { onConflict: 'store_id,date' })
+    .select()
+    .single();
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  res.status(201).json({ report: data });
+});
+
+// ============================================================
+// 日報削除
+// ============================================================
+router.delete('/:storeId/reports/:reportId', requireAuth, async (req: Request, res: Response) => {
+  const storeId = String(req.params.storeId);
+  const reportId = String(req.params.reportId);
+  const membership = await requireManagedStore(req, res, storeId);
+  if (!membership) return;
+
+  const { error } = await supabaseAdmin
+    .from('daily_reports')
+    .delete()
+    .eq('id', reportId)
+    .eq('store_id', storeId);
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  res.json({ ok: true });
+});
+
+export const dailyReportPlugin: Plugin = {
+  name: 'daily_report',
+  version: '0.1.0',
+  description: '毎日の売上・来客数・天気・メモを記録',
+  label: '日報',
+  icon: '📝',
+  defaultRoles: ['owner', 'manager'],
+  initialize: (app: Express) => {
+    app.use('/api/daily-report', router);
+  },
+};

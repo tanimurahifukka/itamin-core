@@ -1,0 +1,204 @@
+import { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { api } from '../api/client';
+import { showToast } from '../components/Toast';
+
+interface Notice {
+  id: string;
+  authorId: string;
+  authorName: string;
+  title: string;
+  body: string;
+  pinned: boolean;
+  createdAt: string;
+  isRead: boolean;
+  readAt: string | null;
+}
+
+export default function NoticePage() {
+  const { selectedStore } = useAuth();
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [newTitle, setNewTitle] = useState('');
+  const [newBody, setNewBody] = useState('');
+  const [posting, setPosting] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const loadData = () => {
+    if (!selectedStore) return;
+    api.getNotices(selectedStore.id)
+      .then((data: any) => setNotices(data.notices))
+      .catch(() => {});
+  };
+
+  useEffect(() => { loadData(); }, [selectedStore]);
+
+  const handlePost = async () => {
+    if (!selectedStore || !newTitle.trim() || posting) return;
+    setPosting(true);
+    try {
+      await api.postNotice(selectedStore.id, { title: newTitle.trim(), body: newBody });
+      setNewTitle('');
+      setNewBody('');
+      showToast('投稿しました', 'success');
+      loadData();
+    } catch (e: any) {
+      showToast(e.message || '投稿に失敗しました', 'error');
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const handleRead = async (noticeId: string) => {
+    if (!selectedStore) return;
+    try {
+      await api.markNoticeRead(selectedStore.id, noticeId);
+      loadData();
+    } catch {}
+  };
+
+  const handleTogglePin = async (notice: Notice) => {
+    if (!selectedStore) return;
+    try {
+      await api.toggleNoticePin(selectedStore.id, notice.id, !notice.pinned);
+      showToast(notice.pinned ? 'ピン留め解除' : 'ピン留めしました', 'info');
+      loadData();
+    } catch {}
+  };
+
+  const handleDelete = async (notice: Notice) => {
+    if (!selectedStore) return;
+    if (!confirm(`「${notice.title}」を削除しますか？`)) return;
+    try {
+      await api.deleteNotice(selectedStore.id, notice.id);
+      showToast('削除しました', 'info');
+      loadData();
+    } catch (e: any) {
+      showToast(e.message || '削除に失敗しました', 'error');
+    }
+  };
+
+  const toggleExpand = (noticeId: string) => {
+    if (expandedId === noticeId) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(noticeId);
+      const notice = notices.find(n => n.id === noticeId);
+      if (notice && !notice.isRead) {
+        handleRead(noticeId);
+      }
+    }
+  };
+
+  const unreadCount = notices.filter(n => !n.isRead).length;
+
+  return (
+    <div className="main-content">
+      {/* サマリー */}
+      <div className="today-summary">
+        <div className="summary-card">
+          <div className="summary-number">{notices.length}</div>
+          <div className="summary-label">投稿数</div>
+        </div>
+        <div className="summary-card" style={unreadCount > 0 ? { background: '#eff6ff' } : {}}>
+          <div className="summary-number" style={unreadCount > 0 ? { color: '#2563eb' } : {}}>{unreadCount}</div>
+          <div className="summary-label">未読</div>
+        </div>
+      </div>
+
+      {/* 投稿フォーム */}
+      <div className="records-section" style={{ marginBottom: 16 }}>
+        <h3 style={{ marginBottom: 12 }}>新規投稿</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <input
+            type="text"
+            placeholder="タイトル *"
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            style={{ padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
+          />
+          <textarea
+            placeholder="本文（任意）"
+            value={newBody}
+            onChange={e => setNewBody(e.target.value)}
+            rows={3}
+            style={{ padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem', resize: 'vertical' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={handlePost}
+              disabled={posting || !newTitle.trim()}
+              style={{ padding: '8px 20px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, fontFamily: 'inherit', fontSize: '0.9rem' }}
+            >
+              {posting ? '投稿中...' : '投稿'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 投稿一覧 */}
+      <div className="records-section">
+        <h3 style={{ marginBottom: 12 }}>投稿一覧</h3>
+        {notices.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">💬</div>
+            <p className="empty-state-text">投稿がありません</p>
+            <p className="empty-state-hint">上のフォームから投稿してください</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {notices.map(n => (
+              <div
+                key={n.id}
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 8,
+                  padding: 12,
+                  background: n.isRead ? 'white' : '#f0f7ff',
+                  borderLeft: n.pinned ? '4px solid #f59e0b' : '4px solid transparent',
+                }}
+              >
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                  onClick={() => toggleExpand(n.id)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {!n.isRead && (
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2563eb', display: 'inline-block' }} />
+                    )}
+                    {n.pinned && <span style={{ fontSize: '0.8rem' }}>📌</span>}
+                    <span style={{ fontWeight: 600 }}>{n.title}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', color: '#888' }}>
+                    <span>{n.authorName}</span>
+                    <span>{new Date(n.createdAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                </div>
+                {expandedId === n.id && (
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #e5e7eb' }}>
+                    <p style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem', color: '#444', marginBottom: 8 }}>
+                      {n.body || '（本文なし）'}
+                    </p>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleTogglePin(n); }}
+                        style={{ padding: '4px 8px', border: '1px solid #d4d9df', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.8rem' }}
+                      >
+                        {n.pinned ? 'ピン解除' : 'ピン留め'}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(n); }}
+                        style={{ padding: '4px 8px', border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem' }}
+                      >
+                        削除
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -3,7 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 const roleLabels: Record<string, string> = {
   owner: 'オーナー',
   manager: 'マネージャー',
-  staff: 'スタッフ',
+  full_time: '正社員',
+  part_time: 'アルバイト',
 };
 
 export default function StoreSelectPage() {

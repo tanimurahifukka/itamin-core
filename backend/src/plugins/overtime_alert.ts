@@ -1,0 +1,122 @@
+import { Router, Request, Response } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { supabaseAdmin } from '../config/supabase';
+import type { Express } from 'express';
+import type { Plugin } from '../types';
+import { requireManagedStore } from '../auth/authorization';
+
+const router = Router();
+
+// ============================================================
+// スタッフ別残業時間一覧（今月）
+// ============================================================
+router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response) => {
+  const storeId = String(req.params.storeId);
+  const membership = await requireManagedStore(req, res, storeId);
+  if (!membership) return;
+
+  const year = Number(req.query.year) || new Date().getFullYear();
+  const month = Number(req.query.month) || new Date().getMonth() + 1;
+
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+  const endDate = month === 12
+    ? `${year + 1}-01-01`
+    : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+
+  // スタッフ一覧取得
+  const { data: members } = await supabaseAdmin
+    .from('store_staff')
+    .select('user_id, role, user:profiles(name, email)')
+    .eq('store_id', storeId);
+
+  // 今月の打刻レコード取得
+  const { data: records, error } = await supabaseAdmin
+    .from('time_records')
+    .select('user_id, clock_in, clock_out, break_minutes')
+    .eq('store_id', storeId)
+    .gte('clock_in', startDate)
+    .lt('clock_in', endDate)
+    .not('clock_out', 'is', null);
+
+  if (error) {
+    res.status(500).json({ error: error.message });
+    return;
+  }
+
+  // プラグイン設定から上限時間を取得
+  const { data: pluginSetting } = await supabaseAdmin
+    .from('store_plugins')
+    .select('config')
+    .eq('store_id', storeId)
+    .eq('plugin_name', 'overtime_alert')
+    .single();
+
+  const monthlyLimitHours = pluginSetting?.config?.monthly_limit_hours ?? 45;
+  const standardHoursPerDay = pluginSetting?.config?.standard_hours_per_day ?? 8;
+
+  // スタッフ別に残業時間を計算
+  const staffOvertime = (members || []).map((m: any) => {
+    const staffRecords = (records || []).filter((r: any) => r.user_id === m.user_id);
+    let totalWorkMinutes = 0;
+    let totalDays = 0;
+
+    for (const r of staffRecords) {
+      const clockIn = new Date(r.clock_in);
+      const clockOut = new Date(r.clock_out);
+      const workMinutes = (clockOut.getTime() - clockIn.getTime()) / 60000 - (r.break_minutes || 0);
+      totalWorkMinutes += Math.max(0, workMinutes);
+      totalDays++;
+    }
+
+    const standardMinutes = totalDays * standardHoursPerDay * 60;
+    const overtimeMinutes = Math.max(0, totalWorkMinutes - standardMinutes);
+    const overtimeHours = Math.round(overtimeMinutes / 6) / 10; // 小数第1位
+
+    return {
+      userId: m.user_id,
+      name: (m as any).user?.name || (m as any).user?.email || '不明',
+      role: m.role,
+      totalWorkHours: Math.round(totalWorkMinutes / 6) / 10,
+      totalDays,
+      overtimeHours,
+      limitHours: monthlyLimitHours,
+      exceeded: overtimeHours >= monthlyLimitHours,
+      warning: overtimeHours >= monthlyLimitHours * 0.8,
+    };
+  });
+
+  res.json({
+    staffOvertime,
+    settings: { monthlyLimitHours, standardHoursPerDay },
+    year,
+    month,
+  });
+});
+
+export const overtimeAlertPlugin: Plugin = {
+  name: 'overtime_alert',
+  version: '0.1.0',
+  description: '残業時間の自動集計と閾値超え警告',
+  label: '残業アラート',
+  icon: '⏰',
+  defaultRoles: ['owner', 'manager'],
+  settingsSchema: [
+    {
+      key: 'monthly_limit_hours',
+      label: '月間残業上限（時間）',
+      type: 'number',
+      default: 45,
+      description: 'この時間を超えると警告表示されます',
+    },
+    {
+      key: 'standard_hours_per_day',
+      label: '1日の所定労働時間',
+      type: 'number',
+      default: 8,
+      description: 'この時間を超えた分が残業として計算されます',
+    },
+  ],
+  initialize: (app: Express) => {
+    app.use('/api/overtime-alert', router);
+  },
+};

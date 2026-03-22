@@ -144,7 +144,10 @@ router.get('/records/:storeId', requireAuth, async (req: Request, res: Response)
 export const checkPlugin: Plugin = {
   name: 'check',
   version: '0.1.0',
-  description: 'チェックリストプラグイン',
+  description: 'HACCP準拠チェックリスト・記録管理',
+  label: 'チェックリスト',
+  icon: '✅',
+  defaultRoles: ['owner', 'manager'],
   initialize: (app: Express) => {
     app.use('/api/check', router);
   },

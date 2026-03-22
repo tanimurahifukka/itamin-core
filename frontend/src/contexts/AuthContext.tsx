@@ -14,11 +14,14 @@ interface AuthContextType {
   stores: StoreInfo[];
   loading: boolean;
   selectedStore: StoreInfo | null;
+  requiresPasswordChange: boolean;
   selectStore: (store: StoreInfo | null) => void;
   signUp: (email: string, password: string, name: string, storeName: string) => Promise<{ error?: string }>;
+  completeInvitedSignUp: (email: string, password: string, name: string) => Promise<{ error?: string }>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   refreshStores: () => Promise<void>;
+  changePassword: (newPassword: string) => Promise<{ error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -108,9 +111,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {};
   };
 
+  const completeInvitedSignUp = async (email: string, password: string, name: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } },
+    });
+
+    if (error) return { error: error.message };
+
+    // signUp後にセッションがない場合はsignInでログイン
+    if (!data.session) {
+      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInErr) return { error: signInErr.message };
+    }
+
+    // トリガーでstore_staffに追加されるまで少し待つ
+    await new Promise(r => setTimeout(r, 500));
+
+    try {
+      await refreshStores();
+    } catch (e: any) {
+      return { error: e.message };
+    }
+
+    return {};
+  };
+
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
+    return {};
+  };
+
+  const requiresPasswordChange = !!(user && user.user_metadata?.password_changed === false);
+
+  const changePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+      data: { password_changed: true },
+    });
+    if (error) return { error: error.message };
+    // Update local user state
+    const { data: { user: updatedUser } } = await supabase.auth.getUser();
+    if (updatedUser) setUser(updatedUser);
     return {};
   };
 
@@ -127,8 +171,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, stores, loading, selectedStore,
-      selectStore, signUp, signIn, signOut, refreshStores,
+      user, stores, loading, selectedStore, requiresPasswordChange,
+      selectStore, signUp, completeInvitedSignUp, signIn, signOut, refreshStores, changePassword,
     }}>
       {children}
     </AuthContext.Provider>

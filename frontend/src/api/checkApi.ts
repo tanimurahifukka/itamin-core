@@ -32,6 +32,7 @@ export interface CheckItem {
   label: string;
   order: number;
   required: boolean;
+  type?: 'checkbox' | 'text';
 }
 
 export interface Checklist {
@@ -45,6 +46,7 @@ export interface CheckResult {
   item_id: string;
   label: string;
   checked: boolean;
+  value?: string;
 }
 
 export interface CheckRecord {

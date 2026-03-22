@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { api } from './api/client';
 import LoginPage from './pages/LoginPage';
+import PasswordChangePage from './pages/PasswordChangePage';
 import StoreSelectPage from './pages/StoreSelectPage';
 import PunchClockPage from './pages/PunchClockPage';
 import DashboardPage from './pages/DashboardPage';
@@ -9,25 +10,111 @@ import StaffPage from './pages/StaffPage';
 import ChecklistAdminPage from './pages/ChecklistAdminPage';
 import PluginSettingsPage from './pages/PluginSettingsPage';
 import ShiftPage from './pages/ShiftPage';
+import ShiftRequestPage from './pages/ShiftRequestPage';
+import InventoryPage from './pages/InventoryPage';
+import OvertimeAlertPage from './pages/OvertimeAlertPage';
+import ConsecutiveWorkPage from './pages/ConsecutiveWorkPage';
+import DailyReportPage from './pages/DailyReportPage';
+import NoticePage from './pages/NoticePage';
+import PaidLeavePage from './pages/PaidLeavePage';
+import ExpensePage from './pages/ExpensePage';
+import FeedbackPage from './pages/FeedbackPage';
 
-type Tab = 'punch' | 'dashboard' | 'staff' | 'checklist' | 'shift' | 'plugins';
+// プラグイン名 → コンポーネント対応表
+const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
+  punch: PunchClockPage,
+  attendance: DashboardPage,
+  staff: StaffPage,
+  check: ChecklistAdminPage,
+  shift: ShiftPage,
+  shift_request: ShiftRequestPage,
+  inventory: InventoryPage,
+  overtime_alert: OvertimeAlertPage,
+  consecutive_work: ConsecutiveWorkPage,
+  daily_report: DailyReportPage,
+  notice: NoticePage,
+  paid_leave: PaidLeavePage,
+  expense: ExpensePage,
+  feedback: FeedbackPage,
+  settings: PluginSettingsPage,
+};
+
+interface PluginTab {
+  name: string;
+  label: string;
+  icon: string;
+}
 
 export default function App() {
-  const { user, loading, selectedStore, selectStore, signOut, stores } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('punch');
-  const [enabledPlugins, setEnabledPlugins] = useState<Set<string>>(new Set());
+  const { user, loading, selectedStore, selectStore, signOut, stores, requiresPasswordChange, changePassword } = useAuth();
+  const [activeTab, setActiveTab] = useState('');
+  const [tabs, setTabs] = useState<PluginTab[]>([]);
+  const [tabsLoading, setTabsLoading] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // 有効プラグインを取得
+  const loadTabs = async () => {
+    if (!selectedStore) {
+      setTabs([]);
+      setActiveTab('');
+      setTabsLoading(false);
+      return;
+    }
+
+    setTabsLoading(true);
+    setTabs([]);
+    setActiveTab('');
+
+    try {
+      const data = await api.getPluginSettings(selectedStore.id);
+      const myRole = selectedStore.role;
+      const pluginMap = new Map<string, any>(data.plugins.map((p: any) => [p.name, p]));
+      const allowStaffRequest = pluginMap.get('shift')?.config?.allow_staff_request ?? true;
+      const visibleTabs: PluginTab[] = [];
+
+      for (const p of data.plugins) {
+        // 有効でない非コアプラグインはスキップ
+        if (!p.enabled && !p.core) continue;
+        if (p.name === 'shift_request' && !allowStaffRequest) continue;
+        if (p.name === 'punch' && myRole === 'owner') continue;
+        // 自分のロールがアクセス権限に含まれているか
+        const allowed: string[] = p.allowedRoles || p.defaultRoles || [];
+        if (!allowed.includes(myRole)) continue;
+        // コンポーネントが存在するもののみ
+        if (!PLUGIN_COMPONENTS[p.name]) continue;
+
+        visibleTabs.push({ name: p.name, label: p.label, icon: p.icon });
+      }
+
+      setTabs(visibleTabs);
+      setActiveTab(current => (
+        visibleTabs.find(t => t.name === current) ? current : (visibleTabs[0]?.name || '')
+      ));
+    } catch {
+      setTabs([]);
+      setActiveTab('');
+    } finally {
+      setTabsLoading(false);
+    }
+  };
+
+  // プラグイン権限からタブを動的生成
   useEffect(() => {
-    if (!selectedStore) return;
-    api.getPluginSettings(selectedStore.id).then(data => {
-      const enabled = new Set<string>(
-        data.plugins.filter((p: any) => p.enabled).map((p: any) => p.name)
-      );
-      setEnabledPlugins(enabled);
-    }).catch(() => {});
+    loadTabs();
+  }, [selectedStore]);
+
+  useEffect(() => {
+    const handlePluginUpdate = () => {
+      loadTabs();
+    };
+
+    window.addEventListener('plugins-updated', handlePluginUpdate);
+    window.addEventListener('focus', handlePluginUpdate);
+
+    return () => {
+      window.removeEventListener('plugins-updated', handlePluginUpdate);
+      window.removeEventListener('focus', handlePluginUpdate);
+    };
   }, [selectedStore]);
 
   // Close profile menu on outside click
@@ -47,6 +134,10 @@ export default function App() {
 
   if (!user) {
     return <LoginPage />;
+  }
+
+  if (requiresPasswordChange) {
+    return <PasswordChangePage changePassword={changePassword} signOut={signOut} />;
   }
 
   const displayName = user.user_metadata?.full_name || user.email || '';
@@ -93,7 +184,7 @@ export default function App() {
     );
   }
 
-  const isManager = selectedStore.role === 'owner' || selectedStore.role === 'manager';
+  const ActiveComponent = PLUGIN_COMPONENTS[activeTab];
 
   return (
     <div className="app">
@@ -111,69 +202,32 @@ export default function App() {
         </div>
       </header>
 
-      <main className="main-content">
-        {activeTab === 'punch' && <PunchClockPage />}
-        {activeTab === 'dashboard' && isManager && <DashboardPage />}
-        {activeTab === 'shift' && enabledPlugins.has('shift') && <ShiftPage />}
-        {activeTab === 'checklist' && isManager && enabledPlugins.has('check') && <ChecklistAdminPage />}
-        {activeTab === 'staff' && isManager && <StaffPage />}
-        {activeTab === 'plugins' && isManager && <PluginSettingsPage />}
-      </main>
+      <div className="app-body">
+        <nav className="sidebar">
+          <ul className="sidebar-nav">
+            {tabs.map(tab => (
+              <li key={tab.name}>
+                <button
+                  className={`sidebar-nav-item ${activeTab === tab.name ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab.name)}
+                >
+                  {tab.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-      <nav className="bottom-nav">
-        <button
-          className={`bottom-nav-item ${activeTab === 'punch' ? 'active' : ''}`}
-          onClick={() => setActiveTab('punch')}
-        >
-          <span className="bottom-nav-icon">🕐</span>
-          <span className="bottom-nav-label">打刻</span>
-        </button>
-        {isManager && (
-          <button
-            className={`bottom-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
-          >
-            <span className="bottom-nav-icon">📊</span>
-            <span className="bottom-nav-label">勤怠</span>
-          </button>
-        )}
-        {enabledPlugins.has('shift') && (
-          <button
-            className={`bottom-nav-item ${activeTab === 'shift' ? 'active' : ''}`}
-            onClick={() => setActiveTab('shift')}
-          >
-            <span className="bottom-nav-icon">📅</span>
-            <span className="bottom-nav-label">シフト</span>
-          </button>
-        )}
-        {isManager && enabledPlugins.has('check') && (
-          <button
-            className={`bottom-nav-item ${activeTab === 'checklist' ? 'active' : ''}`}
-            onClick={() => setActiveTab('checklist')}
-          >
-            <span className="bottom-nav-icon">✅</span>
-            <span className="bottom-nav-label">チェック</span>
-          </button>
-        )}
-        {isManager && (
-          <button
-            className={`bottom-nav-item ${activeTab === 'staff' ? 'active' : ''}`}
-            onClick={() => setActiveTab('staff')}
-          >
-            <span className="bottom-nav-icon">👥</span>
-            <span className="bottom-nav-label">スタッフ</span>
-          </button>
-        )}
-        {isManager && (
-          <button
-            className={`bottom-nav-item ${activeTab === 'plugins' ? 'active' : ''}`}
-            onClick={() => setActiveTab('plugins')}
-          >
-            <span className="bottom-nav-icon">⚙️</span>
-            <span className="bottom-nav-label">設定</span>
-          </button>
-        )}
-      </nav>
+        <main className="main-content">
+          {tabsLoading ? (
+            <div>読み込み中...</div>
+          ) : ActiveComponent ? (
+            <ActiveComponent />
+          ) : (
+            <div>利用可能な機能がありません。</div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

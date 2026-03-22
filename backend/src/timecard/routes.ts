@@ -1,18 +1,33 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth';
-import { createSupabaseClient } from '../config/supabase';
+import { createSupabaseClient, supabaseAdmin } from '../config/supabase';
 
 const router = Router();
 
-// 自分のスタッフIDを取得するヘルパー
-async function getStaffId(supabase: any, storeId: string, userId: string) {
+// 自分の所属情報を取得
+async function getStoreStaff(supabase: any, storeId: string, userId: string) {
   const { data } = await supabase
     .from('store_staff')
-    .select('id')
+    .select('id, role')
     .eq('store_id', storeId)
     .eq('user_id', userId)
     .single();
-  return data?.id;
+  return data;
+}
+
+async function requirePunchStaff(supabase: any, storeId: string, userId: string, res: Response) {
+  const staff = await getStoreStaff(supabase, storeId, userId);
+  if (!staff) {
+    res.status(403).json({ error: 'この店舗のスタッフではありません' });
+    return null;
+  }
+
+  if (staff.role === 'owner') {
+    res.status(403).json({ error: 'オーナーは打刻できません' });
+    return null;
+  }
+
+  return staff;
 }
 
 // 出勤打刻
@@ -20,11 +35,11 @@ router.post('/:storeId/clock-in', requireAuth, async (req: Request, res: Respons
   const storeId = req.params.storeId as string;
   const supabase = createSupabaseClient(req.accessToken!);
 
-  const staffId = await getStaffId(supabase, storeId, req.user!.id);
-  if (!staffId) {
-    res.status(403).json({ error: 'この店舗のスタッフではありません' });
+  const staff = await requirePunchStaff(supabase, storeId, req.user!.id, res);
+  if (!staff) {
     return;
   }
+  const staffId = staff.id;
 
   // 既に出勤中かチェック
   const { data: open } = await supabase
@@ -65,11 +80,11 @@ router.post('/:storeId/clock-out', requireAuth, async (req: Request, res: Respon
   const { breakMinutes } = req.body;
   const supabase = createSupabaseClient(req.accessToken!);
 
-  const staffId = await getStaffId(supabase, storeId, req.user!.id);
-  if (!staffId) {
-    res.status(403).json({ error: 'この店舗のスタッフではありません' });
+  const staff = await requirePunchStaff(supabase, storeId, req.user!.id, res);
+  if (!staff) {
     return;
   }
+  const staffId = staff.id;
 
   const { data: open } = await supabase
     .from('time_records')
@@ -112,11 +127,11 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
   const storeId = req.params.storeId as string;
   const supabase = createSupabaseClient(req.accessToken!);
 
-  const staffId = await getStaffId(supabase, storeId, req.user!.id);
-  if (!staffId) {
-    res.status(403).json({ error: 'この店舗のスタッフではありません' });
+  const staff = await requirePunchStaff(supabase, storeId, req.user!.id, res);
+  if (!staff) {
     return;
   }
+  const staffId = staff.id;
 
   const { data: open } = await supabase
     .from('time_records')
@@ -172,15 +187,16 @@ router.get('/:storeId/daily', requireAuth, async (req: Request, res: Response) =
   res.json({ date, records });
 });
 
-// 月別タイムカード
+// 月別タイムカード（全スタッフ集計 + 給与概算）
 router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response) => {
   const storeId = req.params.storeId as string;
   const year = parseInt(req.query.year as string) || new Date().getFullYear();
   const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
   const supabase = createSupabaseClient(req.accessToken!);
 
-  const staffId = await getStaffId(supabase, storeId, req.user!.id);
-  if (!staffId) {
+  // 権限チェック（スタッフであること）
+  const staff = await getStoreStaff(supabase, storeId, req.user!.id);
+  if (!staff) {
     res.status(403).json({ error: 'この店舗のスタッフではありません' });
     return;
   }
@@ -190,10 +206,11 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
   const endYear = month === 12 ? year + 1 : year;
   const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
 
+  // 全スタッフの勤怠レコードを取得（スタッフ名・時給付き）
   const { data, error } = await supabase
     .from('time_records')
-    .select('*')
-    .eq('staff_id', staffId)
+    .select('*, staff:store_staff(id, hourly_wage, user:profiles(name))')
+    .eq('store_id', storeId)
     .gte('clock_in', startDate)
     .lt('clock_in', endDate)
     .order('clock_in');
@@ -203,20 +220,54 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
     return;
   }
 
-  let totalMinutes = 0;
+  // スタッフごとに集計
+  const staffMap = new Map<string, {
+    staffId: string;
+    staffName: string;
+    hourlyWage: number;
+    totalMinutes: number;
+    workDays: Set<string>;
+  }>();
+
   for (const r of data || []) {
+    const sid = r.staff_id;
+    if (!staffMap.has(sid)) {
+      staffMap.set(sid, {
+        staffId: sid,
+        staffName: r.staff?.user?.name || '—',
+        hourlyWage: r.staff?.hourly_wage || 0,
+        totalMinutes: 0,
+        workDays: new Set(),
+      });
+    }
+    const entry = staffMap.get(sid)!;
     if (r.clock_out) {
       const diff = (new Date(r.clock_out).getTime() - new Date(r.clock_in).getTime()) / 60000;
-      totalMinutes += diff - (r.break_minutes || 0);
+      entry.totalMinutes += diff - (r.break_minutes || 0);
     }
+    // 出勤日をカウント（日付ベース）
+    const day = new Date(r.clock_in).toISOString().split('T')[0];
+    entry.workDays.add(day);
   }
+
+  const summary = Array.from(staffMap.values()).map(s => {
+    const totalWorkHours = Math.round(s.totalMinutes / 60 * 100) / 100;
+    return {
+      staffId: s.staffId,
+      staffName: s.staffName,
+      hourlyWage: s.hourlyWage,
+      workDays: s.workDays.size,
+      totalWorkMinutes: Math.round(s.totalMinutes),
+      totalWorkHours,
+      estimatedSalary: Math.round(totalWorkHours * s.hourlyWage),
+    };
+  });
 
   res.json({
     year,
     month,
     records: data,
-    totalWorkMinutes: Math.round(totalMinutes),
-    totalWorkHours: Math.round(totalMinutes / 60 * 100) / 100,
+    summary,
   });
 });
 

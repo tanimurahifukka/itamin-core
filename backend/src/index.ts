@@ -6,8 +6,17 @@ import { storesRouter } from './auth/stores';
 import { timecardRouter } from './timecard/routes';
 import { pluginRegistry } from './plugins/registry';
 import { pluginSettingsRouter } from './plugins/settings';
-import { shiftPlugin } from './plugins/shift';
+import { shiftPlugin, shiftRequestPlugin } from './plugins/shift';
 import { checkPlugin } from './plugins/check';
+import { inventoryPlugin } from './plugins/inventory';
+import { overtimeAlertPlugin } from './plugins/overtime_alert';
+import { consecutiveWorkPlugin } from './plugins/consecutive_work';
+import { dailyReportPlugin } from './plugins/daily_report';
+import { noticePlugin } from './plugins/notice';
+import { paidLeavePlugin } from './plugins/paid_leave';
+import { expensePlugin } from './plugins/expense';
+import { feedbackPlugin } from './plugins/feedback';
+import { punchPlugin, attendancePlugin, staffPlugin, settingsPlugin } from './plugins/core';
 
 const app = express();
 
@@ -23,9 +32,24 @@ app.use(express.json());
 app.use('/api/stores', storesRouter);
 app.use('/api/timecard', timecardRouter);
 
-// Plugin system
+// Core plugins（無効化不可）
+pluginRegistry.register(punchPlugin);
+pluginRegistry.register(attendancePlugin);
+pluginRegistry.register(staffPlugin);
+pluginRegistry.register(settingsPlugin);
+
+// Feature plugins（有効/無効切替可能）
 pluginRegistry.register(shiftPlugin);
+pluginRegistry.register(shiftRequestPlugin);
 pluginRegistry.register(checkPlugin);
+pluginRegistry.register(inventoryPlugin);
+pluginRegistry.register(overtimeAlertPlugin);
+pluginRegistry.register(consecutiveWorkPlugin);
+pluginRegistry.register(dailyReportPlugin);
+pluginRegistry.register(noticePlugin);
+pluginRegistry.register(paidLeavePlugin);
+pluginRegistry.register(expensePlugin);
+pluginRegistry.register(feedbackPlugin);
 
 app.use('/api/plugin-settings', pluginSettingsRouter);
 app.get('/api/plugins', (_req, res) => {
@@ -33,6 +57,9 @@ app.get('/api/plugins', (_req, res) => {
     name: p.name,
     version: p.version,
     description: p.description,
+    label: p.label,
+    icon: p.icon,
+    settingsSchema: p.settingsSchema || [],
   }));
   res.json({ plugins });
 });

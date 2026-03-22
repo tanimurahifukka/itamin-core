@@ -13,6 +13,10 @@ export default function ChecklistAdminPage() {
   const [timing, setTiming] = useState<Timing>('clock_in');
   const [items, setItems] = useState<CheckItem[]>([]);
   const [newLabel, setNewLabel] = useState('');
+  const [newType, setNewType] = useState<'checkbox' | 'text'>('checkbox');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingLabel, setEditingLabel] = useState('');
+  const [editingType, setEditingType] = useState<'checkbox' | 'text'>('checkbox');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -32,13 +36,20 @@ export default function ChecklistAdminPage() {
       label: newLabel.trim(),
       order: items.length + 1,
       required: true,
+      type: newType,
     };
     setItems([...items, newItem]);
     setNewLabel('');
+    setNewType('checkbox');
   };
 
   const removeItem = (id: string) => {
     setItems(items.filter(item => item.id !== id));
+    if (editingId === id) {
+      setEditingId(null);
+      setEditingLabel('');
+      setEditingType('checkbox');
+    }
   };
 
   const moveItem = (index: number, direction: -1 | 1) => {
@@ -48,6 +59,28 @@ export default function ChecklistAdminPage() {
     [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
     updated.forEach((item, i) => { item.order = i + 1; });
     setItems(updated);
+  };
+
+  const startEdit = (item: CheckItem) => {
+    setEditingId(item.id);
+    setEditingLabel(item.label);
+    setEditingType(item.type || 'checkbox');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingLabel('');
+    setEditingType('checkbox');
+  };
+
+  const saveEdit = () => {
+    if (!editingId || !editingLabel.trim()) return;
+    setItems(current => current.map(item => (
+      item.id === editingId
+        ? { ...item, label: editingLabel.trim(), type: editingType }
+        : item
+    )));
+    cancelEdit();
   };
 
   const handleSave = async () => {
@@ -99,25 +132,101 @@ export default function ChecklistAdminPage() {
           {items.map((item, index) => (
             <div key={item.id} className="admin-item">
               <span className="item-order">{index + 1}</span>
-              <span className="item-label">{item.label}</span>
+              {editingId === item.id ? (
+                <div className="item-edit-form">
+                  <div className="item-edit-type-selector">
+                    <button
+                      type="button"
+                      className={`type-toggle ${editingType === 'checkbox' ? 'active' : ''}`}
+                      onClick={() => setEditingType('checkbox')}
+                    >
+                      チェック項目
+                    </button>
+                    <button
+                      type="button"
+                      className={`type-toggle ${editingType === 'text' ? 'active' : ''}`}
+                      onClick={() => setEditingType('text')}
+                    >
+                      記入項目
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    className="item-edit-input"
+                    value={editingLabel}
+                    onChange={e => setEditingLabel(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                        e.preventDefault();
+                        saveEdit();
+                      }
+                      if (e.key === 'Escape') {
+                        e.preventDefault();
+                        cancelEdit();
+                      }
+                    }}
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                <span className="item-label">
+                  {item.label}
+                  {item.type === 'text' && (
+                    <span className="item-type-badge text">記入</span>
+                  )}
+                </span>
+              )}
               <div className="item-actions">
-                <button onClick={() => moveItem(index, -1)} disabled={index === 0}>↑</button>
-                <button onClick={() => moveItem(index, 1)} disabled={index === items.length - 1}>↓</button>
-                <button className="delete-btn" onClick={() => removeItem(item.id)}>×</button>
+                {editingId === item.id ? (
+                  <>
+                    <button type="button" onClick={saveEdit}>保存</button>
+                    <button type="button" onClick={cancelEdit}>取消</button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => startEdit(item)}>編集</button>
+                    <button type="button" onClick={() => moveItem(index, -1)} disabled={index === 0}>↑</button>
+                    <button type="button" onClick={() => moveItem(index, 1)} disabled={index === items.length - 1}>↓</button>
+                    <button type="button" className="delete-btn" onClick={() => removeItem(item.id)}>×</button>
+                  </>
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="add-item-row">
-          <input
-            type="text"
-            placeholder="新しいチェック項目を入力"
-            value={newLabel}
-            onChange={e => setNewLabel(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addItem()}
-          />
-          <button onClick={addItem}>追加</button>
+        <div className="add-item-form">
+          <div className="add-item-type-selector">
+            <button
+              type="button"
+              className={`type-toggle ${newType === 'checkbox' ? 'active' : ''}`}
+              onClick={() => setNewType('checkbox')}
+            >
+              チェック項目
+            </button>
+            <button
+              type="button"
+              className={`type-toggle ${newType === 'text' ? 'active' : ''}`}
+              onClick={() => setNewType('text')}
+            >
+              記入項目
+            </button>
+          </div>
+          <div className="add-item-row">
+            <input
+              type="text"
+              placeholder={newType === 'text' ? '例: 冷蔵庫の温度（℃）' : '新しいチェック項目を入力'}
+              value={newLabel}
+              onChange={e => setNewLabel(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  addItem();
+                }
+              }}
+            />
+            <button type="button" onClick={addItem}>追加</button>
+          </div>
         </div>
 
         <div className="save-row">

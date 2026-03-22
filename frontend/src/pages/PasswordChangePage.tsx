@@ -1,0 +1,93 @@
+import { useState } from 'react';
+
+interface Props {
+  changePassword: (newPassword: string) => Promise<{ error?: string }>;
+  signOut: () => Promise<void>;
+}
+
+export default function PasswordChangePage({ changePassword, signOut }: Props) {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const passwordMatch = password === confirmPassword && password.length >= 6;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordMatch) return;
+    setError('');
+    setLoading(true);
+    try {
+      const result = await changePassword(password);
+      if (result.error) setError(result.error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-page">
+      <h1>ITA<span>MIN</span></h1>
+
+      <div className="invite-card">
+        <div className="invite-card-icon">🔑</div>
+        <h2 className="invite-card-title">パスワードを変更してください</h2>
+        <p className="invite-card-desc">
+          セキュリティのため、初期パスワードから<br />
+          自分だけのパスワードに変更してください。
+        </p>
+
+        <form onSubmit={handleSubmit} className="invite-form">
+          <div className="invite-field">
+            <label className="invite-label">新しいパスワード（6文字以上）</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••"
+              minLength={6}
+              required
+              className="invite-input"
+              autoFocus
+            />
+          </div>
+
+          <div className="invite-field">
+            <label className="invite-label">パスワード（確認）</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              placeholder="••••••"
+              minLength={6}
+              required
+              className={`invite-input ${confirmPassword && !passwordMatch ? 'invite-input-error' : ''}`}
+            />
+            {confirmPassword && !passwordMatch && (
+              <span className="invite-field-error">パスワードが一致しません</span>
+            )}
+          </div>
+
+          {error && <div className="error-msg">{error}</div>}
+
+          <button
+            className={`invite-submit ${passwordMatch ? '' : 'disabled'}`}
+            type="submit"
+            disabled={!passwordMatch || loading}
+          >
+            {loading ? '変更中...' : 'パスワードを変更する'}
+          </button>
+        </form>
+
+        <button
+          className="toggle-auth"
+          onClick={signOut}
+          style={{ marginTop: 16 }}
+        >
+          ログアウト
+        </button>
+      </div>
+    </div>
+  );
+}
