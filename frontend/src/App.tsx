@@ -227,7 +227,7 @@ export default function App() {
 
         <main className="main-content">
           {tabsLoading ? (
-            <div>読み込み中...</div>
+            <div className="loading" style={{ minHeight: '40vh' }}>読み込み中...</div>
           ) : ActiveComponent ? (
             <ActiveComponent />
           ) : (
