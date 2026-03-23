@@ -198,7 +198,7 @@ export default function InventoryPage() {
       {/* 新規追加フォーム */}
       <div className="records-section" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 12 }}>商品追加</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: 8, marginBottom: 8 }}>
+        <div className="inventory-add-row1">
           <input
             type="text"
             placeholder="商品名 *"
@@ -221,7 +221,7 @@ export default function InventoryPage() {
             style={{ padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
           />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: 8, alignItems: 'end' }}>
+        <div className="inventory-add-row2">
           <div>
             <label style={{ fontSize: '0.8rem', color: '#666', marginBottom: 2, display: 'block' }}>数量</label>
             <input
@@ -300,6 +300,7 @@ export default function InventoryPage() {
             <p className="empty-state-hint">上のフォームから商品を追加してください</p>
           </div>
         ) : (
+          <div className="inventory-table-wrap">
           <table className="records-table">
             <thead>
               <tr>
@@ -366,6 +367,7 @@ export default function InventoryPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

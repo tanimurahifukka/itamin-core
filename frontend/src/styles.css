@@ -1464,6 +1464,26 @@ body {
   border-color: #dc2626;
 }
 
+/* ===== Inventory Form Grid ===== */
+.inventory-add-row1 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 80px;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.inventory-add-row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.inventory-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* ===== Inventory Status Select ===== */
 .inventory-status-select {
   padding: 4px 8px;
@@ -2189,5 +2209,27 @@ body {
 
   .invite-card {
     padding: 24px 20px;
+  }
+
+  /* Inventory mobile */
+  .inventory-add-row1 {
+    grid-template-columns: 1fr;
+  }
+
+  .inventory-add-row2 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .inventory-add-row2 > :last-child {
+    grid-column: 1 / -1;
+  }
+
+  .inventory-table-wrap {
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+
+  .timing-tabs {
+    flex-wrap: wrap;
   }
 }

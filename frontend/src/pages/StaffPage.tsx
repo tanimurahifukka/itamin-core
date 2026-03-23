@@ -179,7 +179,7 @@ export default function StaffPage() {
               className="store-id-edit-input"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
-              placeholder="新しい初期パスワード（4文字以上）"
+              placeholder="新しい初期パスワード（6文字以上）"
               autoFocus
             />
             <button className="store-id-copy" onClick={handleSavePassword}>保存</button>

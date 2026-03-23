@@ -53,7 +53,7 @@ export default function App() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  const loadTabs = async () => {
+  const loadTabs = async (background = false) => {
     if (!selectedStore) {
       setTabs([]);
       setActiveTab('');
@@ -61,9 +61,11 @@ export default function App() {
       return;
     }
 
-    setTabsLoading(true);
-    setTabs([]);
-    setActiveTab('');
+    if (!background) {
+      setTabsLoading(true);
+      setTabs([]);
+      setActiveTab('');
+    }
 
     try {
       const data = await api.getPluginSettings(selectedStore.id);
@@ -91,8 +93,10 @@ export default function App() {
         visibleTabs.find(t => t.name === current) ? current : (visibleTabs[0]?.name || '')
       ));
     } catch {
-      setTabs([]);
-      setActiveTab('');
+      if (!background) {
+        setTabs([]);
+        setActiveTab('');
+      }
     } finally {
       setTabsLoading(false);
     }
@@ -107,13 +111,16 @@ export default function App() {
     const handlePluginUpdate = () => {
       loadTabs();
     };
+    const handleFocus = () => {
+      loadTabs(true);
+    };
 
     window.addEventListener('plugins-updated', handlePluginUpdate);
-    window.addEventListener('focus', handlePluginUpdate);
+    window.addEventListener('focus', handleFocus);
 
     return () => {
       window.removeEventListener('plugins-updated', handlePluginUpdate);
-      window.removeEventListener('focus', handlePluginUpdate);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [selectedStore]);
 

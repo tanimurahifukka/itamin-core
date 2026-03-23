@@ -110,8 +110,8 @@ router.put('/:storeId/initial-password', requireAuth, async (req: Request, res: 
   const membership = await requireManagedStore(req, res, storeId);
   if (!membership) return;
 
-  if (!password || password.length < 4) {
-    res.status(400).json({ error: '4文字以上で設定してください' });
+  if (!password || password.length < 6) {
+    res.status(400).json({ error: '6文字以上で設定してください' });
     return;
   }
 
