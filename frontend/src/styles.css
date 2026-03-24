@@ -799,8 +799,10 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 0;
+  padding: 14px 12px;
+  margin: 0 -12px;
   border-bottom: 1px solid #f0f0f0;
+  border-radius: 8px;
   transition: background 0.15s;
 }
 
@@ -810,10 +812,6 @@ body {
 
 .staff-item:hover {
   background: #fafafa;
-  margin: 0 -12px;
-  padding-left: 12px;
-  padding-right: 12px;
-  border-radius: 8px;
 }
 
 .staff-item img {
@@ -828,11 +826,15 @@ body {
 .staff-item .info {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .staff-item .info .name {
   font-weight: 500;
   color: #1a1a2e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .staff-item .info .email {

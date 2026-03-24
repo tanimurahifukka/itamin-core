@@ -208,8 +208,8 @@ export default function StaffPage() {
               {(s.userName || s.email || '?')[0].toUpperCase()}
             </div>
             <div className="info">
-              <div style={{ fontWeight: 500 }}>{s.userName || s.email}</div>
-              <div style={{ fontSize: '0.85rem', color: '#888' }}>{s.email}</div>
+              <div className="name">{s.userName || s.email}</div>
+              <div className="email">{s.email}</div>
             </div>
             <span className={`role-badge ${s.role}`}>
               {roleLabels[s.role] || s.role}
@@ -259,8 +259,8 @@ export default function StaffPage() {
                   {(inv.name || inv.email || '?')[0].toUpperCase()}
                 </div>
                 <div className="info">
-                  <div style={{ fontWeight: 500 }}>{inv.name || inv.email}</div>
-                  <div style={{ fontSize: '0.85rem', color: '#888' }}>{inv.email}</div>
+                  <div className="name">{inv.name || inv.email}</div>
+                  <div className="email">{inv.email}</div>
                 </div>
                 <span className={`role-badge ${inv.role}`}>
                   {roleLabels[inv.role] || inv.role}
