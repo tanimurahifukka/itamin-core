@@ -400,20 +400,21 @@ router.get('/templates/:storeId/for-shift/:shiftType/:timing', requireAuth, asyn
       }
       allTemplates = Array.from(templateMap.values());
     } else {
-      // シフト紐付けなし: 全テンプレート（base + shift全部）を返す
-      const { data: allData, error: allError } = await supabaseAdmin
+      // シフト紐付けなし: baseテンプレートのみ
+      const { data: baseOnly, error: baseOnlyError } = await supabaseAdmin
         .from('checklist_templates')
         .select('*')
         .eq('store_id', storeId)
+        .eq('layer', 'base')
         .eq('timing', timing)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
 
-      if (allError) {
-        res.status(500).json({ error: allError.message });
+      if (baseOnlyError) {
+        res.status(500).json({ error: baseOnlyError.message });
         return;
       }
-      allTemplates = allData || [];
+      allTemplates = baseOnly || [];
     }
 
     const templates = allTemplates
