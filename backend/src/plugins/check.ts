@@ -583,11 +583,14 @@ router.post('/records', requireAuth, async (req: Request, res: Response) => {
 
     const all_checked = results.every((r: any) => r.checked);
 
+    const userId = req.user!.id;
+
     const { data, error } = await supabaseAdmin
       .from('check_records')
       .insert({
         store_id,
         staff_id,
+        user_id: userId,
         timing,
         results,
         all_checked,
