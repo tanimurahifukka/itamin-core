@@ -352,18 +352,15 @@ router.get('/templates/:storeId/for-shift/:shiftType/:timing', requireAuth, asyn
     }
 
     // シフト紐付けを確認
+    // シフト紐付けを確認（joinなし）
     const { data: shiftMaps, error: mapError } = await supabaseAdmin
       .from('shift_checklist_map')
-      .select(`
-        id,
-        shift_type,
-        template_id,
-        checklist_templates (*)
-      `)
+      .select('id, shift_type, template_id')
       .eq('store_id', storeId)
       .eq('shift_type', shiftType);
 
     if (mapError) {
+      console.error('[check for-shift] map error:', mapError);
       res.status(500).json({ error: mapError.message });
       return;
     }
@@ -374,31 +371,22 @@ router.get('/templates/:storeId/for-shift/:shiftType/:timing', requireAuth, asyn
 
     if (hasShiftMapping) {
       // シフト紐付けあり: base + 紐付けされたshiftテンプレート
-      const { data: baseTemplates, error: baseError } = await supabaseAdmin
+      const shiftTemplateIds = (shiftMaps || []).map((m: any) => m.template_id);
+
+      const { data: allData, error: allError } = await supabaseAdmin
         .from('checklist_templates')
         .select('*')
         .eq('store_id', storeId)
-        .eq('layer', 'base')
         .eq('timing', timing)
+        .or(`layer.eq.base,id.in.(${shiftTemplateIds.join(',')})`)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
 
-      if (baseError) {
-        res.status(500).json({ error: baseError.message });
+      if (allError) {
+        res.status(500).json({ error: allError.message });
         return;
       }
-
-      const shiftTemplates = (shiftMaps || [])
-        .map((entry: any) => entry.checklist_templates)
-        .filter((template: any) => template && template.timing === timing);
-
-      const templateMap = new Map<string, any>();
-      for (const template of [...(baseTemplates || []), ...shiftTemplates]) {
-        if (!templateMap.has(template.id)) {
-          templateMap.set(template.id, template);
-        }
-      }
-      allTemplates = Array.from(templateMap.values());
+      allTemplates = allData || [];
     } else {
       // シフト紐付けなし: baseテンプレートのみ
       const { data: baseOnly, error: baseOnlyError } = await supabaseAdmin
@@ -447,37 +435,35 @@ router.get('/shift-map/:storeId', requireAuth, async (req: Request, res: Respons
     const membership = await requireStoreMembership(req, res, storeId);
     if (!membership) return;
 
-    const { data, error } = await supabaseAdmin
+    const { data: mapData, error: mapError } = await supabaseAdmin
       .from('shift_checklist_map')
-      .select(`
-        id,
-        store_id,
-        shift_type,
-        template_id,
-        checklist_templates (
-          id,
-          name,
-          layer,
-          timing,
-          sort_order,
-          items,
-          created_at
-        )
-      `)
+      .select('id, store_id, shift_type, template_id')
       .eq('store_id', storeId)
       .order('shift_type', { ascending: true });
 
-    if (error) {
-      res.status(500).json({ error: error.message });
+    if (mapError) {
+      console.error('[check GET /shift-map] error:', mapError);
+      res.status(500).json({ error: mapError.message });
       return;
     }
 
-    const maps = (data || []).map((entry: any) => ({
+    // テンプレート情報を別クエリで取得
+    const templateIds = [...new Set((mapData || []).map((m: any) => m.template_id))];
+    let templateMap = new Map<string, any>();
+    if (templateIds.length > 0) {
+      const { data: tplData } = await supabaseAdmin
+        .from('checklist_templates')
+        .select('*')
+        .in('id', templateIds);
+      (tplData || []).forEach((t: any) => templateMap.set(t.id, normalizeTemplate(t)));
+    }
+
+    const maps = (mapData || []).map((entry: any) => ({
       id: entry.id,
       store_id: entry.store_id,
       shift_type: entry.shift_type,
       template_id: entry.template_id,
-      template: entry.checklist_templates ? normalizeTemplate(entry.checklist_templates) : null,
+      template: templateMap.get(entry.template_id) || null,
     }));
 
     res.json({ mappings: maps });
@@ -554,25 +540,22 @@ router.put('/shift-map/:storeId', requireAuth, async (req: Request, res: Respons
         shift_type: mapping.shift_type,
         template_id: mapping.template_id,
       })))
-      .select(`
-        id,
-        store_id,
-        shift_type,
-        template_id,
-        checklist_templates (
-          id,
-          name,
-          layer,
-          timing,
-          sort_order,
-          items,
-          created_at
-        )
-      `);
+      .select('id, store_id, shift_type, template_id');
 
     if (error) {
       res.status(500).json({ error: error.message });
       return;
+    }
+
+    // テンプレート情報を別クエリで取得
+    const tplIds = [...new Set((data || []).map((m: any) => m.template_id))];
+    let tplMap = new Map<string, any>();
+    if (tplIds.length > 0) {
+      const { data: tplData } = await supabaseAdmin
+        .from('checklist_templates')
+        .select('*')
+        .in('id', tplIds);
+      (tplData || []).forEach((t: any) => tplMap.set(t.id, normalizeTemplate(t)));
     }
 
     const result = (data || []).map((entry: any) => ({
@@ -580,7 +563,7 @@ router.put('/shift-map/:storeId', requireAuth, async (req: Request, res: Respons
       store_id: entry.store_id,
       shift_type: entry.shift_type,
       template_id: entry.template_id,
-      template: entry.checklist_templates ? normalizeTemplate(entry.checklist_templates) : null,
+      template: tplMap.get(entry.template_id) || null,
     }));
 
     res.json({ mappings: result });
