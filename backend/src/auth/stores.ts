@@ -150,6 +150,11 @@ router.post('/:storeId/staff', requireAuth, async (req: Request, res: Response) 
     return;
   }
 
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ error: '有効なメールアドレスを入力してください' });
+    return;
+  }
+
   if (!VALID_STAFF_ROLES.includes(role)) {
     res.status(400).json({ error: '不正な role が指定されています' });
     return;

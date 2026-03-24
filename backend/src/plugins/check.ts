@@ -3,13 +3,16 @@ import { requireAuth } from '../middleware/auth';
 import { createSupabaseClient, supabaseAdmin } from '../config/supabase';
 import type { Express } from 'express';
 import type { Plugin } from '../types';
+import { requireStoreMembership, requireManagedStore } from '../auth/authorization';
 
 const router = Router();
 
 // チェックリスト取得（store_id + timing）
 router.get('/checklists/:storeId/:timing', requireAuth, async (req: Request, res: Response) => {
-  const storeId = req.params.storeId;
-  const timing = req.params.timing as string;
+  const storeId = String(req.params.storeId);
+  const timing = String(req.params.timing);
+  const membership = await requireStoreMembership(req, res, storeId);
+  if (!membership) return;
 
   if (!['clock_in', 'clock_out'].includes(timing)) {
     res.status(400).json({ error: 'timing は clock_in または clock_out を指定してください' });
@@ -41,10 +44,13 @@ router.get('/checklists/:storeId/:timing', requireAuth, async (req: Request, res
   res.json({ checklist });
 });
 
-// チェックリスト更新（upsert）
+// チェックリスト更新（upsert）— manager以上のみ
 router.put('/checklists/:storeId/:timing', requireAuth, async (req: Request, res: Response) => {
-  const storeId = req.params.storeId;
-  const timing = req.params.timing as string;
+  const storeId = String(req.params.storeId);
+  const timing = String(req.params.timing);
+  const membership = await requireManagedStore(req, res, storeId);
+  if (!membership) return;
+
   const { items } = req.body;
 
   if (!['clock_in', 'clock_out'].includes(timing)) {
@@ -85,6 +91,9 @@ router.post('/records', requireAuth, async (req: Request, res: Response) => {
     return;
   }
 
+  const membership = await requireStoreMembership(req, res, store_id);
+  if (!membership) return;
+
   const all_checked = results.every((r: any) => r.checked);
 
   const { data, error } = await supabaseAdmin
@@ -110,7 +119,10 @@ router.post('/records', requireAuth, async (req: Request, res: Response) => {
 
 // チェック記録取得（日付フィルター対応）
 router.get('/records/:storeId', requireAuth, async (req: Request, res: Response) => {
-  const { storeId } = req.params;
+  const storeId = String(req.params.storeId);
+  const membership = await requireStoreMembership(req, res, storeId);
+  if (!membership) return;
+
   const { start_date, end_date, staff_id } = req.query;
 
   const supabase = createSupabaseClient(req.accessToken!);

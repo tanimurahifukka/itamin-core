@@ -52,16 +52,20 @@ export default function InventoryPage() {
 
   useEffect(() => { loadItems(); }, [selectedStore, activeCategory]);
 
-  // カテゴリ一覧を動的に取得
-  const [allItems, setAllItems] = useState<InventoryItem[]>([]);
-  useEffect(() => {
+  // カテゴリ一覧はフィルタなし全件から算出
+  const [allCategories, setAllCategories] = useState<string[]>([]);
+  const loadCategories = () => {
     if (!selectedStore) return;
     api.getInventory(selectedStore.id)
-      .then(data => setAllItems(data.items))
+      .then(data => {
+        const cats = Array.from(new Set((data.items as InventoryItem[]).map(i => i.category).filter(Boolean)));
+        setAllCategories(cats);
+      })
       .catch(() => {});
-  }, [selectedStore, items]);
+  };
+  useEffect(() => { loadCategories(); }, [selectedStore]);
 
-  const categories = Array.from(new Set(allItems.map(i => i.category).filter(Boolean)));
+  const categories = allCategories;
 
   const handleAdd = async () => {
     if (!selectedStore || !newName.trim() || adding) return;
@@ -85,6 +89,7 @@ export default function InventoryPage() {
       setNewNote('');
       showToast('商品を追加しました', 'success');
       loadItems();
+      loadCategories();
     } catch (e: any) {
       showToast(e.message || '追加に失敗しました', 'error');
     } finally {
@@ -99,6 +104,7 @@ export default function InventoryPage() {
       await api.deleteInventoryItem(selectedStore.id, item.id);
       showToast('削除しました', 'info');
       loadItems();
+      loadCategories();
     } catch (e: any) {
       showToast(e.message || '削除に失敗しました', 'error');
     }

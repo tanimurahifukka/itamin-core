@@ -77,7 +77,7 @@ router.post('/:storeId/items', requireAuth, async (req: Request, res: Response) 
       content: content.trim(),
       response: response || '',
       status: status || '未対応',
-      created_by: (req as any).userId,
+      created_by: req.user!.id,
     })
     .select()
     .single();

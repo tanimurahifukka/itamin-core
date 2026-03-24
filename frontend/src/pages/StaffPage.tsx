@@ -156,7 +156,7 @@ export default function StaffPage() {
 
   const storeName = selectedStore?.name || '';
   const storeId = selectedStore?.id || '';
-  const confirmMatch = confirmInput === storeName;
+  const confirmMatch = storeName.length > 0 && confirmInput === storeName;
   const [copied, setCopied] = useState(false);
 
   const handleCopyId = () => {

@@ -15,7 +15,7 @@ router.get('/:storeId/posts', requireAuth, async (req: Request, res: Response) =
   const membership = await requireStoreMembership(req, res, storeId);
   if (!membership) return;
 
-  const userId = (req as any).userId;
+  const userId = req.user!.id;
 
   const { data, error } = await supabaseAdmin
     .from('notices')
@@ -66,7 +66,7 @@ router.post('/:storeId/posts', requireAuth, async (req: Request, res: Response) 
   if (!membership) return;
 
   const { title, body } = req.body;
-  const userId = (req as any).userId;
+  const userId = req.user!.id;
 
   if (!title || !title.trim()) {
     res.status(400).json({ error: 'タイトルは必須です' });
@@ -107,7 +107,7 @@ router.post('/:storeId/posts/:noticeId/read', requireAuth, async (req: Request, 
   const membership = await requireStoreMembership(req, res, storeId);
   if (!membership) return;
 
-  const userId = (req as any).userId;
+  const userId = req.user!.id;
 
   const { error } = await supabaseAdmin
     .from('notice_reads')

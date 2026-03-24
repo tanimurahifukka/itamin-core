@@ -75,6 +75,11 @@ router.post('/:storeId', requireAuth, async (req: Request, res: Response) => {
     return;
   }
 
+  if (startTime >= endTime) {
+    res.status(400).json({ error: '終了時刻は開始時刻より後に設定してください' });
+    return;
+  }
+
   if (!(await staffBelongsToStore(storeId, staffId))) {
     res.status(400).json({ error: '指定された staffId はこの店舗に所属していません' });
     return;

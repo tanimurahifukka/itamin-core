@@ -54,7 +54,7 @@ export default function FeedbackPage() {
   };
 
   useEffect(() => { loadData(); }, [selectedStore, filterStatus, filterType]);
-  useEffect(() => { loadAllItems(); }, [selectedStore, items]);
+  useEffect(() => { loadAllItems(); }, [selectedStore]);
 
   const handleAdd = async () => {
     if (!selectedStore || !newContent.trim() || adding) return;
@@ -70,6 +70,7 @@ export default function FeedbackPage() {
       setNewResponse('');
       showToast('追加しました', 'success');
       loadData();
+      loadAllItems();
     } catch (e: any) {
       showToast(e.message || '追加に失敗しました', 'error');
     } finally {
@@ -82,7 +83,10 @@ export default function FeedbackPage() {
     try {
       await api.updateFeedback(selectedStore.id, item.id, { status: newStatus });
       loadData();
-    } catch {}
+      loadAllItems();
+    } catch (e: any) {
+      showToast(e.message || '更新に失敗しました', 'error');
+    }
   };
 
   const handleSaveResponse = async (itemId: string) => {
@@ -104,6 +108,7 @@ export default function FeedbackPage() {
       await api.deleteFeedback(selectedStore.id, item.id);
       showToast('削除しました', 'info');
       loadData();
+      loadAllItems();
     } catch (e: any) {
       showToast(e.message || '削除に失敗しました', 'error');
     }

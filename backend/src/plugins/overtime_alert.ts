@@ -18,21 +18,26 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
   const year = Number(req.query.year) || new Date().getFullYear();
   const month = Number(req.query.month) || new Date().getMonth() + 1;
 
+  if (month < 1 || month > 12) {
+    res.status(400).json({ error: '月は1〜12で指定してください' });
+    return;
+  }
+
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
   const endDate = month === 12
     ? `${year + 1}-01-01`
     : `${year}-${String(month + 1).padStart(2, '0')}-01`;
 
-  // スタッフ一覧取得
+  // スタッフ一覧取得（store_staff.id と user_id の対応が必要）
   const { data: members } = await supabaseAdmin
     .from('store_staff')
-    .select('user_id, role, user:profiles(name, email)')
+    .select('id, user_id, role, user:profiles(name, email)')
     .eq('store_id', storeId);
 
-  // 今月の打刻レコード取得
+  // 今月の打刻レコード取得（staff_id は store_staff.id）
   const { data: records, error } = await supabaseAdmin
     .from('time_records')
-    .select('user_id, clock_in, clock_out, break_minutes')
+    .select('staff_id, clock_in, clock_out, break_minutes')
     .eq('store_id', storeId)
     .gte('clock_in', startDate)
     .lt('clock_in', endDate)
@@ -49,14 +54,14 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
     .select('config')
     .eq('store_id', storeId)
     .eq('plugin_name', 'overtime_alert')
-    .single();
+    .maybeSingle();
 
   const monthlyLimitHours = pluginSetting?.config?.monthly_limit_hours ?? 45;
   const standardHoursPerDay = pluginSetting?.config?.standard_hours_per_day ?? 8;
 
-  // スタッフ別に残業時間を計算
+  // スタッフ別に残業時間を計算（staff_id = store_staff.id でマッチ）
   const staffOvertime = (members || []).map((m: any) => {
-    const staffRecords = (records || []).filter((r: any) => r.user_id === m.user_id);
+    const staffRecords = (records || []).filter((r: any) => r.staff_id === m.id);
     let totalWorkMinutes = 0;
     let totalDays = 0;
 

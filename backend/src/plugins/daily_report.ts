@@ -120,7 +120,7 @@ router.post('/:storeId/reports', requireAuth, async (req: Request, res: Response
       customer_count: customerCount ?? 0,
       weather: weather || '',
       memo: memo || '',
-      created_by: (req as any).userId,
+      created_by: req.user!.id,
     }, { onConflict: 'store_id,date' })
     .select()
     .single();

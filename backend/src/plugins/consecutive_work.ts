@@ -15,19 +15,19 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
   const membership = await requireManagedStore(req, res, storeId);
   if (!membership) return;
 
-  // スタッフ一覧取得
+  // スタッフ一覧取得（store_staff.id でマッチさせるため id も取得）
   const { data: members } = await supabaseAdmin
     .from('store_staff')
-    .select('user_id, role, user:profiles(name, email)')
+    .select('id, user_id, role, user:profiles(name, email)')
     .eq('store_id', storeId);
 
-  // 過去30日の打刻レコードを取得
+  // 過去30日の打刻レコードを取得（staff_id は store_staff.id）
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   const { data: records, error } = await supabaseAdmin
     .from('time_records')
-    .select('user_id, clock_in')
+    .select('staff_id, clock_in')
     .eq('store_id', storeId)
     .gte('clock_in', thirtyDaysAgo.toISOString())
     .order('clock_in', { ascending: true });
@@ -41,8 +41,8 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
   today.setHours(0, 0, 0, 0);
 
   const staffStatus = (members || []).map((m: any) => {
-    // このスタッフの出勤日をユニーク日付で取得
-    const staffRecords = (records || []).filter((r: any) => r.user_id === m.user_id);
+    // staff_id = store_staff.id でフィルタ
+    const staffRecords = (records || []).filter((r: any) => r.staff_id === m.id);
     const workDates = new Set<string>();
     for (const r of staffRecords) {
       const d = new Date(r.clock_in);

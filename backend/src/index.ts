@@ -23,7 +23,9 @@ const app = express();
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.VERCEL === '1' ? true : config.frontendUrl,
+  origin: process.env.VERCEL === '1'
+    ? (process.env.CORS_ORIGINS || 'https://itamin-core.vercel.app').split(',')
+    : config.frontendUrl,
   credentials: true,
 }));
 app.use(express.json());

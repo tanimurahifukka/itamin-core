@@ -15,7 +15,7 @@ router.get('/:storeId/summary', requireAuth, async (req: Request, res: Response)
   const membership = await requireStoreMembership(req, res, storeId);
   if (!membership) return;
 
-  const userId = (req as any).userId;
+  const userId = req.user!.id;
   const fiscalYear = Number(req.query.fiscalYear) || new Date().getFullYear();
   const isManager = membership.role === 'owner' || membership.role === 'manager';
 
@@ -129,7 +129,7 @@ router.get('/:storeId/records', requireAuth, async (req: Request, res: Response)
   const membership = await requireStoreMembership(req, res, storeId);
   if (!membership) return;
 
-  const userId = (req as any).userId;
+  const userId = req.user!.id;
   const staffId = req.query.staffId as string | undefined;
   const isManager = membership.role === 'owner' || membership.role === 'manager';
 
@@ -216,7 +216,23 @@ router.delete('/:storeId/records/:recordId', requireAuth, async (req: Request, r
     .select('staff_id, date, type')
     .eq('id', recordId)
     .eq('store_id', storeId)
-    .single();
+    .maybeSingle();
+
+  if (!record) {
+    res.status(404).json({ error: '取得記録が見つかりません' });
+    return;
+  }
+
+  // used_daysを先に減算（削除が失敗した場合は戻す）
+  const decrement = record.type === '半日' ? 0.5 : 1;
+  const fiscalYear = new Date(record.date).getFullYear();
+
+  await supabaseAdmin.rpc('increment_used_days', {
+    p_store_id: storeId,
+    p_staff_id: record.staff_id,
+    p_fiscal_year: fiscalYear,
+    p_increment: -decrement,
+  });
 
   const { error } = await supabaseAdmin
     .from('leave_records')
@@ -225,21 +241,15 @@ router.delete('/:storeId/records/:recordId', requireAuth, async (req: Request, r
     .eq('store_id', storeId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
-    return;
-  }
-
-  // used_daysを原子的に減算
-  if (record) {
-    const decrement = record.type === '半日' ? 0.5 : 1;
-    const fiscalYear = new Date(record.date).getFullYear();
-
+    // 削除失敗 → 減算を元に戻す
     await supabaseAdmin.rpc('increment_used_days', {
       p_store_id: storeId,
       p_staff_id: record.staff_id,
       p_fiscal_year: fiscalYear,
-      p_increment: -decrement,
+      p_increment: decrement,
     });
+    res.status(500).json({ error: '削除に失敗しました' });
+    return;
   }
 
   res.json({ ok: true });

@@ -91,7 +91,7 @@ router.post('/:storeId/items', requireAuth, async (req: Request, res: Response) 
       description: description.trim(),
       amount: Number(amount) || 0,
       receipt_note: receiptNote || '',
-      created_by: (req as any).userId,
+      created_by: req.user!.id,
     })
     .select()
     .single();
