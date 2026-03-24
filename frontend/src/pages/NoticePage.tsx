@@ -15,6 +15,20 @@ interface Notice {
   readAt: string | null;
 }
 
+function linkifyText(text: string) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) =>
+    urlRegex.test(part) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', wordBreak: 'break-all' }}>
+        {part}
+      </a>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
+}
+
 export default function NoticePage() {
   const { selectedStore } = useAuth();
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -155,6 +169,7 @@ export default function NoticePage() {
                   padding: 12,
                   background: n.isRead ? 'white' : '#f0f7ff',
                   borderLeft: n.pinned ? '4px solid #f59e0b' : '4px solid transparent',
+                  overflow: 'hidden',
                 }}
               >
                 <div
@@ -175,8 +190,8 @@ export default function NoticePage() {
                 </div>
                 {expandedId === n.id && (
                   <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #e5e7eb' }}>
-                    <p style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem', color: '#444', marginBottom: 8 }}>
-                      {n.body || '（本文なし）'}
+                    <p style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem', color: '#444', marginBottom: 8, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                      {n.body ? linkifyText(n.body) : '（本文なし）'}
                     </p>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                       <button
