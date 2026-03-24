@@ -338,10 +338,22 @@ router.put('/:storeId/staff/:staffId', requireAuth, async (req: Request, res: Re
   const membership = await requireManagedStore(req, res, storeId);
   if (!membership) return;
 
-  const { hourlyWage } = req.body;
+  const { hourlyWage, role: newRole } = req.body;
 
   const updates: Record<string, any> = {};
   if (hourlyWage !== undefined) updates.hourly_wage = hourlyWage;
+  if (newRole !== undefined) {
+    if (!VALID_STAFF_ROLES.includes(newRole) || newRole === 'owner') {
+      res.status(400).json({ error: '不正なロールです' });
+      return;
+    }
+    // オーナーのみロール変更可
+    if (membership.role !== 'owner') {
+      res.status(403).json({ error: 'ロール変更はオーナーのみ可能です' });
+      return;
+    }
+    updates.role = newRole;
+  }
 
   if (Object.keys(updates).length === 0) {
     res.status(400).json({ error: '更新するフィールドがありません' });

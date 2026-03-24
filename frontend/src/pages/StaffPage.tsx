@@ -36,10 +36,15 @@ export default function StaffPage() {
   const [editingWageId, setEditingWageId] = useState<string | null>(null);
   const [editWageValue, setEditWageValue] = useState('');
 
+  // ロール変更
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+
   // 退職モーダル
   const [removeTarget, setRemoveTarget] = useState<any | null>(null);
   const [confirmInput, setConfirmInput] = useState('');
   const [removing, setRemoving] = useState(false);
+
+  const isOwner = selectedStore?.role === 'owner';
 
   const loadStaff = () => {
     if (!selectedStore) return;
@@ -133,6 +138,18 @@ export default function StaffPage() {
     }
   };
 
+  const handleChangeRole = async (staffId: string, newRole: string) => {
+    if (!selectedStore) return;
+    try {
+      await api.updateStaff(selectedStore.id, staffId, { role: newRole });
+      showToast('ロールを変更しました', 'success');
+      setEditingRoleId(null);
+      loadStaff();
+    } catch (e: any) {
+      showToast(e.message || 'ロール変更に失敗しました', 'error');
+    }
+  };
+
   const openRemoveModal = (staff: any) => {
     setRemoveTarget(staff);
     setConfirmInput('');
@@ -203,50 +220,74 @@ export default function StaffPage() {
         <h3 style={{ marginBottom: 16 }}>スタッフ一覧</h3>
 
         {staffList.map((s: any) => (
-          <div key={s.id} className="staff-item">
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', color: '#666', flexShrink: 0 }}>
-              {(s.userName || s.email || '?')[0].toUpperCase()}
+          <div key={s.id} className="staff-item-card">
+            <div className="staff-item-top">
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', color: '#666', flexShrink: 0 }}>
+                {(s.userName || s.email || '?')[0].toUpperCase()}
+              </div>
+              <div className="info">
+                <div className="name">{s.userName || s.email}</div>
+                <div className="email">{s.email}</div>
+              </div>
             </div>
-            <div className="info">
-              <div className="name">{s.userName || s.email}</div>
-              <div className="email">{s.email}</div>
-            </div>
-            <span className={`role-badge ${s.role}`}>
-              {roleLabels[s.role] || s.role}
-            </span>
-            {s.role !== 'owner' && (
-              editingWageId === s.id ? (
-                <div className="wage-edit">
-                  <span className="wage-yen">¥</span>
-                  <input
-                    type="number"
-                    className="wage-input"
-                    value={editWageValue}
-                    onChange={e => setEditWageValue(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSaveWage(s.id); if (e.key === 'Escape') setEditingWageId(null); }}
-                    autoFocus
-                  />
-                  <button className="wage-save" onClick={() => handleSaveWage(s.id)}>✓</button>
-                </div>
-              ) : (
-                <button
-                  className="wage-display"
-                  onClick={() => { setEditingWageId(s.id); setEditWageValue(String(s.hourlyWage || '')); }}
-                  title="クリックして時給を編集"
+            <div className="staff-item-meta">
+              {s.role === 'owner' ? (
+                <span className="role-badge owner">{roleLabels.owner}</span>
+              ) : editingRoleId === s.id ? (
+                <select
+                  className="role-select"
+                  value={s.role}
+                  onChange={e => handleChangeRole(s.id, e.target.value)}
+                  onBlur={() => setEditingRoleId(null)}
+                  autoFocus
                 >
-                  {s.hourlyWage ? `¥${Number(s.hourlyWage).toLocaleString()}/h` : '時給未設定'}
+                  {assignableRoles.map(r => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              ) : (
+                <span
+                  className={`role-badge ${s.role}${isOwner ? ' clickable' : ''}`}
+                  onClick={() => isOwner && setEditingRoleId(s.id)}
+                  title={isOwner ? 'クリックしてロール変更' : undefined}
+                >
+                  {roleLabels[s.role] || s.role}
+                </span>
+              )}
+              {s.role !== 'owner' && (
+                editingWageId === s.id ? (
+                  <div className="wage-edit">
+                    <span className="wage-yen">¥</span>
+                    <input
+                      type="number"
+                      className="wage-input"
+                      value={editWageValue}
+                      onChange={e => setEditWageValue(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSaveWage(s.id); if (e.key === 'Escape') setEditingWageId(null); }}
+                      autoFocus
+                    />
+                    <button className="wage-save" onClick={() => handleSaveWage(s.id)}>✓</button>
+                  </div>
+                ) : (
+                  <button
+                    className="wage-display"
+                    onClick={() => { setEditingWageId(s.id); setEditWageValue(String(s.hourlyWage || '')); }}
+                    title="クリックして時給を編集"
+                  >
+                    {s.hourlyWage ? `¥${Number(s.hourlyWage).toLocaleString()}/h` : '時給未設定'}
+                  </button>
+                )
+              )}
+              {s.role !== 'owner' && (
+                <button
+                  className="remove-staff-btn"
+                  onClick={() => openRemoveModal(s)}
+                  title="退職処理"
+                >
+                  退職
                 </button>
-              )
-            )}
-            {s.role !== 'owner' && (
-              <button
-                className="remove-staff-btn"
-                onClick={() => openRemoveModal(s)}
-                title="退職処理"
-              >
-                退職
-              </button>
-            )}
+              )}
+            </div>
           </div>
         ))}
 

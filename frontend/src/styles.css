@@ -806,7 +806,37 @@ body {
   transition: background 0.15s;
 }
 
-.staff-item:last-child {
+.staff-item-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 12px;
+  margin: 0 -12px;
+  border-bottom: 1px solid #f0f0f0;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.staff-item-card:hover {
+  background: #fafafa;
+}
+
+.staff-item-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.staff-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 52px;
+  flex-wrap: wrap;
+}
+
+.staff-item:last-child,
+.staff-item-card:last-child {
   border-bottom: none;
 }
 
@@ -823,13 +853,15 @@ body {
   flex-shrink: 0;
 }
 
-.staff-item .info {
+.staff-item .info,
+.staff-item-card .info {
   flex: 1;
   min-width: 0;
   overflow: hidden;
 }
 
-.staff-item .info .name {
+.staff-item .info .name,
+.staff-item-card .info .name {
   font-weight: 500;
   color: #1a1a2e;
   overflow: hidden;
@@ -837,7 +869,8 @@ body {
   white-space: nowrap;
 }
 
-.staff-item .info .email {
+.staff-item .info .email,
+.staff-item-card .info .email {
   font-size: 0.8rem;
   color: #999;
   overflow: hidden;
@@ -879,6 +912,28 @@ body {
 .role-badge.staff {
   background: #f0f0f0;
   color: #555;
+}
+
+.role-badge.clickable {
+  cursor: pointer;
+  border: 1px dashed #cbd5e1;
+}
+
+.role-badge.clickable:hover {
+  opacity: 0.8;
+}
+
+.role-select {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 12px;
+  border: 2px solid #2563eb;
+  background: #eff6ff;
+  color: #1a1a2e;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
 }
 
 /* ===== Loading ===== */
@@ -2220,6 +2275,10 @@ body {
   .staff-item {
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .staff-item-meta {
+    padding-left: 0;
   }
 
   .remove-staff-btn {

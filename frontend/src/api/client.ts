@@ -40,7 +40,7 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ password }),
     }),
-  updateStaff: (storeId: string, staffId: string, updates: { hourlyWage?: number }) =>
+  updateStaff: (storeId: string, staffId: string, updates: { hourlyWage?: number; role?: string }) =>
     request<any>(`/stores/${storeId}/staff/${staffId}`, { method: 'PUT', body: JSON.stringify(updates) }),
   removeStaff: (storeId: string, staffId: string) =>
     request<any>(`/stores/${storeId}/staff/${staffId}`, { method: 'DELETE' }),
