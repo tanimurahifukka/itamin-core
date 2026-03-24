@@ -16,14 +16,14 @@ import {
   ShiftChecklistMapping,
   ShiftType,
 } from '../api/checkApi';
+import { api } from '../api/client';
 
 type AdminTab = 'legacy' | 'templates' | 'shift_map';
 
-const SHIFT_OPTIONS: Array<{ value: ShiftType; label: string }> = [
-  { value: 'early', label: '早番' },
-  { value: 'mid', label: '中番' },
-  { value: 'late', label: '遅番' },
-];
+interface ShiftOption {
+  value: string;
+  label: string;
+}
 
 const TEMPLATE_LAYER_LABEL: Record<ChecklistTemplateLayer, string> = {
   base: '基本',
@@ -374,15 +374,12 @@ export default function ChecklistAdminPage() {
     items: [emptyTemplateItem()],
   });
 
-  const [shiftMappings, setShiftMappings] = useState<Record<ShiftType, string[]>>({
-    early: [],
-    mid: [],
-    late: [],
-  });
+  const [shiftOptions, setShiftOptions] = useState<ShiftOption[]>([]);
+  const [shiftMappings, setShiftMappings] = useState<Record<string, string[]>>({});
   const [shiftMapLoading, setShiftMapLoading] = useState(false);
   const [shiftMapSaving, setShiftMapSaving] = useState(false);
   const [shiftMapMessage, setShiftMapMessage] = useState('');
-  const [previewShiftType, setPreviewShiftType] = useState<ShiftType>('early');
+  const [previewShiftType, setPreviewShiftType] = useState<ShiftType>('');
   const [previewTiming, setPreviewTiming] = useState<CheckTiming>('clock_in');
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewTemplates, setPreviewTemplates] = useState<ChecklistTemplate[]>([]);
@@ -423,16 +420,34 @@ export default function ChecklistAdminPage() {
     }
   };
 
+  const loadShiftOptions = async () => {
+    if (!selectedStore) return;
+    try {
+      const data = await api.getTemplates(selectedStore.id);
+      const options: ShiftOption[] = (data.templates || []).map((t: any) => ({
+        value: t.name,
+        label: `${t.name}（${t.startTime?.slice(0, 5)}-${t.endTime?.slice(0, 5)}）`,
+      }));
+      setShiftOptions(options);
+      if (options.length > 0 && !previewShiftType) {
+        setPreviewShiftType(options[0].value);
+      }
+    } catch {}
+  };
+
   const loadShiftMap = async () => {
     if (!selectedStore) return;
     setShiftMapLoading(true);
     try {
       const data = await checkApi.getShiftMap(selectedStore.id);
-      const nextMappings: Record<ShiftType, string[]> = { early: [], mid: [], late: [] };
+      const nextMappings: Record<string, string[]> = {};
+      // シフトオプション分の空配列を初期化
+      shiftOptions.forEach(o => { nextMappings[o.value] = []; });
       data.mappings.forEach((mapping: ShiftChecklistMapping) => {
-        if (mapping.shift_type in nextMappings) {
-          nextMappings[mapping.shift_type as ShiftType].push(mapping.template_id);
+        if (!nextMappings[mapping.shift_type]) {
+          nextMappings[mapping.shift_type] = [];
         }
+        nextMappings[mapping.shift_type].push(mapping.template_id);
       });
       setShiftMappings(nextMappings);
     } catch (e: any) {
@@ -467,8 +482,14 @@ export default function ChecklistAdminPage() {
     setShiftMapMessage('');
     resetTemplateForm();
     loadTemplates();
-    loadShiftMap();
+    loadShiftOptions();
   }, [selectedStore]);
+
+  useEffect(() => {
+    if (shiftOptions.length > 0) {
+      loadShiftMap();
+    }
+  }, [shiftOptions]);
 
   useEffect(() => {
     if (!selectedStore) return;
@@ -660,14 +681,15 @@ export default function ChecklistAdminPage() {
     }
   };
 
-  const toggleShiftMapping = (shiftType: ShiftType, templateId: string) => {
+  const toggleShiftMapping = (shiftType: string, templateId: string) => {
     setShiftMappings(current => {
-      const exists = current[shiftType].includes(templateId);
+      const list = current[shiftType] || [];
+      const exists = list.includes(templateId);
       return {
         ...current,
         [shiftType]: exists
-          ? current[shiftType].filter(id => id !== templateId)
-          : [...current[shiftType], templateId],
+          ? list.filter(id => id !== templateId)
+          : [...list, templateId],
       };
     });
   };
@@ -1003,9 +1025,13 @@ export default function ChecklistAdminPage() {
 
             {shiftMapLoading ? (
               <div className="loading">読み込み中...</div>
+            ) : shiftOptions.length === 0 ? (
+              <div style={{ padding: 18, border: '1px dashed #cbd5e1', borderRadius: 10, color: '#64748b', background: '#fff', marginBottom: 20 }}>
+                シフトテンプレートが未登録です。先にシフト管理画面でシフト（早番・遅番など）を作成してください。
+              </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
-                {SHIFT_OPTIONS.map((shift) => (
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(shiftOptions.length, 3)}, 1fr)`, gap: 14, marginBottom: 20 }}>
+                {shiftOptions.map((shift) => (
                   <div
                     key={shift.value}
                     style={{
@@ -1021,7 +1047,7 @@ export default function ChecklistAdminPage() {
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {shiftTemplates.map((template) => {
-                          const checked = shiftMappings[shift.value].includes(template.id);
+                          const checked = (shiftMappings[shift.value] || []).includes(template.id);
                           return (
                             <label
                               key={`${shift.value}-${template.id}`}
@@ -1078,7 +1104,7 @@ export default function ChecklistAdminPage() {
                       background: '#fff',
                     }}
                   >
-                    {SHIFT_OPTIONS.map((option) => (
+                    {shiftOptions.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>

@@ -29,7 +29,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export type CheckTiming = 'clock_in' | 'clock_out';
 export type ChecklistTemplateLayer = 'base' | 'shift';
-export type ShiftType = 'early' | 'mid' | 'late';
+export type ShiftType = string; // シフトテンプレート名（動的）
 
 export interface CheckItem {
   id: string;
