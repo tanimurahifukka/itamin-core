@@ -277,7 +277,7 @@ export default function StaffPage() {
                   {roleLabels[s.role] || s.role}
                 </span>
               )}
-              {s.role !== 'owner' && (
+              {isOwner && s.role !== 'owner' && (
                 editingWageId === s.id ? (
                   <div className="wage-edit">
                     <span className="wage-yen">¥</span>

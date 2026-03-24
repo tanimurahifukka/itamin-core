@@ -6,6 +6,7 @@ type ViewMode = 'daily' | 'monthly';
 
 export default function DashboardPage() {
   const { selectedStore } = useAuth();
+  const isOwner = selectedStore?.role === 'owner';
   const [records, setRecords] = useState<any[]>([]);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
@@ -171,8 +172,8 @@ export default function DashboardPage() {
                   <th>出勤日数</th>
                   <th>合計時間</th>
                   <th>平均/日</th>
-                  <th>時給</th>
-                  <th>概算給与</th>
+                  {isOwner && <th>時給</th>}
+                  {isOwner && <th>概算給与</th>}
                 </tr>
               </thead>
               <tbody>
@@ -186,10 +187,10 @@ export default function DashboardPage() {
                         ? `${(Number(s.totalWorkHours) / (s.workDays || s.totalDays || 1)).toFixed(1)}h`
                         : '—'}
                     </td>
-                    <td>{s.hourlyWage ? `¥${Number(s.hourlyWage).toLocaleString()}` : '—'}</td>
-                    <td style={{ fontWeight: 600 }}>
+                    {isOwner && <td>{s.hourlyWage ? `¥${Number(s.hourlyWage).toLocaleString()}` : '—'}</td>}
+                    {isOwner && <td style={{ fontWeight: 600 }}>
                       {s.estimatedSalary != null ? `¥${Number(s.estimatedSalary).toLocaleString()}` : '—'}
-                    </td>
+                    </td>}
                   </tr>
                 ))}
                 <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 700, background: '#f9fafb' }}>
@@ -199,10 +200,10 @@ export default function DashboardPage() {
                     {monthlyData.summary.reduce((sum: number, s: any) => sum + (Number(s.totalWorkHours) || 0), 0).toFixed(1)}h
                   </td>
                   <td>—</td>
-                  <td>—</td>
-                  <td style={{ color: '#2563eb' }}>
+                  {isOwner && <td>—</td>}
+                  {isOwner && <td style={{ color: '#2563eb' }}>
                     ¥{monthlyData.summary.reduce((sum: number, s: any) => sum + (Number(s.estimatedSalary) || 0), 0).toLocaleString()}
-                  </td>
+                  </td>}
                 </tr>
               </tbody>
             </table>
