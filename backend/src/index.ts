@@ -73,6 +73,26 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'itamin-core', version: '0.1.0' });
 });
 
+// Debug: 環境変数確認（一時的）
+app.get('/api/debug/env', (_req, res) => {
+  const url = config.supabase.url;
+  const hasAnon = !!config.supabase.anonKey;
+  const hasService = !!config.supabase.serviceRoleKey;
+  res.json({
+    supabaseUrl: url,
+    supabaseUrlLength: url.length,
+    hasAnonKey: hasAnon,
+    anonKeyLength: config.supabase.anonKey.length,
+    hasServiceKey: hasService,
+    serviceKeyLength: config.supabase.serviceRoleKey.length,
+    frontendUrl: config.frontendUrl,
+    nodeEnv: config.nodeEnv,
+    isVercel: process.env.VERCEL === '1',
+    rawUrlEndsWithNewline: (process.env.SUPABASE_URL || '').endsWith('\n'),
+    rawUrlEndsWithBackslashN: (process.env.SUPABASE_URL || '').endsWith('\\n'),
+  });
+});
+
 // エラーハンドラ
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('[Error]', err);
