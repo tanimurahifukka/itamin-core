@@ -54,6 +54,9 @@ export const api = {
       method: 'DELETE',
     }),
 
+  rehireStaff: (storeId: string, data: { email: string; role?: string; hourlyWage?: number }) =>
+    request<any>(`/stores/${storeId}/staff/rehire`, { method: 'POST', body: JSON.stringify(data) }),
+
   // Timecard
   getTimecardStatus: (storeId: string) => request<any>(`/timecard/${storeId}/status`),
   clockIn: (storeId: string) =>

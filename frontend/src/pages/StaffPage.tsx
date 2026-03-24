@@ -171,6 +171,29 @@ export default function StaffPage() {
     }
   };
 
+  // 再入職
+  const [rehireEmail, setRehireEmail] = useState('');
+  const [rehireRole, setRehireRole] = useState('part_time');
+  const [rehiring, setRehiring] = useState(false);
+
+  const handleRehire = async () => {
+    if (!selectedStore || !rehireEmail.trim() || rehiring) return;
+    setError('');
+    setSuccess('');
+    setRehiring(true);
+    try {
+      const result = await api.rehireStaff(selectedStore.id, { email: rehireEmail.trim(), role: rehireRole });
+      setSuccess(result.message || '再入職しました');
+      setRehireEmail('');
+      setRehireRole('part_time');
+      loadStaff();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setRehiring(false);
+    }
+  };
+
   const storeName = selectedStore?.name || '';
   const storeId = selectedStore?.id || '';
   const confirmMatch = storeName.length > 0 && confirmInput === storeName;
@@ -366,6 +389,39 @@ export default function StaffPage() {
           <p style={{ fontSize: '0.8rem', color: '#999', marginTop: 6 }}>
             アカウントが自動作成されます。初期パスワードは事業所IDです。
           </p>
+        </div>
+
+        {/* 再入職 */}
+        <div style={{ marginTop: 24, borderTop: '1px solid #f0f0f0', paddingTop: 20 }}>
+          <h4 style={{ marginBottom: 8 }}>退職者の再入職</h4>
+          <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: 10 }}>
+            過去に退職したスタッフを再追加します。パスワードは初期パスワードにリセットされます。
+          </p>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="email"
+              placeholder="退職者のメールアドレス"
+              value={rehireEmail}
+              onChange={e => setRehireEmail(e.target.value)}
+              style={{ flex: 1, padding: '10px 14px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
+            />
+            <select
+              value={rehireRole}
+              onChange={e => setRehireRole(e.target.value)}
+              style={{ padding: '10px 14px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem', background: '#fff' }}
+            >
+              {assignableRoles.map(r => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleRehire}
+              disabled={rehiring || !rehireEmail.trim()}
+              style={{ padding: '10px 20px', background: '#059669', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap', fontFamily: 'inherit', fontSize: '0.9rem', opacity: rehiring || !rehireEmail.trim() ? 0.6 : 1 }}
+            >
+              {rehiring ? '処理中...' : '再入職'}
+            </button>
+          </div>
         </div>
       </div>
 

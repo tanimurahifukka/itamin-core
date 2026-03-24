@@ -503,4 +503,103 @@ router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) =
   }
 });
 
+// 再入職（退職済みスタッフを再追加 + パスワードリセット）
+router.post('/:storeId/staff/rehire', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const role = req.body?.role || 'part_time';
+    const hourlyWage = req.body?.hourlyWage ?? 0;
+
+    if (!email) {
+      res.status(400).json({ error: 'メールアドレスは必須です' });
+      return;
+    }
+
+    if (!VALID_STAFF_ROLES.includes(role)) {
+      res.status(400).json({ error: '無効なロールです' });
+      return;
+    }
+
+    // 既にこの店舗に所属していないか確認
+    const { data: existing } = await supabaseAdmin
+      .from('store_staff')
+      .select('id, user:profiles(email)')
+      .eq('store_id', storeId);
+
+    const alreadyMember = (existing || []).find((s: any) => s.user?.email === email);
+    if (alreadyMember) {
+      res.status(409).json({ error: 'このスタッフは既に所属しています' });
+      return;
+    }
+
+    // auth.usersからユーザーを探す
+    const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
+    if (listErr) {
+      res.status(500).json({ error: listErr.message });
+      return;
+    }
+
+    const authUser = users.find(u => u.email === email);
+    if (!authUser) {
+      res.status(404).json({ error: 'このメールアドレスのアカウントが見つかりません。新規招待してください。' });
+      return;
+    }
+
+    // パスワードを店舗の初期パスワードにリセット
+    const { data: pwSetting } = await supabaseAdmin
+      .from('store_settings')
+      .select('value')
+      .eq('store_id', storeId)
+      .eq('key', 'initial_password')
+      .maybeSingle();
+
+    const initialPassword = pwSetting?.value || 'itamin1234';
+
+    const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+      password: initialPassword,
+      user_metadata: {
+        ...authUser.user_metadata,
+        password_changed: false,
+      },
+    });
+
+    if (updateErr) {
+      console.error('[stores POST /:storeId/staff/rehire] password reset failed:', updateErr);
+      res.status(500).json({ error: 'パスワードリセットに失敗しました' });
+      return;
+    }
+
+    // store_staffに再追加
+    const { data: staff, error: insertErr } = await supabaseAdmin
+      .from('store_staff')
+      .insert({
+        store_id: storeId,
+        user_id: authUser.id,
+        role,
+        hourly_wage: hourlyWage,
+      })
+      .select()
+      .single();
+
+    if (insertErr) {
+      console.error('[stores POST /:storeId/staff/rehire] insert failed:', insertErr);
+      res.status(500).json({ error: insertErr.message });
+      return;
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: `${email} さんを再入職しました（パスワードは初期パスワードにリセット済み）`,
+      staff,
+    });
+  } catch (e: any) {
+    console.error('[stores POST /:storeId/staff/rehire] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
 export const storesRouter = router;
