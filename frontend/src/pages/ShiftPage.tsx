@@ -304,9 +304,9 @@ export default function ShiftPage() {
                           <div className="shift-time">{shift.startTime.slice(0, 5)}</div>
                           <div className="shift-time-end">{shift.endTime.slice(0, 5)}</div>
                         </div>
-                      ) : (
+                      ) : !req ? (
                         <span style={{ color: '#ddd' }}>-</span>
-                      )}
+                      ) : null}
                     </td>
                   );
                 })}

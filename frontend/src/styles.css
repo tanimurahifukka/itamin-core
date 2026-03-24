@@ -2118,11 +2118,25 @@ body {
 }
 
 .request-marker {
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* シフト未割当セル：記号を中央に大きく表示 */
+.shift-cell .request-marker:only-child {
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+}
+
+/* シフト割当済みセル：右上に小さく表示 */
+.shift-cell .request-marker:not(:only-child) {
   position: absolute;
   top: 2px;
   right: 4px;
-  font-size: 0.65rem;
-  font-weight: 700;
+  font-size: 0.7rem;
 }
 
 .staff-name-col {
