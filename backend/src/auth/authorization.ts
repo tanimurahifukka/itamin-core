@@ -24,7 +24,18 @@ async function getStoreMembership(accessToken: string, storeId: string, userId: 
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
+    console.error('[authz] store membership lookup failed', {
+      storeId,
+      userId,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+    });
+    return null;
+  }
+
+  if (!data) {
     return null;
   }
 

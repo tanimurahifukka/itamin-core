@@ -71,34 +71,57 @@ router.post('/:storeId/posts', requireAuth, async (req: Request, res: Response) 
     const membership = await requireStoreMembership(req, res, storeId);
     if (!membership) return;
 
-    const title = req.body?.title;
-    const body = req.body?.body;
+    const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
+    const body = typeof req.body?.body === 'string' ? req.body.body : '';
     const userId = req.user!.id;
 
-    if (!title || !title.trim()) {
+    if (!title) {
       res.status(400).json({ error: 'タイトルは必須です' });
       return;
     }
 
-    // 投稿者名を取得
-    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
-    const authorName = userData?.user?.user_metadata?.full_name || userData?.user?.email || '不明';
+    // profiles テーブルから投稿者情報を取得（FK制約対応）
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name, email')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('[notice:post] profile lookup failed', profileError);
+      res.status(500).json({ error: '投稿者情報の取得に失敗しました' });
+      return;
+    }
+
+    if (!profile) {
+      console.error('[notice:post] profile not found for user:', userId);
+      res.status(409).json({ error: 'プロフィール未作成のため投稿できません' });
+      return;
+    }
+
+    const authorName = profile.name || profile.email || '不明';
 
     const { data, error } = await supabaseAdmin
       .from('notices')
       .insert({
         store_id: storeId,
-        author_id: userId,
+        author_id: profile.id,
         author_name: authorName,
-        title: title.trim(),
-        body: body || '',
+        title,
+        body,
         pinned: false,
       })
       .select()
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      console.error('[notice:post] insert failed', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
+      res.status(500).json({ error: '連絡ノートの投稿に失敗しました' });
       return;
     }
 
