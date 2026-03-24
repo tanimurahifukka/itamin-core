@@ -1,12 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth';
-import { createSupabaseClient, supabaseAdmin } from '../config/supabase';
+import { supabaseAdmin } from '../config/supabase';
 
 const router = Router();
 
 // 自分の所属情報を取得
-async function getStoreStaff(supabase: any, storeId: string, userId: string) {
-  const { data } = await supabase
+async function getStoreStaff(storeId: string, userId: string) {
+  const { data } = await supabaseAdmin
     .from('store_staff')
     .select('id, role')
     .eq('store_id', storeId)
@@ -15,8 +15,8 @@ async function getStoreStaff(supabase: any, storeId: string, userId: string) {
   return data;
 }
 
-async function requirePunchStaff(supabase: any, storeId: string, userId: string, res: Response) {
-  const staff = await getStoreStaff(supabase, storeId, userId);
+async function requirePunchStaff(storeId: string, userId: string, res: Response) {
+  const staff = await getStoreStaff(storeId, userId);
   if (!staff) {
     res.status(403).json({ error: 'この店舗のスタッフではありません' });
     return null;
@@ -34,16 +34,14 @@ async function requirePunchStaff(supabase: any, storeId: string, userId: string,
 router.post('/:storeId/clock-in', requireAuth, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    const supabase = createSupabaseClient(req.accessToken!);
-
-    const staff = await requirePunchStaff(supabase, storeId, req.user!.id, res);
+    const staff = await requirePunchStaff(storeId, req.user!.id, res);
     if (!staff) {
       return;
     }
     const staffId = staff.id;
 
     // 既に出勤中かチェック
-    const { data: open } = await supabase
+    const { data: open } = await supabaseAdmin
       .from('time_records')
       .select('id')
       .eq('store_id', storeId)
@@ -56,7 +54,7 @@ router.post('/:storeId/clock-in', requireAuth, async (req: Request, res: Respons
       return;
     }
 
-    const { data: record, error } = await supabase
+    const { data: record, error } = await supabaseAdmin
       .from('time_records')
       .insert({ store_id: storeId, staff_id: staffId })
       .select()
@@ -84,15 +82,13 @@ router.post('/:storeId/clock-out', requireAuth, async (req: Request, res: Respon
   try {
     const storeId = req.params.storeId as string;
     const breakMinutes = req.body?.breakMinutes;
-    const supabase = createSupabaseClient(req.accessToken!);
-
-    const staff = await requirePunchStaff(supabase, storeId, req.user!.id, res);
+    const staff = await requirePunchStaff(storeId, req.user!.id, res);
     if (!staff) {
       return;
     }
     const staffId = staff.id;
 
-    const { data: open } = await supabase
+    const { data: open } = await supabaseAdmin
       .from('time_records')
       .select('id')
       .eq('store_id', storeId)
@@ -108,7 +104,7 @@ router.post('/:storeId/clock-out', requireAuth, async (req: Request, res: Respon
     const update: any = { clock_out: new Date().toISOString() };
     if (breakMinutes !== undefined) update.break_minutes = breakMinutes;
 
-    const { data: record, error } = await supabase
+    const { data: record, error } = await supabaseAdmin
       .from('time_records')
       .update(update)
       .eq('id', open.id)
@@ -136,15 +132,13 @@ router.post('/:storeId/clock-out', requireAuth, async (req: Request, res: Respon
 router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    const supabase = createSupabaseClient(req.accessToken!);
-
-    const staff = await requirePunchStaff(supabase, storeId, req.user!.id, res);
+    const staff = await requirePunchStaff(storeId, req.user!.id, res);
     if (!staff) {
       return;
     }
     const staffId = staff.id;
 
-    const { data: open } = await supabase
+    const { data: open } = await supabaseAdmin
       .from('time_records')
       .select('*')
       .eq('store_id', storeId)
@@ -174,9 +168,7 @@ router.get('/:storeId/daily', requireAuth, async (req: Request, res: Response) =
     const storeId = req.params.storeId as string;
     const dateStr = req.query.date as string;
     const date = dateStr || new Date().toISOString().split('T')[0];
-    const supabase = createSupabaseClient(req.accessToken!);
-
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('time_records')
       .select('*, staff:store_staff(id, user:profiles(name, picture))')
       .eq('store_id', storeId)
@@ -213,10 +205,8 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
     const storeId = req.params.storeId as string;
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
     const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
-    const supabase = createSupabaseClient(req.accessToken!);
-
     // 権限チェック（スタッフであること）
-    const staff = await getStoreStaff(supabase, storeId, req.user!.id);
+    const staff = await getStoreStaff(storeId, req.user!.id);
     if (!staff) {
       res.status(403).json({ error: 'この店舗のスタッフではありません' });
       return;
@@ -228,7 +218,7 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
     const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
 
     // 全スタッフの勤怠レコードを取得（スタッフ名・時給付き）
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('time_records')
       .select('*, staff:store_staff(id, hourly_wage, user:profiles(name))')
       .eq('store_id', storeId)

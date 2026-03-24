@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth';
-import { createSupabaseClient, supabaseAdmin } from '../config/supabase';
+import { supabaseAdmin } from '../config/supabase';
 import type { Express } from 'express';
 import type { Plugin } from '../types';
 import { isManagedRole, isShiftRequestEnabled, requireManagedStore, requireStoreMembership, staffBelongsToStore } from '../auth/authorization';
@@ -29,7 +29,7 @@ router.get('/:storeId/weekly', requireAuth, async (req: Request, res: Response) 
     const startDate = monday.toISOString().split('T')[0];
     const endDate = sunday.toISOString().split('T')[0];
 
-    const supabase = createSupabaseClient(req.accessToken!);
+    const supabase = supabaseAdmin;
 
     const { data, error } = await supabase
       .from('shifts')
@@ -218,7 +218,7 @@ router.get('/:storeId/requests', requireAuth, async (req: Request, res: Response
     const startDate = monday.toISOString().split('T')[0];
     const endDate = sunday.toISOString().split('T')[0];
 
-    const supabase = createSupabaseClient(req.accessToken!);
+    const supabase = supabaseAdmin;
 
     const { data, error } = await supabase
       .from('shift_requests')
@@ -370,7 +370,7 @@ router.get('/:storeId/templates', requireAuth, async (req: Request, res: Respons
     if (!membership) {
       return;
     }
-    const supabase = createSupabaseClient(req.accessToken!);
+    const supabase = supabaseAdmin;
 
     const { data, error } = await supabase
       .from('shift_templates')

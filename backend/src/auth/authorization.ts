@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import type { Request } from 'express';
 import type { StaffRole } from '../types';
-import { createSupabaseClient, supabaseAdmin } from '../config/supabase';
+import { supabaseAdmin } from '../config/supabase';
 
 export const VALID_STAFF_ROLES: StaffRole[] = ['owner', 'manager', 'full_time', 'part_time'];
 const MANAGED_ROLES: StaffRole[] = ['owner', 'manager'];

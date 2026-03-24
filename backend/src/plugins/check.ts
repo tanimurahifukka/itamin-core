@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth';
-import { createSupabaseClient, supabaseAdmin } from '../config/supabase';
+import { supabaseAdmin } from '../config/supabase';
 import type { Express } from 'express';
 import type { Plugin } from '../types';
 import { requireStoreMembership, requireManagedStore } from '../auth/authorization';
@@ -20,9 +20,7 @@ router.get('/checklists/:storeId/:timing', requireAuth, async (req: Request, res
       return;
     }
 
-    const supabase = createSupabaseClient(req.accessToken!);
-
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('checklists')
       .select('*')
       .eq('store_id', storeId)
@@ -144,9 +142,7 @@ router.get('/records/:storeId', requireAuth, async (req: Request, res: Response)
 
     const { start_date, end_date, staff_id } = req.query;
 
-    const supabase = createSupabaseClient(req.accessToken!);
-
-    let query = supabase
+    let query = supabaseAdmin
       .from('check_records')
       .select('*')
       .eq('store_id', storeId)

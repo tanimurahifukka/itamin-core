@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth';
-import { createSupabaseClient, supabaseAdmin } from '../config/supabase';
+import { supabaseAdmin } from '../config/supabase';
 import { requireManagedStore, VALID_STAFF_ROLES } from './authorization';
 
 const router = Router();
@@ -72,7 +72,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
 // 自分の所属店舗一覧
 router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
-    const supabase = createSupabaseClient(req.accessToken!);
+    const supabase = supabaseAdmin;
 
     const { data, error } = await supabase
       .from('store_staff')
@@ -473,7 +473,7 @@ router.delete('/:storeId/staff/:staffId', requireAuth, async (req: Request, res:
 router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    const supabase = createSupabaseClient(req.accessToken!);
+    const supabase = supabaseAdmin;
 
     const { data, error } = await supabase
       .from('store_staff')
