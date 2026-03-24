@@ -473,7 +473,7 @@ export default function ChecklistAdminPage() {
   }, [shiftOptions]);
 
   useEffect(() => {
-    if (!selectedStore) return;
+    if (!selectedStore || !previewShiftType) return;
     loadPreview(selectedStore.id, previewShiftType, previewTiming);
   }, [selectedStore, previewShiftType, previewTiming]);
 
