@@ -351,20 +351,7 @@ router.get('/templates/:storeId/for-shift/:shiftType/:timing', requireAuth, asyn
       return;
     }
 
-    const { data: baseTemplates, error: baseError } = await supabaseAdmin
-      .from('checklist_templates')
-      .select('*')
-      .eq('store_id', storeId)
-      .eq('layer', 'base')
-      .eq('timing', timing)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true });
-
-    if (baseError) {
-      res.status(500).json({ error: baseError.message });
-      return;
-    }
-
+    // シフト紐付けを確認
     const { data: shiftMaps, error: mapError } = await supabaseAdmin
       .from('shift_checklist_map')
       .select(`
@@ -381,18 +368,55 @@ router.get('/templates/:storeId/for-shift/:shiftType/:timing', requireAuth, asyn
       return;
     }
 
-    const shiftTemplates = (shiftMaps || [])
-      .map((entry: any) => entry.checklist_templates)
-      .filter((template: any) => template && template.timing === timing);
+    const hasShiftMapping = (shiftMaps || []).length > 0;
 
-    const templateMap = new Map<string, any>();
-    for (const template of [...(baseTemplates || []), ...shiftTemplates]) {
-      if (!templateMap.has(template.id)) {
-        templateMap.set(template.id, template);
+    let allTemplates: any[];
+
+    if (hasShiftMapping) {
+      // シフト紐付けあり: base + 紐付けされたshiftテンプレート
+      const { data: baseTemplates, error: baseError } = await supabaseAdmin
+        .from('checklist_templates')
+        .select('*')
+        .eq('store_id', storeId)
+        .eq('layer', 'base')
+        .eq('timing', timing)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+
+      if (baseError) {
+        res.status(500).json({ error: baseError.message });
+        return;
       }
+
+      const shiftTemplates = (shiftMaps || [])
+        .map((entry: any) => entry.checklist_templates)
+        .filter((template: any) => template && template.timing === timing);
+
+      const templateMap = new Map<string, any>();
+      for (const template of [...(baseTemplates || []), ...shiftTemplates]) {
+        if (!templateMap.has(template.id)) {
+          templateMap.set(template.id, template);
+        }
+      }
+      allTemplates = Array.from(templateMap.values());
+    } else {
+      // シフト紐付けなし: 全テンプレート（base + shift全部）を返す
+      const { data: allData, error: allError } = await supabaseAdmin
+        .from('checklist_templates')
+        .select('*')
+        .eq('store_id', storeId)
+        .eq('timing', timing)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+
+      if (allError) {
+        res.status(500).json({ error: allError.message });
+        return;
+      }
+      allTemplates = allData || [];
     }
 
-    const templates = Array.from(templateMap.values())
+    const templates = allTemplates
       .sort((a, b) => {
         const sortDiff = (a.sort_order ?? 0) - (b.sort_order ?? 0);
         if (sortDiff !== 0) {
