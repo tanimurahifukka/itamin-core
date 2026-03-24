@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config';
+import { supabaseAdmin } from './config/supabase';
 import { storesRouter } from './auth/stores';
 import { timecardRouter } from './timecard/routes';
 import { pluginRegistry } from './plugins/registry';
@@ -73,24 +74,29 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'itamin-core', version: '0.1.0' });
 });
 
-// Debug: 環境変数確認（一時的）
-app.get('/api/debug/env', (_req, res) => {
-  const url = config.supabase.url;
-  const hasAnon = !!config.supabase.anonKey;
-  const hasService = !!config.supabase.serviceRoleKey;
-  res.json({
-    supabaseUrl: url,
-    supabaseUrlLength: url.length,
-    hasAnonKey: hasAnon,
-    anonKeyLength: config.supabase.anonKey.length,
-    hasServiceKey: hasService,
-    serviceKeyLength: config.supabase.serviceRoleKey.length,
-    frontendUrl: config.frontendUrl,
-    nodeEnv: config.nodeEnv,
-    isVercel: process.env.VERCEL === '1',
-    rawUrlEndsWithNewline: (process.env.SUPABASE_URL || '').endsWith('\n'),
-    rawUrlEndsWithBackslashN: (process.env.SUPABASE_URL || '').endsWith('\\n'),
-  });
+// Debug: Supabase接続テスト（一時的）
+app.get('/api/debug/supabase', async (_req, res) => {
+  const start = Date.now();
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('stores')
+      .select('id')
+      .limit(1);
+    res.json({
+      ok: !error,
+      error: error?.message || null,
+      code: error?.code || null,
+      hint: error?.hint || null,
+      dataCount: data?.length ?? 0,
+      elapsedMs: Date.now() - start,
+    });
+  } catch (e: any) {
+    res.json({
+      ok: false,
+      error: e.message,
+      elapsedMs: Date.now() - start,
+    });
+  }
 });
 
 // エラーハンドラ
