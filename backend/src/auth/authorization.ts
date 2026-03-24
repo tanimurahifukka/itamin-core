@@ -15,9 +15,9 @@ export function isManagedRole(role: string): role is StaffRole {
   return MANAGED_ROLES.includes(role as StaffRole);
 }
 
-async function getStoreMembership(accessToken: string, storeId: string, userId: string): Promise<StoreMembership | null> {
-  const supabase = createSupabaseClient(accessToken);
-  const { data, error } = await supabase
+async function getStoreMembership(_accessToken: string, storeId: string, userId: string): Promise<StoreMembership | null> {
+  // supabaseAdmin を使用（requireAuth で認証済み、RLS不要で高速）
+  const { data, error } = await supabaseAdmin
     .from('store_staff')
     .select('id, role')
     .eq('store_id', storeId)
