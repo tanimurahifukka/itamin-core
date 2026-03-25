@@ -1655,6 +1655,47 @@ body {
   border-color: #dc2626;
 }
 
+/* ===== Rehire Form ===== */
+.rehire-form-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.rehire-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid #d4d9df;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  box-sizing: border-box;
+}
+
+.rehire-select {
+  padding: 10px 14px;
+  border: 1px solid #d4d9df;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.rehire-btn {
+  padding: 10px 20px;
+  background: #059669;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
 /* ===== Remove Staff Modal ===== */
 .remove-modal-overlay {
   position: fixed;
@@ -1721,6 +1762,7 @@ body {
   font-family: inherit;
   color: #1a1a1a;
   transition: border-color 0.2s;
+  box-sizing: border-box;
 }
 
 .remove-modal-input:focus {
@@ -2297,6 +2339,33 @@ body {
 
   .remove-staff-btn {
     margin-left: auto;
+  }
+
+  .rehire-form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rehire-input {
+    width: 100%;
+  }
+
+  .rehire-select {
+    width: 100%;
+  }
+
+  .rehire-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .remove-modal {
+    padding: 20px;
+    margin: 12px;
+  }
+
+  .remove-modal-actions {
+    flex-direction: column;
   }
 
   .invite-card {
