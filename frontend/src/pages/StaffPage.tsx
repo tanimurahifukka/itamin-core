@@ -397,18 +397,18 @@ export default function StaffPage() {
           <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: 10 }}>
             過去に退職したスタッフを再追加します。パスワードは初期パスワードにリセットされます。
           </p>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="rehire-form-row">
             <input
               type="email"
               placeholder="退職者のメールアドレス"
               value={rehireEmail}
               onChange={e => setRehireEmail(e.target.value)}
-              style={{ flex: 1, padding: '10px 14px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
+              className="rehire-input"
             />
             <select
               value={rehireRole}
               onChange={e => setRehireRole(e.target.value)}
-              style={{ padding: '10px 14px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem', background: '#fff' }}
+              className="rehire-select"
             >
               {assignableRoles.map(r => (
                 <option key={r.value} value={r.value}>{r.label}</option>
@@ -417,7 +417,8 @@ export default function StaffPage() {
             <button
               onClick={handleRehire}
               disabled={rehiring || !rehireEmail.trim()}
-              style={{ padding: '10px 20px', background: '#059669', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap', fontFamily: 'inherit', fontSize: '0.9rem', opacity: rehiring || !rehireEmail.trim() ? 0.6 : 1 }}
+              className="rehire-btn"
+              style={{ opacity: rehiring || !rehireEmail.trim() ? 0.6 : 1 }}
             >
               {rehiring ? '処理中...' : '再入職'}
             </button>
