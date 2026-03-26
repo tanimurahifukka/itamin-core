@@ -485,6 +485,19 @@ router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) =
       return;
     }
 
+    // auth.usersから最終ログイン時間を取得
+    const userIds = (data || []).map((s: any) => s.user?.id).filter(Boolean);
+    const lastSignInMap = new Map<string, string | null>();
+
+    if (userIds.length > 0) {
+      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+      for (const u of users) {
+        if (userIds.includes(u.id)) {
+          lastSignInMap.set(u.id, u.last_sign_in_at || null);
+        }
+      }
+    }
+
     const staff = (data || []).map((s: any) => ({
       id: s.id,
       role: s.role,
@@ -494,6 +507,7 @@ router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) =
       userName: s.user.name,
       email: s.user.email,
       picture: s.user.picture,
+      lastSignInAt: lastSignInMap.get(s.user.id) || null,
     }));
 
     res.json({ staff });

@@ -251,6 +251,11 @@ export default function StaffPage() {
               <div className="info">
                 <div className="name">{s.userName || s.email}</div>
                 <div className="email">{s.email}</div>
+                {isOwner && s.lastSignInAt && (
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>
+                    最終ログイン: {new Date(s.lastSignInAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                )}
               </div>
             </div>
             <div className="staff-item-meta">
