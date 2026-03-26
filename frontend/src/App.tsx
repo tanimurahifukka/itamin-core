@@ -53,6 +53,9 @@ export default function App() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
+  // モバイル判定（フックは早期returnより前に宣言）
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth <= 768);
+
   const loadTabs = async (background = false) => {
     if (!selectedStore) {
       setTabs([]);
@@ -124,6 +127,21 @@ export default function App() {
     };
   }, [selectedStore]);
 
+  // モバイルリサイズ検知
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleCardClick = useCallback((tabName: string) => {
+    setActiveTab(tabName);
+  }, []);
+
+  const handleBackToMenu = useCallback(() => {
+    setActiveTab('');
+  }, []);
+
   // Close profile menu on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -192,23 +210,6 @@ export default function App() {
   }
 
   const ActiveComponent = PLUGIN_COMPONENTS[activeTab];
-
-  // モバイル判定
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // モバイルカードメニュー: activeTabが空ならメニュー表示
-  const handleCardClick = useCallback((tabName: string) => {
-    setActiveTab(tabName);
-  }, []);
-
-  const handleBackToMenu = useCallback(() => {
-    setActiveTab('');
-  }, []);
 
   // モバイルでactiveTabが空 → カードメニュー表示
   const showMobileMenu = isMobile && !activeTab && !tabsLoading;
