@@ -39,21 +39,23 @@ app.use('/api/timecard', timecardRouter);
 pluginRegistry.register(punchPlugin);
 pluginRegistry.register(attendancePlugin);
 pluginRegistry.register(staffPlugin);
-pluginRegistry.register(settingsPlugin);
 
 // Feature plugins（有効/無効切替可能）
 pluginRegistry.register(shiftPlugin);
 pluginRegistry.register(shiftRequestPlugin);
 pluginRegistry.register(checkPlugin);
+pluginRegistry.register(menuPlugin);
+pluginRegistry.register(dailyReportPlugin);
 pluginRegistry.register(inventoryPlugin);
 pluginRegistry.register(overtimeAlertPlugin);
 pluginRegistry.register(consecutiveWorkPlugin);
-pluginRegistry.register(dailyReportPlugin);
 pluginRegistry.register(noticePlugin);
 pluginRegistry.register(paidLeavePlugin);
 pluginRegistry.register(expensePlugin);
 pluginRegistry.register(feedbackPlugin);
-pluginRegistry.register(menuPlugin);
+
+// 設定は常に最後
+pluginRegistry.register(settingsPlugin);
 
 app.use('/api/plugin-settings', pluginSettingsRouter);
 app.get('/api/plugins', (_req, res) => {
