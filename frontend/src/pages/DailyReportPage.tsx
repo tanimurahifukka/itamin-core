@@ -102,63 +102,32 @@ export default function DailyReportPage() {
       {/* 入力フォーム */}
       <div className="records-section" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 12 }}>日報入力</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 1fr 120px', gap: 8, marginBottom: 8 }}>
+        <div className="daily-report-form-grid">
           <div>
-            <label style={{ fontSize: '0.8rem', color: '#666', marginBottom: 2, display: 'block' }}>日付</label>
-            <input
-              type="date"
-              value={formDate}
-              onChange={e => setFormDate(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
-            />
+            <label className="form-label">日付</label>
+            <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} className="form-input" />
           </div>
           <div>
-            <label style={{ fontSize: '0.8rem', color: '#666', marginBottom: 2, display: 'block' }}>売上（円）</label>
-            <input
-              type="number"
-              placeholder="0"
-              value={formSales}
-              onChange={e => setFormSales(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
-            />
+            <label className="form-label">売上（円）</label>
+            <input type="number" placeholder="0" value={formSales} onChange={e => setFormSales(e.target.value)} className="form-input" />
           </div>
           <div>
-            <label style={{ fontSize: '0.8rem', color: '#666', marginBottom: 2, display: 'block' }}>来客数</label>
-            <input
-              type="number"
-              placeholder="0"
-              value={formCustomers}
-              onChange={e => setFormCustomers(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
-            />
+            <label className="form-label">来客数</label>
+            <input type="number" placeholder="0" value={formCustomers} onChange={e => setFormCustomers(e.target.value)} className="form-input" />
           </div>
           <div>
-            <label style={{ fontSize: '0.8rem', color: '#666', marginBottom: 2, display: 'block' }}>天気</label>
-            <select
-              value={formWeather}
-              onChange={e => setFormWeather(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
-            >
+            <label className="form-label">天気</label>
+            <select value={formWeather} onChange={e => setFormWeather(e.target.value)} className="form-input">
               {WEATHER_OPTIONS.map(w => <option key={w} value={w}>{w}</option>)}
             </select>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'end' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'end', marginTop: 8 }}>
           <div style={{ flex: 1 }}>
-            <label style={{ fontSize: '0.8rem', color: '#666', marginBottom: 2, display: 'block' }}>メモ</label>
-            <input
-              type="text"
-              placeholder="一言メモ"
-              value={formMemo}
-              onChange={e => setFormMemo(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
-            />
+            <label className="form-label">メモ</label>
+            <input type="text" placeholder="一言メモ" value={formMemo} onChange={e => setFormMemo(e.target.value)} className="form-input" />
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            style={{ padding: '8px 20px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap', fontFamily: 'inherit', fontSize: '0.9rem', height: 38 }}
-          >
+          <button onClick={handleSave} disabled={saving} className="form-save-btn">
             {saving ? '保存中...' : '保存'}
           </button>
         </div>
@@ -201,32 +170,27 @@ export default function DailyReportPage() {
             <p className="empty-state-hint">上のフォームから日報を入力してください</p>
           </div>
         ) : (
-          <table className="records-table">
-            <thead>
-              <tr>
-                <th>日付</th>
-                <th>売上</th>
-                <th>来客数</th>
-                <th>天気</th>
-                <th>メモ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reports.map(r => (
-                <tr
-                  key={r.id}
-                  onClick={() => setFormDate(r.date)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <td style={{ whiteSpace: 'nowrap' }}>{new Date(r.date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' })}</td>
-                  <td>¥{Number(r.sales).toLocaleString()}</td>
-                  <td>{r.customerCount}人</td>
-                  <td>{r.weather}</td>
-                  <td style={{ fontSize: '0.85rem', color: '#666' }}>{r.memo || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="daily-report-list">
+            {reports.map(r => (
+              <div
+                key={r.id}
+                className="daily-report-card"
+                onClick={() => setFormDate(r.date)}
+              >
+                <div className="daily-report-card-header">
+                  <span className="daily-report-date">
+                    {new Date(r.date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' })}
+                  </span>
+                  <span className="daily-report-weather">{r.weather}</span>
+                </div>
+                <div className="daily-report-card-body">
+                  <span className="daily-report-stat">¥{Number(r.sales).toLocaleString()}</span>
+                  <span className="daily-report-stat">{r.customerCount}人</span>
+                </div>
+                {r.memo && <div className="daily-report-memo">{r.memo}</div>}
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
