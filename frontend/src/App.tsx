@@ -19,6 +19,7 @@ import NoticePage from './pages/NoticePage';
 import PaidLeavePage from './pages/PaidLeavePage';
 import ExpensePage from './pages/ExpensePage';
 import FeedbackPage from './pages/FeedbackPage';
+import MenuPage from './pages/MenuPage';
 
 // プラグイン名 → コンポーネント対応表
 const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
@@ -36,6 +37,7 @@ const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   paid_leave: PaidLeavePage,
   expense: ExpensePage,
   feedback: FeedbackPage,
+  menu: MenuPage,
   settings: PluginSettingsPage,
 };
 

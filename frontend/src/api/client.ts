@@ -152,8 +152,20 @@ export const api = {
   },
   getDailyReport: (storeId: string, date: string) =>
     request<any>(`/daily-report/${storeId}/reports/${date}`),
-  saveDailyReport: (storeId: string, data: { date: string; sales: number; customerCount: number; weather: string; memo: string }) =>
+  saveDailyReport: (storeId: string, data: { date: string; sales: number; customerCount: number; weather: string; memo: string; items?: { menuItemId: string; quantity: number }[] }) =>
     request<any>(`/daily-report/${storeId}/reports`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Menu
+  getMenuItems: (storeId: string, active?: boolean) => {
+    const params = active !== undefined ? `?active=${active}` : '';
+    return request<any>(`/menu/${storeId}/items${params}`);
+  },
+  createMenuItem: (storeId: string, data: { name: string; category?: string; price: number; display_order?: number }) =>
+    request<any>(`/menu/${storeId}/items`, { method: 'POST', body: JSON.stringify(data) }),
+  updateMenuItem: (storeId: string, itemId: string, updates: Record<string, any>) =>
+    request<any>(`/menu/${storeId}/items/${itemId}`, { method: 'PUT', body: JSON.stringify(updates) }),
+  deleteMenuItem: (storeId: string, itemId: string) =>
+    request<any>(`/menu/${storeId}/items/${itemId}`, { method: 'DELETE' }),
 
   // Notice
   getNotices: (storeId: string) =>

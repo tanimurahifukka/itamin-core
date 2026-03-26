@@ -16,6 +16,7 @@ import { noticePlugin } from './plugins/notice';
 import { paidLeavePlugin } from './plugins/paid_leave';
 import { expensePlugin } from './plugins/expense';
 import { feedbackPlugin } from './plugins/feedback';
+import { menuPlugin } from './plugins/menu';
 import { punchPlugin, attendancePlugin, staffPlugin, settingsPlugin } from './plugins/core';
 
 const app = express();
@@ -52,6 +53,7 @@ pluginRegistry.register(noticePlugin);
 pluginRegistry.register(paidLeavePlugin);
 pluginRegistry.register(expensePlugin);
 pluginRegistry.register(feedbackPlugin);
+pluginRegistry.register(menuPlugin);
 
 app.use('/api/plugin-settings', pluginSettingsRouter);
 app.get('/api/plugins', (_req, res) => {

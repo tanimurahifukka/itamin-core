@@ -84,8 +84,30 @@ router.get('/:storeId/reports/:date', requireAuth, async (req: Request, res: Res
     }
 
     if (!data) {
-      res.json({ report: null });
+      res.json({ report: null, items: [] });
       return;
+    }
+
+    const { data: itemRows, error: itemsError } = await supabaseAdmin
+      .from('daily_report_items')
+      .select('id, menu_item_id, quantity, unit_price, subtotal')
+      .eq('report_id', data.id)
+      .order('created_at', { ascending: true });
+
+    if (itemsError) {
+      res.status(500).json({ error: itemsError.message });
+      return;
+    }
+
+    // メニュー名を別クエリで取得
+    const menuIds = [...new Set((itemRows || []).map((r: any) => r.menu_item_id))];
+    const menuNameMap = new Map<string, string>();
+    if (menuIds.length > 0) {
+      const { data: menuData } = await supabaseAdmin
+        .from('menu_items')
+        .select('id, name')
+        .in('id', menuIds);
+      (menuData || []).forEach((m: any) => menuNameMap.set(m.id, m.name));
     }
 
     res.json({
@@ -99,6 +121,14 @@ router.get('/:storeId/reports/:date', requireAuth, async (req: Request, res: Res
         memo: data.memo,
         createdBy: data.created_by,
       },
+      items: (itemRows || []).map((item: any) => ({
+        id: item.id,
+        menuItemId: item.menu_item_id,
+        menuItemName: menuNameMap.get(item.menu_item_id) || '',
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        subtotal: item.subtotal,
+      })),
     });
   } catch (e: any) {
     console.error('[daily_report GET /:storeId/reports/:date] error:', e);
@@ -120,6 +150,7 @@ router.post('/:storeId/reports', requireAuth, async (req: Request, res: Response
     const customerCount = req.body?.customerCount;
     const weather = req.body?.weather;
     const memo = req.body?.memo;
+    const rawItems = Array.isArray(req.body?.items) ? req.body.items : undefined;
 
     if (!date) {
       res.status(400).json({ error: '日付は必須です' });
@@ -142,6 +173,104 @@ router.post('/:storeId/reports', requireAuth, async (req: Request, res: Response
 
     if (error) {
       res.status(500).json({ error: error.message });
+      return;
+    }
+
+    if (rawItems) {
+      const itemQuantityMap = new Map<string, number>();
+      for (const item of rawItems) {
+        if (!item || !item.menuItemId) continue;
+        const menuItemId = String(item.menuItemId);
+        const quantity = Number(item.quantity) || 0;
+        itemQuantityMap.set(menuItemId, (itemQuantityMap.get(menuItemId) || 0) + quantity);
+      }
+
+      const items = Array.from(itemQuantityMap.entries())
+        .map(([menuItemId, quantity]) => ({
+          menuItemId,
+          quantity,
+        }))
+        .filter(item => item.quantity > 0);
+
+      const { error: deleteError } = await supabaseAdmin
+        .from('daily_report_items')
+        .delete()
+        .eq('report_id', data.id);
+
+      if (deleteError) {
+        res.status(500).json({ error: deleteError.message });
+        return;
+      }
+
+      let totalSales = 0;
+
+      if (items.length > 0) {
+        const menuItemIds = [...new Set(items.map(item => item.menuItemId))];
+        const { data: menuRows, error: menuError } = await supabaseAdmin
+          .from('menu_items')
+          .select('id, name, price, is_active, store_id')
+          .eq('store_id', storeId)
+          .in('id', menuItemIds);
+
+        if (menuError) {
+          res.status(500).json({ error: menuError.message });
+          return;
+        }
+
+        const menuMap = new Map((menuRows || []).map((item: any) => [item.id, item]));
+        const invalidItem = items.find(item => {
+          const menu = menuMap.get(item.menuItemId);
+          return !menu || menu.store_id !== storeId;
+        });
+
+        if (invalidItem) {
+          res.status(400).json({ error: '無効な商品が含まれています' });
+          return;
+        }
+
+        const insertRows = items.map(item => {
+          const menu = menuMap.get(item.menuItemId)!;
+          const unitPrice = Number(menu.price) || 0;
+          const quantity = item.quantity;
+          const subtotal = quantity * unitPrice;
+          totalSales += subtotal;
+
+          return {
+            report_id: data.id,
+            menu_item_id: item.menuItemId,
+            quantity,
+            unit_price: unitPrice,
+            subtotal,
+          };
+        });
+
+        const { error: insertError } = await supabaseAdmin
+          .from('daily_report_items')
+          .insert(insertRows);
+
+        if (insertError) {
+          res.status(500).json({ error: insertError.message });
+          return;
+        }
+      }
+
+      const { error: updateSalesError } = await supabaseAdmin
+        .from('daily_reports')
+        .update({ sales: totalSales })
+        .eq('id', data.id)
+        .eq('store_id', storeId);
+
+      if (updateSalesError) {
+        res.status(500).json({ error: updateSalesError.message });
+        return;
+      }
+
+      res.status(201).json({
+        report: {
+          ...data,
+          sales: totalSales,
+        },
+      });
       return;
     }
 

@@ -19,6 +19,15 @@ interface Summary {
   reportCount: number;
 }
 
+interface MenuItem {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+}
+
+type InputMode = 'manual' | 'menu';
+
 const WEATHER_OPTIONS = ['晴れ', '曇り', '雨', '雪'];
 
 export default function DailyReportPage() {
@@ -36,6 +45,11 @@ export default function DailyReportPage() {
   const [formMemo, setFormMemo] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // 商品別入力
+  const [inputMode, setInputMode] = useState<InputMode>('manual');
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+
   const loadData = () => {
     if (!selectedStore) return;
     api.getDailyReports(selectedStore.id, year, month)
@@ -47,6 +61,14 @@ export default function DailyReportPage() {
   };
 
   useEffect(() => { loadData(); }, [selectedStore, year, month]);
+
+  // メニュー商品を読み込み
+  useEffect(() => {
+    if (!selectedStore) return;
+    api.getMenuItems(selectedStore.id, true)
+      .then((data: any) => setMenuItems(data.items || []))
+      .catch(() => {});
+  }, [selectedStore]);
 
   // 日付が変わったら既存のレコードをロード
   useEffect(() => {
@@ -64,20 +86,49 @@ export default function DailyReportPage() {
           setFormWeather('晴れ');
           setFormMemo('');
         }
+        // 明細がある場合はquantitiesにセット
+        const q: Record<string, number> = {};
+        if (data.items && data.items.length > 0) {
+          data.items.forEach((item: any) => {
+            q[item.menuItemId] = item.quantity;
+          });
+          setInputMode('menu');
+        }
+        setQuantities(q);
       })
       .catch(() => {});
   }, [selectedStore, formDate]);
+
+  const menuTotal = Object.entries(quantities).reduce((sum, [id, qty]) => {
+    const item = menuItems.find(m => m.id === id);
+    return sum + (item ? item.price * qty : 0);
+  }, 0);
+
+  const setQty = (itemId: string, delta: number) => {
+    setQuantities(prev => {
+      const current = prev[itemId] || 0;
+      const next = Math.max(0, current + delta);
+      return { ...prev, [itemId]: next };
+    });
+  };
 
   const handleSave = async () => {
     if (!selectedStore || saving) return;
     setSaving(true);
     try {
+      const items = inputMode === 'menu'
+        ? Object.entries(quantities)
+            .filter(([, qty]) => qty > 0)
+            .map(([menuItemId, quantity]) => ({ menuItemId, quantity }))
+        : undefined;
+
       await api.saveDailyReport(selectedStore.id, {
         date: formDate,
-        sales: Number(formSales) || 0,
+        sales: inputMode === 'menu' ? menuTotal : (Number(formSales) || 0),
         customerCount: Number(formCustomers) || 0,
         weather: formWeather,
         memo: formMemo,
+        items,
       });
       showToast('保存しました', 'success');
       loadData();
@@ -107,10 +158,12 @@ export default function DailyReportPage() {
             <label className="form-label">日付</label>
             <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} className="form-input" />
           </div>
-          <div>
-            <label className="form-label">売上（円）</label>
-            <input type="number" placeholder="0" value={formSales} onChange={e => setFormSales(e.target.value)} className="form-input" />
-          </div>
+          {inputMode === 'manual' && (
+            <div>
+              <label className="form-label">売上（円）</label>
+              <input type="number" placeholder="0" value={formSales} onChange={e => setFormSales(e.target.value)} className="form-input" />
+            </div>
+          )}
           <div>
             <label className="form-label">来客数</label>
             <input type="number" placeholder="0" value={formCustomers} onChange={e => setFormCustomers(e.target.value)} className="form-input" />
@@ -122,6 +175,62 @@ export default function DailyReportPage() {
             </select>
           </div>
         </div>
+        {/* 入力モード切替 */}
+        {menuItems.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button
+              onClick={() => setInputMode('manual')}
+              style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #d4d9df', background: inputMode === 'manual' ? '#2563eb' : 'white', color: inputMode === 'manual' ? 'white' : '#333', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'inherit' }}
+            >
+              手入力
+            </button>
+            <button
+              onClick={() => setInputMode('menu')}
+              style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #d4d9df', background: inputMode === 'menu' ? '#2563eb' : 'white', color: inputMode === 'menu' ? 'white' : '#333', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'inherit' }}
+            >
+              商品別入力
+            </button>
+          </div>
+        )}
+
+        {/* 商品別入力 */}
+        {inputMode === 'menu' && menuItems.length > 0 && (
+          <div style={{ marginTop: 10, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+            {Object.entries(
+              menuItems.reduce<Record<string, MenuItem[]>>((acc, m) => {
+                const cat = m.category || 'その他';
+                if (!acc[cat]) acc[cat] = [];
+                acc[cat].push(m);
+                return acc;
+              }, {})
+            ).map(([cat, catItems]) => (
+              <div key={cat} style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', marginBottom: 4 }}>{cat}</div>
+                {catItems.map(m => {
+                  const qty = quantities[m.id] || 0;
+                  return (
+                    <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eef2f7' }}>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{m.name}</span>
+                        <span style={{ color: '#888', fontSize: '0.8rem', marginLeft: 8 }}>¥{m.price.toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button onClick={() => setQty(m.id, -1)} disabled={qty === 0} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #d4d9df', background: 'white', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>-</button>
+                        <span style={{ width: 28, textAlign: 'center', fontWeight: 600 }}>{qty}</span>
+                        <button onClick={() => setQty(m.id, 1)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #d4d9df', background: 'white', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>+</button>
+                        {qty > 0 && <span style={{ fontSize: '0.85rem', color: '#2563eb', fontWeight: 600, marginLeft: 4, minWidth: 60, textAlign: 'right' }}>¥{(m.price * qty).toLocaleString()}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 8, fontWeight: 700, fontSize: '1.05rem' }}>
+              合計: ¥{menuTotal.toLocaleString()}
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: 8, alignItems: 'end', marginTop: 8 }}>
           <div style={{ flex: 1 }}>
             <label className="form-label">メモ</label>
