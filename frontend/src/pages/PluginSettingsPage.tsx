@@ -23,6 +23,7 @@ interface PluginInfo {
   settingsSchema: SettingField[];
   defaultRoles: string[];
   allowedRoles: string[];
+  displayOrder: number;
 }
 
 const ALL_ROLES = [
@@ -210,6 +211,23 @@ export default function PluginSettingsPage() {
               {/* 展開パネル */}
               {isExpanded && (
                 <div style={{ borderTop: '1px solid #e8edf3', padding: '16px 20px', background: '#fafbfc' }}>
+                  {/* 表示順 */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 8, color: '#555' }}>
+                      表示順
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="number"
+                        value={localConfigs[p.name]?.display_order ?? p.displayOrder}
+                        onChange={e => updateLocalConfig(p.name, 'display_order', Number(e.target.value) || 0)}
+                        style={{ ...inputStyle, width: 80 }}
+                        min={0}
+                      />
+                      <span style={{ fontSize: '0.8rem', color: '#888' }}>小さい数字ほど上に表示</span>
+                    </div>
+                  </div>
+
                   {/* アクセス権限 */}
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 8, color: '#555' }}>

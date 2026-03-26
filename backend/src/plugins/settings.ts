@@ -61,21 +61,26 @@ router.get('/:storeId', requireAuth, async (req: Request, res: Response) => {
       permMap.set(p.plugin_name, list);
     }
 
-    const plugins = allPlugins.map(p => {
+    const plugins = allPlugins.map((p, index) => {
       const s = storedMap.get(p.name);
       const defaults: Record<string, any> = {};
       for (const field of p.settingsSchema) {
         if (field.default !== undefined) defaults[field.key] = field.default;
       }
+      const config = { ...defaults, ...(s?.config || {}) };
       // 権限: DB に保存済みがあればそれ、なければ defaultRoles
       const allowedRoles = normalizeAllowedRoles(p.name, permMap.get(p.name) || p.defaultRoles);
       return {
         ...p,
         enabled: p.core ? true : (s?.enabled ?? false),
-        config: { ...defaults, ...(s?.config || {}) },
+        config,
         allowedRoles,
+        displayOrder: config.display_order ?? index,
       };
     });
+
+    // displayOrder でソート
+    plugins.sort((a, b) => a.displayOrder - b.displayOrder);
 
     res.json({ plugins });
   } catch (e: any) {
