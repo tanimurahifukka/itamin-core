@@ -24,7 +24,13 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
   useEffect(() => {
     checkApi.getChecklist(storeId, timing)
       .then(data => {
-        setItems(data.checklist.items);
+        const checkItems = data.checklist?.items || [];
+        if (checkItems.length === 0) {
+          // チェック項目がない場合はゲートをスキップ
+          onComplete();
+          return;
+        }
+        setItems(checkItems);
         setLoading(false);
       })
       .catch(e => {
