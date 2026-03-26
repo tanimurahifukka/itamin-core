@@ -37,6 +37,17 @@ router.get('/:storeId/reports', requireAuth, async (req: Request, res: Response)
       return;
     }
 
+    // 報告者名を取得
+    const userIds = [...new Set((data || []).map((r: any) => r.created_by).filter(Boolean))];
+    const nameMap = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, name')
+        .in('id', userIds);
+      (profiles || []).forEach((p: any) => nameMap.set(p.id, p.name));
+    }
+
     const reports = (data || []).map((r: any) => ({
       id: r.id,
       storeId: r.store_id,
@@ -46,6 +57,7 @@ router.get('/:storeId/reports', requireAuth, async (req: Request, res: Response)
       weather: r.weather,
       memo: r.memo,
       createdBy: r.created_by,
+      createdByName: nameMap.get(r.created_by) || '',
       createdAt: r.created_at,
     }));
 

@@ -53,6 +53,10 @@ export default function DailyReportPage() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
 
+  // 在庫
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [inventoryUpdates, setInventoryUpdates] = useState<Record<string, string>>({});
+
   const loadData = () => {
     if (!selectedStore) return;
     api.getDailyReports(selectedStore.id, year, month)
@@ -65,11 +69,14 @@ export default function DailyReportPage() {
 
   useEffect(() => { loadData(); }, [selectedStore, year, month]);
 
-  // メニュー商品を読み込み
+  // メニュー商品 + 在庫を読み込み
   useEffect(() => {
     if (!selectedStore) return;
     api.getMenuItems(selectedStore.id, true)
       .then((data: any) => setMenuItems(data.items || []))
+      .catch(() => {});
+    api.getInventory(selectedStore.id)
+      .then((data: any) => setInventoryItems(data.items || []))
       .catch(() => {});
   }, [selectedStore]);
 
@@ -133,6 +140,20 @@ export default function DailyReportPage() {
         memo: formMemo,
         items,
       });
+      // 在庫更新（変更があるもののみ）
+      const invUpdates = Object.entries(inventoryUpdates).filter(([, val]) => val !== '');
+      for (const [itemId, val] of invUpdates) {
+        try {
+          await api.updateInventoryItem(selectedStore.id, itemId, { quantity: Number(val) || 0 });
+        } catch {}
+      }
+      if (invUpdates.length > 0) {
+        api.getInventory(selectedStore.id)
+          .then((data: any) => setInventoryItems(data.items || []))
+          .catch(() => {});
+        setInventoryUpdates({});
+      }
+
       showToast('保存しました', 'success');
       loadData();
     } catch (e: any) {
@@ -234,11 +255,37 @@ export default function DailyReportPage() {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'end', marginTop: 8 }}>
-          <div style={{ flex: 1 }}>
-            <label className="form-label">メモ</label>
-            <input type="text" placeholder="一言メモ" value={formMemo} onChange={e => setFormMemo(e.target.value)} className="form-input" />
+        <div style={{ marginTop: 8 }}>
+          <label className="form-label">メモ</label>
+          <input type="text" placeholder="一言メモ" value={formMemo} onChange={e => setFormMemo(e.target.value)} className="form-input" />
+        </div>
+
+        {/* 在庫チェック */}
+        {inventoryItems.length > 0 && (
+          <div style={{ marginTop: 10, padding: 12, background: '#fefce8', borderRadius: 8, border: '1px solid #fde68a' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#92400e', marginBottom: 8 }}>在庫残量チェック</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {inventoryItems.map((inv: any) => (
+                <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: '0.85rem', flex: 1 }}>
+                    {inv.name}
+                    {inv.unit && <span style={{ color: '#888', marginLeft: 4 }}>({inv.unit})</span>}
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: '#888', minWidth: 40, textAlign: 'right' }}>現:{inv.quantity ?? 0}</span>
+                  <input
+                    type="number"
+                    placeholder={String(inv.quantity ?? 0)}
+                    value={inventoryUpdates[inv.id] ?? ''}
+                    onChange={e => setInventoryUpdates(prev => ({ ...prev, [inv.id]: e.target.value }))}
+                    style={{ width: 60, padding: '4px 8px', border: '1px solid #d4d9df', borderRadius: 4, fontSize: '0.85rem', textAlign: 'right' }}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
           <button onClick={handleSave} disabled={saving} className="form-save-btn">
             {saving ? '保存中...' : '保存'}
           </button>
@@ -317,6 +364,7 @@ export default function DailyReportPage() {
                     <div className="daily-report-card-body">
                       <span className="daily-report-stat">¥{Number(r.sales).toLocaleString()}</span>
                       <span className="daily-report-stat">{r.customerCount}人</span>
+                      {(r as any).createdByName && <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{(r as any).createdByName}</span>}
                     </div>
                     {r.memo && <div className="daily-report-memo">{r.memo}</div>}
                   </div>
