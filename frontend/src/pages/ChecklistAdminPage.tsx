@@ -722,43 +722,30 @@ export default function ChecklistAdminPage() {
                   <div
                     key={template.id}
                     style={{
-                      display: 'grid',
-                      gridTemplateColumns: '120px 100px 1fr 100px auto',
-                      gap: 12,
-                      alignItems: 'center',
-                      padding: '14px 16px',
+                      padding: '12px 14px',
                       background: '#fff',
                       borderRadius: 10,
                       border: '1px solid #e5e7eb',
                     }}
                   >
-                    <span style={{ fontWeight: 600, color: '#475569' }}>
-                      {TEMPLATE_LAYER_LABEL[template.layer]}
-                    </span>
-                    <span style={{ color: '#475569' }}>{TIMING_LABEL[template.timing]}</span>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{template.name}</div>
-                      <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: 2 }}>
-                        {template.items.slice(0, 3).map((item) => item.label).join(' / ')}
-                        {template.items.length > 3 ? ' ...' : ''}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: 4, background: template.layer === 'base' ? '#dbeafe' : '#fef3c7', color: template.layer === 'base' ? '#1e40af' : '#92400e', fontWeight: 600 }}>
+                          {TEMPLATE_LAYER_LABEL[template.layer]}
+                        </span>
+                        <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: 4, background: '#f1f5f9', color: '#475569', fontWeight: 500 }}>
+                          {TIMING_LABEL[template.timing]}
+                        </span>
+                        <span style={{ fontSize: '0.8rem', color: '#475569' }}>{template.items.length}項目</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button type="button" onClick={() => handleEditTemplate(template)} style={miniActionButton(false)}>編集</button>
+                        <button type="button" onClick={() => handleDeleteTemplate(template.id)} style={{ ...miniActionButton(false), color: '#dc2626', borderColor: '#fecaca' }}>削除</button>
                       </div>
                     </div>
-                    <span style={{ color: '#475569' }}>{template.items.length}項目</span>
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                      <button type="button" onClick={() => handleEditTemplate(template)} style={miniActionButton(false)}>
-                        編集
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTemplate(template.id)}
-                        style={{
-                          ...miniActionButton(false),
-                          color: '#dc2626',
-                          borderColor: '#fecaca',
-                        }}
-                      >
-                        削除
-                      </button>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>{template.name}</div>
+                    <div style={{ fontSize: '0.82rem', color: '#6b7280', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+                      {template.items.map((item) => item.label).join(' / ')}
                     </div>
                   </div>
                 ))}
@@ -798,7 +785,7 @@ export default function ChecklistAdminPage() {
                 シフトテンプレートが未登録です。先にシフト管理画面でシフト（早番・遅番など）を作成してください。
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(shiftOptions.length, 3)}, 1fr)`, gap: 14, marginBottom: 20 }}>
+              <div className="checklist-shift-grid">
                 {shiftOptions.map((shift) => (
                   <div
                     key={shift.value}
@@ -895,12 +882,7 @@ export default function ChecklistAdminPage() {
               {previewLoading ? (
                 <div className="loading">読み込み中...</div>
               ) : (
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '280px 1fr',
-                  gap: 16,
-                  alignItems: 'start',
-                }}>
+                <div className="checklist-preview-grid">
                   <div style={{
                     background: '#fff',
                     border: '1px solid #e5e7eb',
