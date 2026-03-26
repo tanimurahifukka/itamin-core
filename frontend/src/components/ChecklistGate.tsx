@@ -5,6 +5,12 @@
 import { useEffect, useState } from 'react';
 import { checkApi, CheckItem, CheckResult } from '../api/checkApi';
 
+interface TemplateItem {
+  label: string;
+  category?: string;
+  template_name?: string;
+}
+
 interface Props {
   storeId: string;
   staffId: string;
@@ -22,14 +28,23 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
   const [error, setError] = useState('');
 
   useEffect(() => {
-    checkApi.getChecklist(storeId, timing)
+    // 新テンプレートシステムから取得（shift=_default でbase のみ取得）
+    checkApi.getTemplatesForShift(storeId, '_default', timing)
       .then(data => {
-        const checkItems = data.checklist?.items || [];
-        if (checkItems.length === 0) {
+        const templateItems: TemplateItem[] = data.items || [];
+        if (templateItems.length === 0) {
           // チェック項目がない場合はゲートをスキップ
           onComplete();
           return;
         }
+        // テンプレートアイテムをCheckItem形式に変換
+        const checkItems: CheckItem[] = templateItems.map((item: TemplateItem, i: number) => ({
+          id: `tpl-${i}`,
+          label: item.label,
+          order: i,
+          required: true,
+          type: 'checkbox' as const,
+        }));
         setItems(checkItems);
         setLoading(false);
       })
