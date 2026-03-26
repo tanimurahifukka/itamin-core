@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
+import { supabase } from '../api/supabase';
 import { showToast } from '../components/Toast';
 
 interface Notice {
@@ -10,6 +11,7 @@ interface Notice {
   title: string;
   body: string;
   pinned: boolean;
+  imageUrls: string[];
   createdAt: string;
   isRead: boolean;
   readAt: string | null;
@@ -34,7 +36,9 @@ export default function NoticePage() {
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
   const [posting, setPosting] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const loadData = () => {
     if (!selectedStore) return;
@@ -49,9 +53,33 @@ export default function NoticePage() {
     if (!selectedStore || !newTitle.trim() || posting) return;
     setPosting(true);
     try {
-      await api.postNotice(selectedStore.id, { title: newTitle.trim(), body: newBody });
+      const result = await api.postNotice(selectedStore.id, { title: newTitle.trim(), body: newBody });
+      const noticeId = result.notice?.id;
+
+      // 画像アップロード
+      if (noticeId && selectedFiles.length > 0) {
+        const imageUrls: string[] = [];
+        for (const file of selectedFiles) {
+          const ext = file.name.split('.').pop() || 'jpg';
+          const path = `${selectedStore.id}/${noticeId}/${crypto.randomUUID()}.${ext}`;
+          const { error: uploadErr } = await supabase.storage
+            .from('notice-images')
+            .upload(path, file);
+          if (!uploadErr) {
+            const { data: urlData } = supabase.storage
+              .from('notice-images')
+              .getPublicUrl(path);
+            imageUrls.push(urlData.publicUrl);
+          }
+        }
+        if (imageUrls.length > 0) {
+          await api.updateNoticeImages(selectedStore.id, noticeId, imageUrls);
+        }
+      }
+
       setNewTitle('');
       setNewBody('');
+      setSelectedFiles([]);
       showToast('投稿しました', 'success');
       loadData();
     } catch (e: any) {
@@ -136,6 +164,37 @@ export default function NoticePage() {
             rows={3}
             style={{ padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem', resize: 'vertical' }}
           />
+          {/* 画像選択 */}
+          <div>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', border: '1px solid #d4d9df', borderRadius: 6, cursor: 'pointer', fontSize: '0.85rem', color: '#555' }}>
+              📷 画像を添付
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={e => {
+                  const files = Array.from(e.target.files || []).slice(0, 5);
+                  setSelectedFiles(files);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+            <span style={{ fontSize: '0.8rem', color: '#888', marginLeft: 8 }}>最大5枚</span>
+          </div>
+          {selectedFiles.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {selectedFiles.map((f, i) => (
+                <div key={i} style={{ position: 'relative', width: 64, height: 64, borderRadius: 6, overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                  <img src={URL.createObjectURL(f)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <button
+                    onClick={() => setSelectedFiles(prev => prev.filter((_, j) => j !== i))}
+                    style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', cursor: 'pointer', fontSize: '0.7rem', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
               onClick={handlePost}
@@ -181,6 +240,7 @@ export default function NoticePage() {
                     )}
                     {n.pinned && <span style={{ fontSize: '0.8rem' }}>📌</span>}
                     <span style={{ fontWeight: 600 }}>{n.title}</span>
+                    {n.imageUrls && n.imageUrls.length > 0 && <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>📷{n.imageUrls.length}</span>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', color: '#888' }}>
                     <span>{n.authorName}</span>
@@ -192,6 +252,19 @@ export default function NoticePage() {
                     <p style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem', color: '#444', marginBottom: 8, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                       {n.body ? linkifyText(n.body) : '（本文なし）'}
                     </p>
+                    {n.imageUrls && n.imageUrls.length > 0 && (
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                        {n.imageUrls.map((url: string, i: number) => (
+                          <img
+                            key={i}
+                            src={url}
+                            alt=""
+                            onClick={(e) => { e.stopPropagation(); setLightboxUrl(url); }}
+                            style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #e5e7eb', cursor: 'pointer' }}
+                          />
+                        ))}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleTogglePin(n); }}
@@ -213,6 +286,25 @@ export default function NoticePage() {
           </div>
         )}
       </div>
+
+      {/* ライトボックス */}
+      {lightboxUrl && (
+        <div
+          onClick={() => setLightboxUrl(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: 20, cursor: 'pointer',
+          }}
+        >
+          <img
+            src={lightboxUrl}
+            alt=""
+            style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, objectFit: 'contain' }}
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

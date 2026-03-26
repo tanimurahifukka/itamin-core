@@ -176,6 +176,8 @@ export const api = {
     request<any>(`/notice/${storeId}/posts/${noticeId}/read`, { method: 'POST' }),
   toggleNoticePin: (storeId: string, noticeId: string, pinned: boolean) =>
     request<any>(`/notice/${storeId}/posts/${noticeId}/pin`, { method: 'PUT', body: JSON.stringify({ pinned }) }),
+  updateNoticeImages: (storeId: string, noticeId: string, imageUrls: string[]) =>
+    request<any>(`/notice/${storeId}/posts/${noticeId}/images`, { method: 'PATCH', body: JSON.stringify({ imageUrls }) }),
   deleteNotice: (storeId: string, noticeId: string) =>
     request<any>(`/notice/${storeId}/posts/${noticeId}`, { method: 'DELETE' }),
 

@@ -50,6 +50,7 @@ router.get('/:storeId/posts', requireAuth, async (req: Request, res: Response) =
       title: n.title,
       body: n.body,
       pinned: n.pinned,
+      imageUrls: n.image_urls || [],
       createdAt: n.created_at,
       isRead: readMap.has(n.id),
       readAt: readMap.get(n.id) || null,
@@ -190,6 +191,45 @@ router.put('/:storeId/posts/:noticeId/pin', requireAuth, async (req: Request, re
     res.json({ ok: true });
   } catch (e: any) {
     console.error('[notice:pin] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// 画像URL更新
+// ============================================================
+router.patch('/:storeId/posts/:noticeId/images', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const noticeId = String(req.params.noticeId);
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    const imageUrls = req.body?.imageUrls;
+    if (!Array.isArray(imageUrls)) {
+      res.status(400).json({ error: 'imageUrls は配列で指定してください' });
+      return;
+    }
+
+    if (imageUrls.length > 5) {
+      res.status(400).json({ error: '画像は最大5枚までです' });
+      return;
+    }
+
+    const { error } = await supabaseAdmin
+      .from('notices')
+      .update({ image_urls: imageUrls })
+      .eq('id', noticeId)
+      .eq('store_id', storeId);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error('[notice:images] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
