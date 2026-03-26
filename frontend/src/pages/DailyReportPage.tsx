@@ -44,6 +44,9 @@ export default function DailyReportPage() {
   const [formWeather, setFormWeather] = useState('晴れ');
   const [formMemo, setFormMemo] = useState('');
   const [saving, setSaving] = useState(false);
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [detailItems, setDetailItems] = useState<{ menuItemName: string; quantity: number; unitPrice: number; subtotal: number }[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // 商品別入力
   const [inputMode, setInputMode] = useState<InputMode>('manual');
@@ -280,25 +283,71 @@ export default function DailyReportPage() {
           </div>
         ) : (
           <div className="daily-report-list">
-            {reports.map(r => (
-              <div
-                key={r.id}
-                className="daily-report-card"
-                onClick={() => setFormDate(r.date)}
-              >
-                <div className="daily-report-card-header">
-                  <span className="daily-report-date">
-                    {new Date(r.date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' })}
-                  </span>
-                  <span className="daily-report-weather">{r.weather}</span>
+            {reports.map(r => {
+              const isExpanded = expandedDate === r.date;
+              return (
+                <div key={r.id} className="daily-report-card">
+                  <div
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      if (isExpanded) {
+                        setExpandedDate(null);
+                        setDetailItems([]);
+                      } else {
+                        setExpandedDate(r.date);
+                        setDetailLoading(true);
+                        api.getDailyReport(selectedStore!.id, r.date)
+                          .then((data: any) => {
+                            setDetailItems(data.items || []);
+                          })
+                          .catch(() => setDetailItems([]))
+                          .finally(() => setDetailLoading(false));
+                      }
+                    }}
+                  >
+                    <div className="daily-report-card-header">
+                      <span className="daily-report-date">
+                        {new Date(r.date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' })}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className="daily-report-weather">{r.weather}</span>
+                        <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{isExpanded ? '▲' : '▼'}</span>
+                      </div>
+                    </div>
+                    <div className="daily-report-card-body">
+                      <span className="daily-report-stat">¥{Number(r.sales).toLocaleString()}</span>
+                      <span className="daily-report-stat">{r.customerCount}人</span>
+                    </div>
+                    {r.memo && <div className="daily-report-memo">{r.memo}</div>}
+                  </div>
+
+                  {isExpanded && (
+                    <div style={{ borderTop: '1px solid #e5e7eb', marginTop: 8, paddingTop: 8 }}>
+                      {detailLoading ? (
+                        <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>読み込み中...</div>
+                      ) : detailItems.length === 0 ? (
+                        <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>品目別データなし（手入力）</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {detailItems.map((item: any, i: number) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                              <span>{item.menuItemName} × {item.quantity}</span>
+                              <span style={{ fontWeight: 500 }}>¥{Number(item.subtotal).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setFormDate(r.date); }}
+                        style={{ marginTop: 8, padding: '6px 14px', fontSize: '0.8rem', border: '1px solid #d4d9df', borderRadius: 6, background: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
+                      >
+                        編集
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <div className="daily-report-card-body">
-                  <span className="daily-report-stat">¥{Number(r.sales).toLocaleString()}</span>
-                  <span className="daily-report-stat">{r.customerCount}人</span>
-                </div>
-                {r.memo && <div className="daily-report-memo">{r.memo}</div>}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
