@@ -1,7 +1,7 @@
 {
   "name": "itamin-core",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "description": "ITAMIN - 飲食店向けプラグイン型オールインワン業務・人材育成SaaS",
   "workspaces": [
     "backend",
