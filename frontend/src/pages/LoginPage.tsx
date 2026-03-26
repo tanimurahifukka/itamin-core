@@ -1,13 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginPage() {
   const { signIn, signUp, completeInvitedSignUp } = useAuth();
   const searchParams = new URLSearchParams(window.location.search);
   const isInvite = searchParams.get('invite') === '1';
+  const joinStoreId = searchParams.get('join') || '';
   const invitedEmail = searchParams.get('email') || '';
   const invitedName = searchParams.get('name') || '';
   const invitedStoreName = searchParams.get('storeName') || '';
+
+  // リンク共有登録フロー
+  if (joinStoreId) {
+    return <JoinStorePage storeId={joinStoreId} />;
+  }
 
   // 招待フロー → 専用画面
   if (isInvite) {
@@ -222,6 +228,147 @@ function InviteRegisterPage({ email, defaultName, storeName, onComplete }: {
             {loading ? '登録中...' : '登録を完了する'}
           </button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// リンク共有スタッフ登録画面
+// ============================================================
+function JoinStorePage({ storeId }: { storeId: string }) {
+  const [storeName, setStoreName] = useState('');
+  const [storeLoading, setStoreLoading] = useState(true);
+  const [storeError, setStoreError] = useState('');
+
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    fetch(`/api/stores/${storeId}/info`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.store) {
+          setStoreName(data.store.name);
+        } else {
+          setStoreError('事業所が見つかりません');
+        }
+      })
+      .catch(() => setStoreError('読み込みに失敗しました'))
+      .finally(() => setStoreLoading(false));
+  }, [storeId]);
+
+  const passwordMatch = password === confirmPassword && password.length >= 6;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordMatch) { setError('パスワードが一致しないか、6文字未満です'); return; }
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/stores/${storeId}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || '登録に失敗しました');
+      } else {
+        setSuccess(data.message || '登録しました。ログインしてください。');
+      }
+    } catch {
+      setError('通信エラーが発生しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (storeLoading) {
+    return <div className="login-page"><div className="loading">読み込み中...</div></div>;
+  }
+
+  if (storeError) {
+    return (
+      <div className="login-page">
+        <h1>ITA<span>MIN</span></h1>
+        <div className="error-msg" style={{ marginTop: 20 }}>{storeError}</div>
+        <button className="toggle-auth" onClick={() => { window.location.href = '/'; }}>
+          ログインページへ
+        </button>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="login-page">
+        <h1>ITA<span>MIN</span></h1>
+        <div className="invite-card">
+          <div className="invite-card-icon">✅</div>
+          <h2 className="invite-card-title">登録完了</h2>
+          <p className="invite-card-desc">{success}</p>
+          <button
+            className="login-btn"
+            style={{ marginTop: 16 }}
+            onClick={() => { window.location.href = '/'; }}
+          >
+            ログインする
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="login-page invite-page">
+      <h1>ITA<span>MIN</span></h1>
+
+      <div className="invite-card">
+        <div className="invite-card-icon">👋</div>
+        <h2 className="invite-card-title">スタッフ登録</h2>
+        <p className="invite-card-desc">
+          <strong>{storeName}</strong> のスタッフとして登録します。
+        </p>
+
+        <div className="invite-store-badge">
+          <span className="invite-store-icon">🏠</span>
+          {storeName}
+        </div>
+
+        <form onSubmit={handleSubmit} className="invite-form">
+          <div className="invite-field">
+            <label className="invite-label">お名前</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} required className="invite-input" placeholder="谷村 太郎" />
+          </div>
+          <div className="invite-field">
+            <label className="invite-label">メールアドレス</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="invite-input" placeholder="you@example.com" />
+          </div>
+          <div className="invite-field">
+            <label className="invite-label">パスワード（6文字以上）</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={6} required className="invite-input" />
+          </div>
+          <div className="invite-field">
+            <label className="invite-label">パスワード（確認）</label>
+            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} minLength={6} required className="invite-input" />
+          </div>
+
+          {error && <div className="error-msg">{error}</div>}
+
+          <button className={`invite-submit ${passwordMatch ? 'active' : ''}`} type="submit" disabled={loading || !passwordMatch}>
+            {loading ? '登録中...' : '登録する'}
+          </button>
+        </form>
+
+        <button className="toggle-auth" onClick={() => { window.location.href = '/'; }}>
+          既にアカウントをお持ちの方はこちら
+        </button>
       </div>
     </div>
   );

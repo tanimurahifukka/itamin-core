@@ -26,6 +26,120 @@ async function getInvitationRedirectUrl(params: {
   return redirectUrl.toString();
 }
 
+// ============================================================
+// 公開：リンク経由のスタッフ登録（認証不要）
+// ============================================================
+router.post('/:storeId/join', async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    if (!name) { res.status(400).json({ error: '名前は必須です' }); return; }
+    if (!email) { res.status(400).json({ error: 'メールアドレスは必須です' }); return; }
+    if (password.length < 6) { res.status(400).json({ error: 'パスワードは6文字以上で入力してください' }); return; }
+
+    // 店舗の存在確認
+    const { data: store, error: storeErr } = await supabaseAdmin
+      .from('stores')
+      .select('id, name')
+      .eq('id', storeId)
+      .maybeSingle();
+
+    if (storeErr || !store) {
+      res.status(404).json({ error: '事業所が見つかりません' });
+      return;
+    }
+
+    // 既存ユーザーチェック
+    const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+    let authUser = users.find(u => u.email === email);
+
+    if (authUser) {
+      // 既にアカウントがある場合、この店舗に所属しているかチェック
+      const { data: existing } = await supabaseAdmin
+        .from('store_staff')
+        .select('id')
+        .eq('store_id', storeId)
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+
+      if (existing) {
+        res.status(409).json({ error: '既にこの事業所に登録済みです。ログインしてください。' });
+        return;
+      }
+    } else {
+      // 新規ユーザー作成
+      const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: name },
+      });
+
+      if (createErr) {
+        res.status(500).json({ error: createErr.message });
+        return;
+      }
+      authUser = newUser.user;
+
+      // profiles に追加
+      await supabaseAdmin
+        .from('profiles')
+        .upsert({
+          id: authUser.id,
+          name,
+          email,
+        }, { onConflict: 'id' });
+    }
+
+    // store_staff に追加（デフォルト: part_time）
+    const { error: staffErr } = await supabaseAdmin
+      .from('store_staff')
+      .insert({
+        store_id: storeId,
+        user_id: authUser!.id,
+        role: 'part_time',
+      });
+
+    if (staffErr) {
+      res.status(500).json({ error: staffErr.message });
+      return;
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: `${store.name} にスタッフ登録しました。ログインしてください。`,
+      storeName: store.name,
+    });
+  } catch (e: any) {
+    console.error('[stores POST /:storeId/join] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 公開：店舗情報取得（名前のみ、認証不要）
+router.get('/:storeId/info', async (_req: Request, res: Response) => {
+  try {
+    const storeId = String(_req.params.storeId);
+    const { data, error } = await supabaseAdmin
+      .from('stores')
+      .select('id, name')
+      .eq('id', storeId)
+      .maybeSingle();
+
+    if (error || !data) {
+      res.status(404).json({ error: '事業所が見つかりません' });
+      return;
+    }
+
+    res.json({ store: { id: data.id, name: data.name } });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
 // 店舗作成（サーバーサイドでRLSバイパス — 認証済みユーザーのみ）
 router.post('/', requireAuth, async (req: Request, res: Response) => {
   try {

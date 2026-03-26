@@ -239,6 +239,28 @@ export default function StaffPage() {
         </p>
       </div>
 
+      {/* 登録リンク */}
+      <div className="store-id-banner" style={{ marginBottom: 12 }}>
+        <div className="store-id-label">スタッフ登録リンク</div>
+        <div className="store-id-row">
+          <code className="store-id-value" style={{ fontSize: '0.75rem', wordBreak: 'break-all' }}>
+            {`${window.location.origin}?join=${selectedStore?.id}`}
+          </code>
+          <button
+            className="store-id-copy"
+            onClick={() => {
+              navigator.clipboard.writeText(`${window.location.origin}?join=${selectedStore?.id}`);
+              showToast('登録リンクをコピーしました', 'info');
+            }}
+          >
+            コピー
+          </button>
+        </div>
+        <p className="store-id-hint">
+          このリンクを共有すると、スタッフが自分で名前・メール・パスワードを入力して登録できます。
+        </p>
+      </div>
+
       <div className="staff-section">
         <h3 style={{ marginBottom: 16 }}>スタッフ一覧</h3>
 
