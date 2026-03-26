@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { api } from './api/client';
 import LoginPage from './pages/LoginPage';
@@ -193,6 +193,30 @@ export default function App() {
 
   const ActiveComponent = PLUGIN_COMPONENTS[activeTab];
 
+  // モバイル判定
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // モバイルカードメニュー: activeTabが空ならメニュー表示
+  const handleCardClick = useCallback((tabName: string) => {
+    setActiveTab(tabName);
+  }, []);
+
+  const handleBackToMenu = useCallback(() => {
+    setActiveTab('');
+  }, []);
+
+  // モバイルでactiveTabが空 → カードメニュー表示
+  const showMobileMenu = isMobile && !activeTab && !tabsLoading;
+
+  // 主要タブ（打刻・チェックリスト）を上段に大きく表示
+  const primaryTabs = tabs.filter(t => ['punch', 'check'].includes(t.name));
+  const secondaryTabs = tabs.filter(t => !['punch', 'check'].includes(t.name));
+
   return (
     <div className="app">
       <header className="header">
@@ -209,32 +233,77 @@ export default function App() {
         </div>
       </header>
 
-      <div className="app-body">
-        <nav className="sidebar">
-          <ul className="sidebar-nav">
-            {tabs.map(tab => (
-              <li key={tab.name}>
-                <button
-                  className={`sidebar-nav-item ${activeTab === tab.name ? 'active' : ''}`}
-                  onClick={() => setActiveTab(tab.name)}
-                >
-                  {tab.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
+      {showMobileMenu ? (
+        /* モバイルカードメニュー */
+        <div className="mobile-card-menu">
+          <div className="mobile-greeting">
+            {new Date().getHours() < 12 ? 'おはようございます' : new Date().getHours() < 18 ? 'お疲れさまです' : 'おつかれさまです'}、{displayName.split(/[\s@]/)[0]} さん
+          </div>
 
-        <main className="main-content">
-          {tabsLoading ? (
-            <div className="loading" style={{ minHeight: '40vh' }}>読み込み中...</div>
-          ) : ActiveComponent ? (
-            <ActiveComponent />
-          ) : (
-            <div>利用可能な機能がありません。</div>
+          {primaryTabs.length > 0 && (
+            <div className="mobile-card-grid primary">
+              {primaryTabs.map(tab => (
+                <button
+                  key={tab.name}
+                  className="mobile-card primary"
+                  onClick={() => handleCardClick(tab.name)}
+                >
+                  <span className="mobile-card-icon">{tab.icon}</span>
+                  <span className="mobile-card-label">{tab.label}</span>
+                </button>
+              ))}
+            </div>
           )}
-        </main>
-      </div>
+
+          <div className="mobile-card-grid secondary">
+            {secondaryTabs.map(tab => (
+              <button
+                key={tab.name}
+                className="mobile-card secondary"
+                onClick={() => handleCardClick(tab.name)}
+              >
+                <span className="mobile-card-icon">{tab.icon}</span>
+                <span className="mobile-card-label">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        /* 通常レイアウト */
+        <div className="app-body">
+          {!isMobile && (
+            <nav className="sidebar">
+              <ul className="sidebar-nav">
+                {tabs.map(tab => (
+                  <li key={tab.name}>
+                    <button
+                      className={`sidebar-nav-item ${activeTab === tab.name ? 'active' : ''}`}
+                      onClick={() => setActiveTab(tab.name)}
+                    >
+                      {tab.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
+
+          <main className="main-content">
+            {isMobile && (
+              <button className="mobile-back-btn" onClick={handleBackToMenu}>
+                ← メニュー
+              </button>
+            )}
+            {tabsLoading ? (
+              <div className="loading" style={{ minHeight: '40vh' }}>読み込み中...</div>
+            ) : ActiveComponent ? (
+              <ActiveComponent />
+            ) : (
+              <div>利用可能な機能がありません。</div>
+            )}
+          </main>
+        </div>
+      )}
     </div>
   );
 }

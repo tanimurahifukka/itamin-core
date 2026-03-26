@@ -2198,6 +2198,113 @@ body {
   font-weight: 600;
 }
 
+/* ===== Mobile Card Menu ===== */
+.mobile-card-menu {
+  padding: 20px 16px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.mobile-greeting {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 20px;
+  padding: 0 4px;
+}
+
+.mobile-card-grid.primary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.mobile-card-grid.secondary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.mobile-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.mobile-card:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.mobile-card:active {
+  transform: scale(0.98);
+}
+
+.mobile-card.primary {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 16px;
+  gap: 8px;
+  background: #f0f7ff;
+  border-color: #bfdbfe;
+}
+
+.mobile-card.primary:hover {
+  background: #e0efff;
+  border-color: #93c5fd;
+}
+
+.mobile-card-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.mobile-card.primary .mobile-card-icon {
+  font-size: 2rem;
+}
+
+.mobile-card-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.mobile-card.primary .mobile-card-label {
+  font-size: 1.05rem;
+}
+
+.mobile-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.mobile-back-btn:hover {
+  background: #e2e8f0;
+}
+
 /* ===== Mobile Responsive ===== */
 @media (max-width: 768px) {
   .app-body {
