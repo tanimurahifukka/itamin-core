@@ -4,6 +4,16 @@ import { api } from '../api/client';
 import ChecklistGate from '../components/ChecklistGate';
 import { showToast } from '../components/Toast';
 
+const WEATHER_OPTIONS = ['晴れ', '曇り', '雨', '雪'];
+const MANAGED_ROLES = ['manager', 'leader'];
+
+interface MenuItem {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+}
+
 export default function PunchClockPage() {
   const { selectedStore } = useAuth();
   const [time, setTime] = useState(new Date());
@@ -22,6 +32,21 @@ export default function PunchClockPage() {
   const [breakMinutes, setBreakMinutes] = useState(0);
   const [punchSuccess, setPunchSuccess] = useState<'in' | 'out' | null>(null);
 
+  // 退勤時レポートフォーム（マネージャー/リーダー用）
+  const [showClockOutReport, setShowClockOutReport] = useState(false);
+  const [reportSales, setReportSales] = useState('');
+  const [reportCustomers, setReportCustomers] = useState('');
+  const [reportWeather, setReportWeather] = useState('晴れ');
+  const [reportMemo, setReportMemo] = useState('');
+  const [reportInputMode, setReportInputMode] = useState<'manual' | 'menu'>('manual');
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuQuantities, setMenuQuantities] = useState<Record<string, number>>({});
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [inventoryUpdates, setInventoryUpdates] = useState<Record<string, string>>({});
+  const [submittingReport, setSubmittingReport] = useState(false);
+
+  const isManagerRole = selectedStore && MANAGED_ROLES.includes(selectedStore.role);
+
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -37,6 +62,17 @@ export default function PunchClockPage() {
       }
     }).catch(() => {});
   }, [selectedStore]);
+
+  // マネージャー/リーダーの場合、メニュー・在庫データを事前読込
+  useEffect(() => {
+    if (!selectedStore || !isManagerRole) return;
+    api.getMenuItems(selectedStore.id, true)
+      .then((data: any) => setMenuItems(data.items || []))
+      .catch(() => {});
+    api.getInventory(selectedStore.id)
+      .then((data: any) => setInventoryItems(data.items || []))
+      .catch(() => {});
+  }, [selectedStore, isManagerRole]);
 
   // 打刻ボタン押下 → チェックリスト表示
   const handlePunchRequest = () => {
@@ -59,9 +95,114 @@ export default function PunchClockPage() {
     setShowChecklist(true);
   };
 
-  // チェックリスト完了 → 実際の打刻実行
+  // チェックリスト完了 → マネージャー/リーダーはレポートフォーム表示、それ以外は即退勤
   const handleChecklistComplete = async () => {
     setShowChecklist(false);
+    if (!selectedStore) return;
+
+    if (isClockedIn && isManagerRole) {
+      // 今日の既存日報を読み込み
+      const today = new Date().toISOString().split('T')[0];
+      try {
+        const data = await api.getDailyReport(selectedStore.id, today);
+        if (data.report) {
+          setReportSales(String(data.report.sales || ''));
+          setReportCustomers(String(data.report.customerCount || ''));
+          setReportWeather(data.report.weather || '晴れ');
+          setReportMemo(data.report.memo || '');
+        }
+        if (data.items && data.items.length > 0) {
+          const q: Record<string, number> = {};
+          data.items.forEach((item: any) => { q[item.menuItemId] = item.quantity; });
+          setMenuQuantities(q);
+          setReportInputMode('menu');
+        }
+      } catch {}
+      // 在庫データを再取得
+      api.getInventory(selectedStore.id)
+        .then((d: any) => setInventoryItems(d.items || []))
+        .catch(() => {});
+      setShowClockOutReport(true);
+      return;
+    }
+
+    // 出勤 or 非管理者退勤は即実行
+    await executePunch();
+  };
+
+  // 退勤レポート送信 → 日報保存 + 在庫更新 + 退勤
+  const handleReportSubmit = async () => {
+    if (!selectedStore || submittingReport) return;
+    setSubmittingReport(true);
+    setError('');
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const menuTotal = Object.entries(menuQuantities).reduce((sum, [id, qty]) => {
+        const item = menuItems.find(m => m.id === id);
+        return sum + (item ? item.price * qty : 0);
+      }, 0);
+
+      const items = reportInputMode === 'menu'
+        ? Object.entries(menuQuantities)
+            .filter(([, qty]) => qty > 0)
+            .map(([menuItemId, quantity]) => ({ menuItemId, quantity }))
+        : undefined;
+
+      // 日報保存
+      await api.saveDailyReport(selectedStore.id, {
+        date: today,
+        sales: reportInputMode === 'menu' ? menuTotal : (Number(reportSales) || 0),
+        customerCount: Number(reportCustomers) || 0,
+        weather: reportWeather,
+        memo: reportMemo,
+        items,
+      });
+
+      // 在庫更新
+      const invUpdates = Object.entries(inventoryUpdates).filter(([, val]) => val !== '');
+      for (const [itemId, val] of invUpdates) {
+        try {
+          await api.updateInventoryItem(selectedStore.id, itemId, { quantity: Number(val) || 0 });
+        } catch {}
+      }
+
+      // 退勤実行
+      await api.clockOut(selectedStore.id, breakMinutes);
+      setIsClockedIn(false);
+      setClockInTime(null);
+      setBreakMinutes(0);
+      setPunchSuccess('out');
+      setShowClockOutReport(false);
+      resetReportForm();
+      showToast('日報を保存し、退勤しました。お疲れさまでした！', 'success');
+      setTimeout(() => setPunchSuccess(null), 2000);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
+  // レポートをスキップして退勤
+  const handleReportSkip = async () => {
+    setShowClockOutReport(false);
+    resetReportForm();
+    await executePunch();
+  };
+
+  const resetReportForm = () => {
+    setReportSales('');
+    setReportCustomers('');
+    setReportWeather('晴れ');
+    setReportMemo('');
+    setReportInputMode('manual');
+    setMenuQuantities({});
+    setInventoryUpdates({});
+  };
+
+  // 実際の打刻実行
+  const executePunch = async () => {
     if (!selectedStore) return;
     setLoading(true);
     setError('');
@@ -88,6 +229,19 @@ export default function PunchClockPage() {
       setLoading(false);
     }
   };
+
+  const setMenuQty = (itemId: string, delta: number) => {
+    setMenuQuantities(prev => {
+      const current = prev[itemId] || 0;
+      const next = Math.max(0, current + delta);
+      return { ...prev, [itemId]: next };
+    });
+  };
+
+  const menuTotal = Object.entries(menuQuantities).reduce((sum, [id, qty]) => {
+    const item = menuItems.find(m => m.id === id);
+    return sum + (item ? item.price * qty : 0);
+  }, 0);
 
   const formatTime = (d: Date) =>
     d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -172,6 +326,147 @@ export default function PunchClockPage() {
           onComplete={handleChecklistComplete}
           onCancel={() => setShowChecklist(false)}
         />
+      )}
+
+      {/* 退勤時レポートフォーム（マネージャー/リーダー用） */}
+      {showClockOutReport && (
+        <div className="break-modal-overlay" onClick={() => {}}>
+          <div className="clock-out-report-modal" onClick={e => e.stopPropagation()}>
+            <h3>退勤レポート</h3>
+            <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: 12 }}>日報と在庫を確認してから退勤します</p>
+
+            {error && <div className="error-msg" style={{ marginBottom: 8 }}>{error}</div>}
+
+            {/* 日報セクション */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 8, color: '#1e293b' }}>日報</div>
+              <div className="daily-report-form-grid">
+                {reportInputMode === 'manual' && (
+                  <div>
+                    <label className="form-label">売上（円）</label>
+                    <input type="number" placeholder="0" value={reportSales} onChange={e => setReportSales(e.target.value)} className="form-input" />
+                  </div>
+                )}
+                <div>
+                  <label className="form-label">来客数</label>
+                  <input type="number" placeholder="0" value={reportCustomers} onChange={e => setReportCustomers(e.target.value)} className="form-input" />
+                </div>
+                <div>
+                  <label className="form-label">天気</label>
+                  <select value={reportWeather} onChange={e => setReportWeather(e.target.value)} className="form-input">
+                    {WEATHER_OPTIONS.map(w => <option key={w} value={w}>{w}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* 入力モード切替 */}
+              {menuItems.length > 0 && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button
+                    onClick={() => setReportInputMode('manual')}
+                    style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #d4d9df', background: reportInputMode === 'manual' ? '#2563eb' : 'white', color: reportInputMode === 'manual' ? 'white' : '#333', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'inherit' }}
+                  >
+                    手入力
+                  </button>
+                  <button
+                    onClick={() => setReportInputMode('menu')}
+                    style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #d4d9df', background: reportInputMode === 'menu' ? '#2563eb' : 'white', color: reportInputMode === 'menu' ? 'white' : '#333', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'inherit' }}
+                  >
+                    商品別入力
+                  </button>
+                </div>
+              )}
+
+              {/* 商品別入力 */}
+              {reportInputMode === 'menu' && menuItems.length > 0 && (
+                <div style={{ marginTop: 10, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', maxHeight: 200, overflowY: 'auto' }}>
+                  {Object.entries(
+                    menuItems.reduce<Record<string, MenuItem[]>>((acc, m) => {
+                      const cat = m.category || 'その他';
+                      if (!acc[cat]) acc[cat] = [];
+                      acc[cat].push(m);
+                      return acc;
+                    }, {})
+                  ).map(([cat, catItems]) => (
+                    <div key={cat} style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', marginBottom: 4 }}>{cat}</div>
+                      {catItems.map(m => {
+                        const qty = menuQuantities[m.id] || 0;
+                        return (
+                          <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eef2f7' }}>
+                            <div style={{ flex: 1 }}>
+                              <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{m.name}</span>
+                              <span style={{ color: '#888', fontSize: '0.8rem', marginLeft: 8 }}>¥{m.price.toLocaleString()}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <button onClick={() => setMenuQty(m.id, -1)} disabled={qty === 0} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #d4d9df', background: 'white', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>-</button>
+                              <span style={{ width: 28, textAlign: 'center', fontWeight: 600 }}>{qty}</span>
+                              <button onClick={() => setMenuQty(m.id, 1)} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #d4d9df', background: 'white', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>+</button>
+                              {qty > 0 && <span style={{ fontSize: '0.85rem', color: '#2563eb', fontWeight: 600, marginLeft: 4, minWidth: 60, textAlign: 'right' }}>¥{(m.price * qty).toLocaleString()}</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 8, fontWeight: 700, fontSize: '1.05rem' }}>
+                    合計: ¥{menuTotal.toLocaleString()}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginTop: 8 }}>
+                <label className="form-label">メモ</label>
+                <input type="text" placeholder="一言メモ" value={reportMemo} onChange={e => setReportMemo(e.target.value)} className="form-input" />
+              </div>
+            </div>
+
+            {/* 在庫チェックセクション */}
+            {inventoryItems.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ padding: 12, background: '#fefce8', borderRadius: 8, border: '1px solid #fde68a', maxHeight: 200, overflowY: 'auto' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#92400e', marginBottom: 8 }}>在庫残量チェック</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {inventoryItems.map((inv: any) => (
+                      <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ fontSize: '0.85rem', flex: 1 }}>
+                          {inv.name}
+                          {inv.unit && <span style={{ color: '#888', marginLeft: 4 }}>({inv.unit})</span>}
+                        </span>
+                        <span style={{ fontSize: '0.8rem', color: '#888', minWidth: 40, textAlign: 'right' }}>現:{inv.quantity ?? 0}</span>
+                        <input
+                          type="number"
+                          placeholder={String(inv.quantity ?? 0)}
+                          value={inventoryUpdates[inv.id] ?? ''}
+                          onChange={e => setInventoryUpdates(prev => ({ ...prev, [inv.id]: e.target.value }))}
+                          style={{ width: 60, padding: '4px 8px', border: '1px solid #d4d9df', borderRadius: 4, fontSize: '0.85rem', textAlign: 'right' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* アクションボタン */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+              <button
+                onClick={handleReportSkip}
+                disabled={submittingReport}
+                style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #d4d9df', background: 'white', color: '#666', cursor: 'pointer', fontSize: '0.9rem', fontFamily: 'inherit' }}
+              >
+                スキップして退勤
+              </button>
+              <button
+                onClick={handleReportSubmit}
+                disabled={submittingReport}
+                style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#2563eb', color: 'white', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, fontFamily: 'inherit' }}
+              >
+                {submittingReport ? '送信中...' : '保存して退勤'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

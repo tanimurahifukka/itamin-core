@@ -13,7 +13,7 @@ export const punchPlugin: Plugin = {
   label: '打刻',
   icon: '🕐',
   core: true,
-  defaultRoles: ['manager', 'full_time', 'part_time'],
+  defaultRoles: ['manager', 'leader', 'full_time', 'part_time'],
   initialize: (_app: Express) => {
     // ルーティングは timecardRouter で既に登録済み
   },
@@ -27,7 +27,7 @@ export const attendancePlugin: Plugin = {
   label: '勤怠管理',
   icon: '📊',
   core: true,
-  defaultRoles: ['owner', 'manager'],
+  defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (_app: Express) => {},
 };
 
@@ -39,7 +39,7 @@ export const staffPlugin: Plugin = {
   label: 'スタッフ',
   icon: '👥',
   core: true,
-  defaultRoles: ['owner', 'manager'],
+  defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (_app: Express) => {},
 };
 
@@ -51,6 +51,6 @@ export const settingsPlugin: Plugin = {
   label: '設定',
   icon: '⚙️',
   core: true,
-  defaultRoles: ['owner', 'manager'],
+  defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (_app: Express) => {},
 };

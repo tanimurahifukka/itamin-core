@@ -182,7 +182,7 @@ export const menuPlugin: Plugin = {
   description: '商品マスタを管理し日報明細と連携',
   label: 'メニュー管理',
   icon: '☕',
-  defaultRoles: ['owner', 'manager'],
+  defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (app: Express) => {
     app.use('/api/menu', router);
   },

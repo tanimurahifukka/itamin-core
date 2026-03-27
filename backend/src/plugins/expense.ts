@@ -189,7 +189,7 @@ export const expensePlugin: Plugin = {
   description: '仕入れ・消耗品・光熱費の記録と集計',
   label: '経費管理',
   icon: '💰',
-  defaultRoles: ['owner', 'manager'],
+  defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (app: Express) => {
     app.use('/api/expense', router);
   },

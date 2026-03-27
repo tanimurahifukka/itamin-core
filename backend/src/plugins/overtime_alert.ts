@@ -109,7 +109,7 @@ export const overtimeAlertPlugin: Plugin = {
   description: '残業時間の自動集計と閾値超え警告',
   label: '残業アラート',
   icon: '⏰',
-  defaultRoles: ['owner', 'manager'],
+  defaultRoles: ['owner', 'manager', 'leader'],
   settingsSchema: [
     {
       key: 'monthly_limit_hours',

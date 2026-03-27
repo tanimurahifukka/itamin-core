@@ -22,6 +22,7 @@ const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 export const TEST_USERS = {
   owner: { email: 'owner@test.local', password: 'test1234', name: 'テストオーナー' },
   manager: { email: 'manager@test.local', password: 'test1234', name: 'テストマネージャー' },
+  leader: { email: 'leader@test.local', password: 'test1234', name: 'テストリーダー' },
   full_time: { email: 'fulltime@test.local', password: 'test1234', name: 'テスト正社員' },
   part_time: { email: 'parttime@test.local', password: 'test1234', name: 'テストアルバイト' },
 } as const;
@@ -71,7 +72,7 @@ export async function setupTestData() {
   }
 
   // 3. スタッフ登録（各ロール）
-  const roles = ['owner', 'manager', 'full_time', 'part_time'] as const;
+  const roles = ['owner', 'manager', 'leader', 'full_time', 'part_time'] as const;
   for (const role of roles) {
     const { error } = await admin
       .from('store_staff')

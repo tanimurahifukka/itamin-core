@@ -29,6 +29,7 @@ interface PluginInfo {
 const ALL_ROLES = [
   { value: 'owner', label: 'オーナー' },
   { value: 'manager', label: 'マネージャー' },
+  { value: 'leader', label: 'リーダー' },
   { value: 'full_time', label: '正社員' },
   { value: 'part_time', label: 'アルバイト' },
 ];

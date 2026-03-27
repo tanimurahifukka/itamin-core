@@ -6,12 +6,14 @@ import { showToast } from '../components/Toast';
 const roleLabels: Record<string, string> = {
   owner: 'オーナー',
   manager: 'マネージャー',
+  leader: 'リーダー',
   full_time: '正社員',
   part_time: 'アルバイト',
 };
 
 const assignableRoles = [
   { value: 'manager', label: 'マネージャー' },
+  { value: 'leader', label: 'リーダー' },
   { value: 'full_time', label: '正社員' },
   { value: 'part_time', label: 'アルバイト' },
 ];

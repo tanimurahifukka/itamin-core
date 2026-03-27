@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 const roleLabels: Record<string, string> = {
   owner: 'オーナー',
   manager: 'マネージャー',
+  leader: 'リーダー',
   full_time: '正社員',
   part_time: 'アルバイト',
 };

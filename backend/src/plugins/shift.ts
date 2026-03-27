@@ -492,7 +492,7 @@ export const shiftPlugin: Plugin = {
   description: 'シフト管理・テンプレート機能',
   label: 'シフト管理',
   icon: '📅',
-  defaultRoles: ['owner', 'manager'],
+  defaultRoles: ['owner', 'manager', 'leader'],
   settingsSchema: [
     {
       key: 'default_start_time',

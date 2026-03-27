@@ -3,8 +3,8 @@ import type { Request } from 'express';
 import type { StaffRole } from '../types';
 import { supabaseAdmin } from '../config/supabase';
 
-export const VALID_STAFF_ROLES: StaffRole[] = ['owner', 'manager', 'full_time', 'part_time'];
-const MANAGED_ROLES: StaffRole[] = ['owner', 'manager'];
+export const VALID_STAFF_ROLES: StaffRole[] = ['owner', 'manager', 'leader', 'full_time', 'part_time'];
+const MANAGED_ROLES: StaffRole[] = ['owner', 'manager', 'leader'];
 
 interface StoreMembership {
   id: string;

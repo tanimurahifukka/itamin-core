@@ -748,6 +748,33 @@ body {
   opacity: 0.9;
 }
 
+/* ===== Clock Out Report Modal ===== */
+.clock-out-report-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: modalSlideUp 0.3s ease;
+}
+
+.clock-out-report-modal h3 {
+  font-size: 1.2rem;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .clock-out-report-modal {
+    padding: 16px;
+    max-width: 95%;
+    max-height: 90vh;
+  }
+}
+
 /* ===== Records Table ===== */
 .records-section {
   background: white;

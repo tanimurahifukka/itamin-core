@@ -95,7 +95,7 @@ export const consecutiveWorkPlugin: Plugin = {
   description: '連続出勤日数の検知と警告',
   label: '連勤チェック',
   icon: '📊',
-  defaultRoles: ['owner', 'manager'],
+  defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (app: Express) => {
     app.use('/api/consecutive-work', router);
   },

@@ -17,6 +17,7 @@ import { setupTestData, teardownTestData, TEST_USERS } from './setup';
 const EXPECTED_TABS: Record<string, string[]> = {
   owner: ['勤怠管理', 'スタッフ', 'シフト管理', 'チェックリスト', '設定'],
   manager: ['打刻', '勤怠管理', 'スタッフ', 'シフト管理', 'チェックリスト', '設定'],
+  leader: ['打刻', '勤怠管理', 'スタッフ', 'シフト管理', 'チェックリスト', '設定'],
   full_time: ['打刻', 'シフト希望'],
   part_time: ['打刻', 'シフト希望'],
 };
@@ -24,6 +25,7 @@ const EXPECTED_TABS: Record<string, string[]> = {
 const NOT_EXPECTED_TABS: Record<string, string[]> = {
   owner: ['打刻', 'シフト希望'],
   manager: ['シフト希望'],
+  leader: ['シフト希望'],
   full_time: ['勤怠管理', 'スタッフ', 'シフト管理', 'チェックリスト', '設定'],
   part_time: ['勤怠管理', 'スタッフ', 'シフト管理', 'チェックリスト', '設定'],
 };

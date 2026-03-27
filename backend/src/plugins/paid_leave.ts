@@ -18,7 +18,7 @@ router.get('/:storeId/summary', requireAuth, async (req: Request, res: Response)
 
     const userId = req.user!.id;
     const fiscalYear = Number(req.query.fiscalYear) || new Date().getFullYear();
-    const isManager = membership.role === 'owner' || membership.role === 'manager';
+    const isManager = membership.role === 'owner' || membership.role === 'manager' || membership.role === 'leader';
 
     let query = supabaseAdmin
       .from('paid_leaves')
@@ -144,7 +144,7 @@ router.get('/:storeId/records', requireAuth, async (req: Request, res: Response)
 
     const userId = req.user!.id;
     const staffId = req.query.staffId as string | undefined;
-    const isManager = membership.role === 'owner' || membership.role === 'manager';
+    const isManager = membership.role === 'owner' || membership.role === 'manager' || membership.role === 'leader';
 
     let query = supabaseAdmin
       .from('leave_records')
@@ -291,7 +291,7 @@ export const paidLeavePlugin: Plugin = {
   description: '有給残日数管理・取得記録',
   label: '有給管理',
   icon: '🏖️',
-  defaultRoles: ['owner', 'manager'],
+  defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (app: Express) => {
     app.use('/api/paid-leave', router);
   },

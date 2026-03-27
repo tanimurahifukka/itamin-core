@@ -664,7 +664,7 @@ export const checkPlugin: Plugin = {
   description: 'HACCP準拠チェックリスト・記録管理',
   label: 'チェックリスト',
   icon: '✅',
-  defaultRoles: ['owner', 'manager'],
+  defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (app: Express) => {
     app.use('/api/check', router);
   },

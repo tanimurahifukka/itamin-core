@@ -9,7 +9,7 @@ export interface PluginSettingField {
   description?: string;
 }
 
-export type StaffRole = 'owner' | 'manager' | 'full_time' | 'part_time';
+export type StaffRole = 'owner' | 'manager' | 'leader' | 'full_time' | 'part_time';
 
 export interface Plugin {
   name: string;
