@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
 
-type ViewMode = 'daily' | 'monthly';
+type ViewMode = 'daily' | 'monthly' | 'staff';
 
 export default function DashboardPage() {
   const { selectedStore } = useAuth();
@@ -16,6 +16,9 @@ export default function DashboardPage() {
   const [monthlyData, setMonthlyData] = useState<any>(null);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
+
+  // スタッフ別ビュー
+  const [selectedStaff, setSelectedStaff] = useState<{ staffId: string; staffName: string } | null>(null);
 
   // 未退勤レコード（ペア不一致）
   const [staleRecords, setStaleRecords] = useState<any[]>([]);
@@ -40,7 +43,7 @@ export default function DashboardPage() {
 
   // 月別データ取得
   useEffect(() => {
-    if (!selectedStore || viewMode !== 'monthly') return;
+    if (!selectedStore || (viewMode !== 'monthly' && viewMode !== 'staff')) return;
     api.getMonthlyRecords(selectedStore.id, year, month)
       .then(data => setMonthlyData(data))
       .catch(() => setMonthlyData(null));
@@ -213,9 +216,16 @@ export default function DashboardPage() {
         >
           月別集計
         </button>
+        <button
+          className={`view-mode-tab ${viewMode === 'staff' ? 'active' : ''}`}
+          onClick={() => setViewMode('staff')}
+          data-testid="staff-view-tab"
+        >
+          スタッフ別
+        </button>
       </div>
 
-      {viewMode === 'daily' ? (
+      {viewMode === 'daily' && (
         <>
           {/* サマリーカード */}
           {records.length > 0 && (
@@ -332,7 +342,9 @@ export default function DashboardPage() {
             )}
           </div>
         </>
-      ) : (
+      )}
+
+      {viewMode === 'monthly' && (
         /* 月別集計ビュー */
         <div className="records-section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -360,7 +372,15 @@ export default function DashboardPage() {
               <tbody>
                 {monthlyData.summary.map((s: any, i: number) => (
                   <tr key={i}>
-                    <td>{s.staffName || '—'}</td>
+                    <td>
+                      <button
+                        className="staff-name-link"
+                        onClick={() => { setSelectedStaff({ staffId: s.staffId, staffName: s.staffName }); setViewMode('staff'); }}
+                        data-testid={`staff-detail-btn-${s.staffId}`}
+                      >
+                        {s.staffName || '—'}
+                      </button>
+                    </td>
                     <td>{s.workDays ?? s.totalDays ?? '—'}日</td>
                     <td>{s.totalWorkHours != null ? `${Number(s.totalWorkHours).toFixed(1)}h` : '—'}</td>
                     <td>
@@ -394,6 +414,162 @@ export default function DashboardPage() {
               <div className="empty-state-icon">📊</div>
               <p className="empty-state-text">この月の集計データがありません</p>
               <p className="empty-state-hint">月を変更して別の期間を確認できます</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {viewMode === 'staff' && (
+        <div className="records-section">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3>
+              {selectedStaff
+                ? `${selectedStaff.staffName} のタイムカード`
+                : 'スタッフ別タイムカード'}
+            </h3>
+            <div className="month-nav">
+              <button className="month-nav-btn" onClick={handlePrevMonth}>&lt;</button>
+              <span className="month-nav-label">{year}年{month}月</span>
+              <button className="month-nav-btn" onClick={handleNextMonth}>&gt;</button>
+            </div>
+          </div>
+
+          {/* スタッフ選択 */}
+          {monthlyData?.summary && monthlyData.summary.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+              {monthlyData.summary.map((s: any) => (
+                <button
+                  key={s.staffId}
+                  className={`staff-chip ${selectedStaff?.staffId === s.staffId ? 'active' : ''}`}
+                  onClick={() => setSelectedStaff({ staffId: s.staffId, staffName: s.staffName })}
+                  data-testid={`staff-chip-${s.staffId}`}
+                >
+                  {s.staffName || '—'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* スタッフ別月間明細 */}
+          {selectedStaff && monthlyData?.records ? (() => {
+            const staffRecords = (monthlyData.records || [])
+              .filter((r: any) => r.staff_id === selectedStaff.staffId)
+              .sort((a: any, b: any) => new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime());
+
+            const staffSummary = monthlyData.summary?.find((s: any) => s.staffId === selectedStaff.staffId);
+
+            if (staffRecords.length === 0) {
+              return (
+                <div className="empty-state">
+                  <div className="empty-state-icon">📋</div>
+                  <p className="empty-state-text">この月の勤務記録はありません</p>
+                </div>
+              );
+            }
+
+            return (
+              <>
+                {/* スタッフサマリー */}
+                {staffSummary && (
+                  <div className="today-summary" style={isOwner ? { gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 } : { marginBottom: 16 }}>
+                    <div className="summary-card finished">
+                      <div className="summary-number">{staffSummary.workDays}日</div>
+                      <div className="summary-label">出勤日数</div>
+                    </div>
+                    <div className="summary-card hours">
+                      <div className="summary-number">{Number(staffSummary.totalWorkHours).toFixed(1)}h</div>
+                      <div className="summary-label">合計時間</div>
+                    </div>
+                    {isOwner && (
+                      <div className="summary-card labor">
+                        <div className="summary-number">¥{staffSummary.hourlyWage?.toLocaleString() || '—'}</div>
+                        <div className="summary-label">時給</div>
+                      </div>
+                    )}
+                    {isOwner && (
+                      <div className="summary-card" style={{ borderLeftColor: '#2563eb' }}>
+                        <div className="summary-number">¥{Number(staffSummary.estimatedSalary).toLocaleString()}</div>
+                        <div className="summary-label">概算給与</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <table className="records-table">
+                  <thead>
+                    <tr>
+                      <th>日付</th>
+                      <th>出勤</th>
+                      <th>退勤</th>
+                      <th>休憩</th>
+                      <th>実働</th>
+                      {isOwner && <th>人件費</th>}
+                      {canEdit && <th></th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staffRecords.map((r: any) => {
+                      const mapped = {
+                        id: r.id,
+                        clockIn: r.clock_in,
+                        clockOut: r.clock_out,
+                        breakMinutes: r.break_minutes,
+                        hourlyWage: r.staff?.hourly_wage || staffSummary?.hourlyWage || 0,
+                        staffName: selectedStaff.staffName,
+                      };
+                      const h = calcHours(mapped);
+                      const cost = h !== null && mapped.hourlyWage ? Math.round(h * mapped.hourlyWage) : null;
+                      const dateStr = new Date(r.clock_in).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' });
+                      return (
+                        <tr key={r.id} className={!r.clock_out ? 'row-working row-unpaired' : ''}>
+                          <td>{dateStr}</td>
+                          <td>{formatTime(r.clock_in)}</td>
+                          <td className={!r.clock_out ? 'text-unpaired' : ''}>
+                            {r.clock_out ? formatTime(r.clock_out) : '未打刻'}
+                          </td>
+                          <td>{r.break_minutes}分</td>
+                          <td>{h !== null ? `${h.toFixed(1)}h` : '勤務中'}</td>
+                          {isOwner && (
+                            <td style={{ textAlign: 'right' }}>
+                              {cost !== null ? `¥${cost.toLocaleString()}` : '—'}
+                            </td>
+                          )}
+                          {canEdit && (
+                            <td>
+                              <button
+                                className="edit-record-btn"
+                                onClick={() => openEditModal(mapped)}
+                                data-testid={`edit-staff-record-btn-${r.id}`}
+                              >
+                                編集
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  {isOwner && staffSummary && (
+                    <tfoot>
+                      <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 700, background: '#f9fafb' }}>
+                        <td>合計</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td>{Number(staffSummary.totalWorkHours).toFixed(1)}h</td>
+                        <td style={{ textAlign: 'right', color: '#2563eb' }}>¥{Number(staffSummary.estimatedSalary).toLocaleString()}</td>
+                        {canEdit && <td></td>}
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </>
+            );
+          })() : (
+            <div className="empty-state">
+              <div className="empty-state-icon">👤</div>
+              <p className="empty-state-text">スタッフを選択してください</p>
+              <p className="empty-state-hint">上のボタンからスタッフを選ぶと月間タイムカードが表示されます</p>
             </div>
           )}
         </div>
