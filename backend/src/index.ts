@@ -18,6 +18,7 @@ import { expensePlugin } from './plugins/expense';
 import { feedbackPlugin } from './plugins/feedback';
 import { menuPlugin } from './plugins/menu';
 import { punchPlugin, attendancePlugin, staffPlugin, settingsPlugin } from './plugins/core';
+import { salesCapturePlugin } from './plugins/sales_capture';
 
 const app = express();
 
@@ -53,6 +54,7 @@ pluginRegistry.register(noticePlugin);
 pluginRegistry.register(paidLeavePlugin);
 pluginRegistry.register(expensePlugin);
 pluginRegistry.register(feedbackPlugin);
+pluginRegistry.register(salesCapturePlugin);
 
 // 設定は常に最後
 pluginRegistry.register(settingsPlugin);

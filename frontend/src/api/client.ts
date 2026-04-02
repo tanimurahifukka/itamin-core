@@ -238,4 +238,27 @@ export const api = {
     request<any>(`/feedback/${storeId}/items/${itemId}`, { method: 'PUT', body: JSON.stringify(updates) }),
   deleteFeedback: (storeId: string, itemId: string) =>
     request<any>(`/feedback/${storeId}/items/${itemId}`, { method: 'DELETE' }),
+
+  // Sales Capture
+  getSalesReceipts: (storeId: string, date?: string) => {
+    const params = date ? `?date=${date}` : '';
+    return request<any>(`/sales-capture/${storeId}/receipts${params}`);
+  },
+  getUploadUrl: (storeId: string, fileName: string, contentType?: string) =>
+    request<any>(`/sales-capture/${storeId}/upload-url`, {
+      method: 'POST',
+      body: JSON.stringify({ fileName, contentType }),
+    }),
+  createSalesReceipt: (storeId: string, data: { businessDate: string; filePath: string; fileName: string; sourceType?: string }) =>
+    request<any>(`/sales-capture/${storeId}/receipts`, { method: 'POST', body: JSON.stringify(data) }),
+  getSalesClose: (storeId: string, date: string) =>
+    request<any>(`/sales-capture/${storeId}/closes/${date}`),
+  saveSalesClose: (storeId: string, data: Record<string, any>) =>
+    request<any>(`/sales-capture/${storeId}/closes`, { method: 'POST', body: JSON.stringify(data) }),
+  approveSalesClose: (storeId: string, date: string) =>
+    request<any>(`/sales-capture/${storeId}/closes/${date}/approve`, { method: 'POST' }),
+  getCashClose: (storeId: string, date: string) =>
+    request<any>(`/sales-capture/${storeId}/cash-close/${date}`),
+  saveCashClose: (storeId: string, data: { businessDate: string; expectedCash: number; countedCash: number; note?: string }) =>
+    request<any>(`/sales-capture/${storeId}/cash-close`, { method: 'POST', body: JSON.stringify(data) }),
 };
