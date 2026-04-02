@@ -191,8 +191,16 @@ export const api = {
     request<any>(`/notice/${storeId}/posts/${noticeId}/pin`, { method: 'PUT', body: JSON.stringify({ pinned }) }),
   updateNoticeImages: (storeId: string, noticeId: string, imageUrls: string[]) =>
     request<any>(`/notice/${storeId}/posts/${noticeId}/images`, { method: 'PATCH', body: JSON.stringify({ imageUrls }) }),
+  editNotice: (storeId: string, noticeId: string, data: { title?: string; body?: string }) =>
+    request<any>(`/notice/${storeId}/posts/${noticeId}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteNotice: (storeId: string, noticeId: string) =>
     request<any>(`/notice/${storeId}/posts/${noticeId}`, { method: 'DELETE' }),
+  getNoticeComments: (storeId: string, noticeId: string) =>
+    request<any>(`/notice/${storeId}/posts/${noticeId}/comments`),
+  postNoticeComment: (storeId: string, noticeId: string, body: string) =>
+    request<any>(`/notice/${storeId}/posts/${noticeId}/comments`, { method: 'POST', body: JSON.stringify({ body }) }),
+  deleteNoticeComment: (storeId: string, noticeId: string, commentId: string) =>
+    request<any>(`/notice/${storeId}/posts/${noticeId}/comments/${commentId}`, { method: 'DELETE' }),
 
   // Paid Leave
   getPaidLeaveSummary: (storeId: string, fiscalYear?: number) => {

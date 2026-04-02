@@ -12,9 +12,18 @@ interface Notice {
   body: string;
   pinned: boolean;
   imageUrls: string[];
+  commentCount: number;
   createdAt: string;
   isRead: boolean;
   readAt: string | null;
+}
+
+interface Comment {
+  id: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
 }
 
 function linkifyText(text: string) {
@@ -31,7 +40,7 @@ function linkifyText(text: string) {
 }
 
 export default function NoticePage() {
-  const { selectedStore } = useAuth();
+  const { selectedStore, user } = useAuth();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
@@ -39,6 +48,19 @@ export default function NoticePage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  // 編集
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editBody, setEditBody] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  // コメント
+  const [comments, setComments] = useState<Record<string, Comment[]>>({});
+  const [commentText, setCommentText] = useState<Record<string, string>>({});
+  const [commentPosting, setCommentPosting] = useState(false);
+
+  const isAdmin = selectedStore && ['owner', 'manager'].includes(selectedStore.role);
 
   const loadData = () => {
     if (!selectedStore) return;
@@ -49,6 +71,15 @@ export default function NoticePage() {
 
   useEffect(() => { loadData(); }, [selectedStore]);
 
+  // コメント読み込み
+  const loadComments = async (noticeId: string) => {
+    if (!selectedStore) return;
+    try {
+      const data = await api.getNoticeComments(selectedStore.id, noticeId);
+      setComments(prev => ({ ...prev, [noticeId]: data.comments }));
+    } catch {}
+  };
+
   const handlePost = async () => {
     if (!selectedStore || !newTitle.trim() || posting) return;
     setPosting(true);
@@ -56,7 +87,6 @@ export default function NoticePage() {
       const result = await api.postNotice(selectedStore.id, { title: newTitle.trim(), body: newBody });
       const noticeId = result.notice?.id;
 
-      // 画像アップロード
       if (noticeId && selectedFiles.length > 0) {
         const imageUrls: string[] = [];
         for (const file of selectedFiles) {
@@ -118,6 +148,65 @@ export default function NoticePage() {
     }
   };
 
+  // 編集開始
+  const startEdit = (notice: Notice) => {
+    setEditingId(notice.id);
+    setEditTitle(notice.title);
+    setEditBody(notice.body);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditTitle('');
+    setEditBody('');
+  };
+
+  const handleEditSave = async () => {
+    if (!selectedStore || !editingId || editSaving) return;
+    setEditSaving(true);
+    try {
+      await api.editNotice(selectedStore.id, editingId, {
+        title: editTitle.trim(),
+        body: editBody,
+      });
+      showToast('更新しました', 'success');
+      cancelEdit();
+      loadData();
+    } catch (e: any) {
+      showToast(e.message || '更新に失敗しました', 'error');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  // コメント投稿
+  const handlePostComment = async (noticeId: string) => {
+    if (!selectedStore || commentPosting) return;
+    const text = (commentText[noticeId] || '').trim();
+    if (!text) return;
+    setCommentPosting(true);
+    try {
+      await api.postNoticeComment(selectedStore.id, noticeId, text);
+      setCommentText(prev => ({ ...prev, [noticeId]: '' }));
+      await loadComments(noticeId);
+      loadData(); // コメント数更新
+    } catch (e: any) {
+      showToast(e.message || 'コメント投稿に失敗しました', 'error');
+    } finally {
+      setCommentPosting(false);
+    }
+  };
+
+  // コメント削除
+  const handleDeleteComment = async (noticeId: string, commentId: string) => {
+    if (!selectedStore) return;
+    try {
+      await api.deleteNoticeComment(selectedStore.id, noticeId, commentId);
+      await loadComments(noticeId);
+      loadData();
+    } catch {}
+  };
+
   const toggleExpand = (noticeId: string) => {
     if (expandedId === noticeId) {
       setExpandedId(null);
@@ -127,7 +216,15 @@ export default function NoticePage() {
       if (notice && !notice.isRead) {
         handleRead(noticeId);
       }
+      // コメントも読み込み
+      if (!comments[noticeId]) {
+        loadComments(noticeId);
+      }
     }
+  };
+
+  const canEdit = (notice: Notice) => {
+    return notice.authorId === user?.id || isAdmin;
   };
 
   const unreadCount = notices.filter(n => !n.isRead).length;
@@ -155,6 +252,7 @@ export default function NoticePage() {
             placeholder="タイトル *"
             value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
+            data-testid="notice-title-input"
             style={{ padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
           />
           <textarea
@@ -162,9 +260,9 @@ export default function NoticePage() {
             value={newBody}
             onChange={e => setNewBody(e.target.value)}
             rows={3}
+            data-testid="notice-body-input"
             style={{ padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem', resize: 'vertical' }}
           />
-          {/* 画像選択 */}
           <div>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', border: '1px solid #d4d9df', borderRadius: 6, cursor: 'pointer', fontSize: '0.85rem', color: '#555' }}>
               📷 画像を添付
@@ -199,6 +297,7 @@ export default function NoticePage() {
             <button
               onClick={handlePost}
               disabled={posting || !newTitle.trim()}
+              data-testid="notice-post-btn"
               style={{ padding: '8px 20px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, fontFamily: 'inherit', fontSize: '0.9rem' }}
             >
               {posting ? '投稿中...' : '投稿'}
@@ -241,17 +340,58 @@ export default function NoticePage() {
                     {n.pinned && <span style={{ fontSize: '0.8rem' }}>📌</span>}
                     <span style={{ fontWeight: 600 }}>{n.title}</span>
                     {n.imageUrls && n.imageUrls.length > 0 && <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>📷{n.imageUrls.length}</span>}
+                    {n.commentCount > 0 && <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>💬{n.commentCount}</span>}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', color: '#888' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', color: '#888', flexShrink: 0 }}>
                     <span>{n.authorName}</span>
                     <span>{new Date(n.createdAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                 </div>
+
+                {/* 展開ビュー */}
                 {expandedId === n.id && (
                   <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #e5e7eb' }}>
-                    <p style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem', color: '#444', marginBottom: 8, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                      {n.body ? linkifyText(n.body) : '（本文なし）'}
-                    </p>
+                    {/* 編集モード */}
+                    {editingId === n.id ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+                        <input
+                          type="text"
+                          value={editTitle}
+                          onChange={e => setEditTitle(e.target.value)}
+                          data-testid="edit-notice-title"
+                          style={{ padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem', fontWeight: 600 }}
+                        />
+                        <textarea
+                          value={editBody}
+                          onChange={e => setEditBody(e.target.value)}
+                          rows={4}
+                          data-testid="edit-notice-body"
+                          style={{ padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem', resize: 'vertical' }}
+                        />
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={cancelEdit}
+                            style={{ padding: '6px 12px', border: '1px solid #d4d9df', borderRadius: 6, background: 'white', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'inherit' }}
+                          >
+                            キャンセル
+                          </button>
+                          <button
+                            onClick={handleEditSave}
+                            disabled={editSaving || !editTitle.trim()}
+                            data-testid="save-notice-edit-btn"
+                            style={{ padding: '6px 12px', border: 'none', borderRadius: 6, background: '#2563eb', color: 'white', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, fontFamily: 'inherit' }}
+                          >
+                            {editSaving ? '保存中...' : '保存'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem', color: '#444', marginBottom: 8, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                        {n.body ? linkifyText(n.body) : '（本文なし）'}
+                      </p>
+                    )}
+
+                    {/* 画像 */}
                     {n.imageUrls && n.imageUrls.length > 0 && (
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
                         {n.imageUrls.map((url: string, i: number) => (
@@ -265,19 +405,87 @@ export default function NoticePage() {
                         ))}
                       </div>
                     )}
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleTogglePin(n); }}
-                        style={{ padding: '4px 8px', border: '1px solid #d4d9df', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.8rem' }}
-                      >
-                        {n.pinned ? 'ピン解除' : 'ピン留め'}
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(n); }}
-                        style={{ padding: '4px 8px', border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem' }}
-                      >
-                        削除
-                      </button>
+
+                    {/* アクションボタン */}
+                    {editingId !== n.id && (
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginBottom: 8 }}>
+                        {canEdit(n) && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); startEdit(n); }}
+                            data-testid={`edit-notice-btn-${n.id}`}
+                            style={{ padding: '4px 8px', border: '1px solid #d4d9df', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
+                          >
+                            編集
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleTogglePin(n); }}
+                          style={{ padding: '4px 8px', border: '1px solid #d4d9df', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
+                        >
+                          {n.pinned ? 'ピン解除' : 'ピン留め'}
+                        </button>
+                        {(canEdit(n) || isAdmin) && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(n); }}
+                            style={{ padding: '4px 8px', border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
+                          >
+                            削除
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* スレッド（コメント） */}
+                    <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 8 }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: 8 }}>
+                        返信 {comments[n.id]?.length ? `(${comments[n.id].length})` : ''}
+                      </div>
+
+                      {/* コメント一覧 */}
+                      {(comments[n.id] || []).map(c => (
+                        <div key={c.id} style={{ display: 'flex', gap: 8, marginBottom: 8, paddingLeft: 8, borderLeft: '2px solid #e5e7eb' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                              <span style={{ fontWeight: 600, fontSize: '0.8rem', color: '#374151' }}>{c.authorName}</span>
+                              <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                                {new Date(c.createdAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              {(c.authorId === user?.id || isAdmin) && (
+                                <button
+                                  onClick={() => handleDeleteComment(n.id, c.id)}
+                                  style={{ padding: 0, border: 'none', background: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '0.75rem' }}
+                                >
+                                  削除
+                                </button>
+                              )}
+                            </div>
+                            <p style={{ fontSize: '0.85rem', color: '#444', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                              {linkifyText(c.body)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* コメント入力 */}
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+                        <input
+                          type="text"
+                          placeholder="返信を入力..."
+                          value={commentText[n.id] || ''}
+                          onChange={e => setCommentText(prev => ({ ...prev, [n.id]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePostComment(n.id); } }}
+                          data-testid={`comment-input-${n.id}`}
+                          style={{ flex: 1, padding: '6px 10px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.85rem' }}
+                        />
+                        <button
+                          onClick={() => handlePostComment(n.id)}
+                          disabled={commentPosting || !(commentText[n.id] || '').trim()}
+                          data-testid={`comment-post-btn-${n.id}`}
+                          style={{ padding: '6px 12px', border: 'none', borderRadius: 6, background: '#2563eb', color: 'white', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                        >
+                          送信
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
