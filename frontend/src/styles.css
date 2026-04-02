@@ -2643,6 +2643,11 @@ body {
   }
 }
 
+/* 人件費サマリーカード */
+.summary-card.labor {
+  border-left-color: #8b5cf6;
+}
+
 /* 未退勤アラートバナー */
 .stale-alert {
   background: #fef2f2;

@@ -189,7 +189,7 @@ router.get('/:storeId/daily', requireAuth, async (req: Request, res: Response) =
     const date = dateStr || new Date().toISOString().split('T')[0];
     const { data, error } = await supabaseAdmin
       .from('time_records')
-      .select('*, staff:store_staff(id, user:profiles(name, picture))')
+      .select('*, staff:store_staff(id, hourly_wage, user:profiles(name, picture))')
       .eq('store_id', storeId)
       .gte('clock_in', `${date}T00:00:00`)
       .lte('clock_in', `${date}T23:59:59`)
@@ -209,6 +209,7 @@ router.get('/:storeId/daily', requireAuth, async (req: Request, res: Response) =
       breakMinutes: r.break_minutes,
       staffName: r.staff?.user?.name,
       staffPicture: r.staff?.user?.picture,
+      hourlyWage: r.staff?.hourly_wage || 0,
     }));
 
     res.json({ date, records });

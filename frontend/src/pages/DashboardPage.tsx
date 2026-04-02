@@ -149,11 +149,19 @@ export default function DashboardPage() {
     }
   };
 
+  // 人件費計算
+  const calcLaborCost = (record: any) => {
+    const h = calcHours(record);
+    if (h === null || !record.hourlyWage) return null;
+    return Math.round(h * record.hourlyWage);
+  };
+
   // 今日のサマリー計算
   const isToday = date === new Date().toISOString().split('T')[0];
   const working = records.filter(r => !r.clockOut);
   const finished = records.filter(r => r.clockOut);
   const totalHoursToday = finished.reduce((sum, r) => sum + (calcHours(r) || 0), 0);
+  const totalLaborCost = finished.reduce((sum, r) => sum + (calcLaborCost(r) || 0), 0);
 
   const handlePrevMonth = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
@@ -209,13 +217,15 @@ export default function DashboardPage() {
 
       {viewMode === 'daily' ? (
         <>
-          {/* 今日のサマリーカード */}
-          {isToday && records.length > 0 && (
-            <div className="today-summary">
-              <div className="summary-card working">
-                <div className="summary-number">{working.length}</div>
-                <div className="summary-label">勤務中</div>
-              </div>
+          {/* サマリーカード */}
+          {records.length > 0 && (
+            <div className="today-summary" style={isOwner ? { gridTemplateColumns: 'repeat(4, 1fr)' } : undefined}>
+              {isToday && (
+                <div className="summary-card working">
+                  <div className="summary-number">{working.length}</div>
+                  <div className="summary-label">勤務中</div>
+                </div>
+              )}
               <div className="summary-card finished">
                 <div className="summary-number">{finished.length}</div>
                 <div className="summary-label">退勤済み</div>
@@ -224,6 +234,12 @@ export default function DashboardPage() {
                 <div className="summary-number">{totalHoursToday.toFixed(1)}</div>
                 <div className="summary-label">合計時間</div>
               </div>
+              {isOwner && (
+                <div className="summary-card labor" data-testid="daily-labor-cost">
+                  <div className="summary-number">¥{totalLaborCost.toLocaleString()}</div>
+                  <div className="summary-label">概算人件費</div>
+                </div>
+              )}
             </div>
           )}
 
@@ -258,38 +274,60 @@ export default function DashboardPage() {
                     <th>退勤</th>
                     <th>休憩</th>
                     <th>実働</th>
+                    {isOwner && <th>人件費</th>}
                     {canEdit && <th></th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {records.map((r: any) => (
-                    <tr key={r.id} className={!r.clockOut ? 'row-working row-unpaired' : ''}>
-                      <td>
-                        <span className="staff-name-cell">{r.staffName || '—'}</span>
-                        {!r.clockOut && <span className="status-dot" title="勤務中" />}
-                      </td>
-                      <td>{formatTime(r.clockIn)}</td>
-                      <td className={!r.clockOut ? 'text-unpaired' : ''}>
-                        {r.clockOut ? formatTime(r.clockOut) : '未打刻'}
-                      </td>
-                      <td>{r.breakMinutes}分</td>
-                      <td className={!r.clockOut ? 'text-working' : ''}>
-                        {calcHoursStr(r)}
-                      </td>
-                      {canEdit && (
+                  {records.map((r: any) => {
+                    const cost = calcLaborCost(r);
+                    return (
+                      <tr key={r.id} className={!r.clockOut ? 'row-working row-unpaired' : ''}>
                         <td>
-                          <button
-                            className="edit-record-btn"
-                            onClick={() => openEditModal(r)}
-                            data-testid={`edit-record-btn-${r.id}`}
-                          >
-                            編集
-                          </button>
+                          <span className="staff-name-cell">{r.staffName || '—'}</span>
+                          {!r.clockOut && <span className="status-dot" title="勤務中" />}
                         </td>
-                      )}
-                    </tr>
-                  ))}
+                        <td>{formatTime(r.clockIn)}</td>
+                        <td className={!r.clockOut ? 'text-unpaired' : ''}>
+                          {r.clockOut ? formatTime(r.clockOut) : '未打刻'}
+                        </td>
+                        <td>{r.breakMinutes}分</td>
+                        <td className={!r.clockOut ? 'text-working' : ''}>
+                          {calcHoursStr(r)}
+                        </td>
+                        {isOwner && (
+                          <td style={{ textAlign: 'right' }}>
+                            {cost !== null ? `¥${cost.toLocaleString()}` : '—'}
+                          </td>
+                        )}
+                        {canEdit && (
+                          <td>
+                            <button
+                              className="edit-record-btn"
+                              onClick={() => openEditModal(r)}
+                              data-testid={`edit-record-btn-${r.id}`}
+                            >
+                              編集
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
+                {isOwner && finished.length > 0 && (
+                  <tfoot>
+                    <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 700, background: '#f9fafb' }}>
+                      <td>合計</td>
+                      <td></td>
+                      <td></td>
+                      <td></td>
+                      <td>{totalHoursToday.toFixed(1)}h</td>
+                      <td style={{ textAlign: 'right', color: '#2563eb' }}>¥{totalLaborCost.toLocaleString()}</td>
+                      {canEdit && <td></td>}
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             )}
           </div>
