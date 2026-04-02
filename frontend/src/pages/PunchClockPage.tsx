@@ -32,6 +32,13 @@ export default function PunchClockPage() {
   const [breakMinutes, setBreakMinutes] = useState(0);
   const [punchSuccess, setPunchSuccess] = useState<'in' | 'out' | null>(null);
 
+  // 退勤押し忘れ修正モーダル
+  const [showStaleModal, setShowStaleModal] = useState(false);
+  const [staleRecord, setStaleRecord] = useState<{ id: string; clockIn: string; breakMinutes: number } | null>(null);
+  const [staleClockOut, setStaleClockOut] = useState('');
+  const [staleBreakMinutes, setStaleBreakMinutes] = useState(0);
+  const [correctingStale, setCorrectingStale] = useState(false);
+
   // 退勤時レポートフォーム（マネージャー/リーダー用）
   const [showClockOutReport, setShowClockOutReport] = useState(false);
   const [reportSales, setReportSales] = useState('');
@@ -55,8 +62,30 @@ export default function PunchClockPage() {
   useEffect(() => {
     if (!selectedStore) return;
     api.getTimecardStatus(selectedStore.id).then(data => {
-      setIsClockedIn(data.isClockedIn);
       setStaffId(data.staffId || '');
+
+      // 退勤押し忘れ検出: 前日以前の未退勤レコード
+      if (data.isClockedIn && data.isStale && data.currentRecord) {
+        setStaleRecord({
+          id: data.currentRecord.id,
+          clockIn: data.currentRecord.clockIn,
+          breakMinutes: data.currentRecord.breakMinutes || 0,
+        });
+        const clockInDate = new Date(data.currentRecord.clockIn);
+        const eightHoursLater = new Date(clockInDate.getTime() + 8 * 60 * 60 * 1000);
+        const sameDay2300 = new Date(clockInDate);
+        sameDay2300.setHours(23, 0, 0, 0);
+        const defaultOut = eightHoursLater < sameDay2300 ? eightHoursLater : sameDay2300;
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const localStr = `${defaultOut.getFullYear()}-${pad(defaultOut.getMonth() + 1)}-${pad(defaultOut.getDate())}T${pad(defaultOut.getHours())}:${pad(defaultOut.getMinutes())}`;
+        setStaleClockOut(localStr);
+        setStaleBreakMinutes(data.currentRecord.breakMinutes || 0);
+        setIsClockedIn(false); // 退勤忘れの場合は「未出勤」扱いにする
+        setShowStaleModal(true);
+        return;
+      }
+
+      setIsClockedIn(data.isClockedIn);
       if (data.currentRecord) {
         setClockInTime(new Date(data.currentRecord.clockIn));
       }
@@ -201,6 +230,29 @@ export default function PunchClockPage() {
     setInventoryUpdates({});
   };
 
+  // 未退勤レコード修正 → 新規出勤
+  const handleStaleCorrect = async () => {
+    if (!selectedStore || !staleRecord || !staleClockOut || correctingStale) return;
+    setCorrectingStale(true);
+    setError('');
+
+    try {
+      const clockOutISO = new Date(staleClockOut).toISOString();
+      const data = await api.correctAndClockIn(selectedStore.id, staleRecord.id, clockOutISO, staleBreakMinutes);
+      setIsClockedIn(true);
+      setClockInTime(new Date(data.record.clockIn));
+      setShowStaleModal(false);
+      setStaleRecord(null);
+      setPunchSuccess('in');
+      showToast('前回の退勤を修正し、出勤しました！', 'success');
+      setTimeout(() => setPunchSuccess(null), 2000);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setCorrectingStale(false);
+    }
+  };
+
   // 実際の打刻実行
   const executePunch = async () => {
     if (!selectedStore) return;
@@ -224,7 +276,24 @@ export default function PunchClockPage() {
       }
       setTimeout(() => setPunchSuccess(null), 2000);
     } catch (e: any) {
-      setError(e.message);
+      // 退勤押し忘れ検出: 409 + staleRecord
+      if (e.status === 409 && e.body?.staleRecord) {
+        setStaleRecord(e.body.staleRecord);
+        // デフォルト退勤時刻: 出勤から8時間後 or 前日23:00のうち早い方
+        const clockInDate = new Date(e.body.staleRecord.clockIn);
+        const eightHoursLater = new Date(clockInDate.getTime() + 8 * 60 * 60 * 1000);
+        const sameDay2300 = new Date(clockInDate);
+        sameDay2300.setHours(23, 0, 0, 0);
+        const defaultOut = eightHoursLater < sameDay2300 ? eightHoursLater : sameDay2300;
+        // datetime-local形式に変換（ローカルタイムゾーン）
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const localStr = `${defaultOut.getFullYear()}-${pad(defaultOut.getMonth() + 1)}-${pad(defaultOut.getDate())}T${pad(defaultOut.getHours())}:${pad(defaultOut.getMinutes())}`;
+        setStaleClockOut(localStr);
+        setStaleBreakMinutes(e.body.staleRecord.breakMinutes || 0);
+        setShowStaleModal(true);
+      } else {
+        setError(e.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -311,6 +380,73 @@ export default function PunchClockPage() {
               </button>
               <button className="break-confirm" onClick={handleBreakConfirm}>
                 退勤する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 退勤押し忘れ修正モーダル */}
+      {showStaleModal && staleRecord && (
+        <div className="break-modal-overlay" onClick={() => setShowStaleModal(false)}>
+          <div className="break-modal" onClick={e => e.stopPropagation()} data-testid="stale-record-modal">
+            <h3>前回の退勤が未記録です</h3>
+            <p className="break-modal-desc">
+              {new Date(staleRecord.clockIn).toLocaleString('ja-JP')} に出勤した記録の退勤が打刻されていません。退勤時刻を入力してください。
+            </p>
+
+            {error && <div className="error-msg" style={{ marginBottom: 8 }}>{error}</div>}
+
+            <div style={{ marginBottom: 12 }}>
+              <label className="form-label" style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600 }}>退勤時刻</label>
+              <input
+                type="datetime-local"
+                value={staleClockOut}
+                onChange={e => setStaleClockOut(e.target.value)}
+                className="form-input"
+                data-testid="stale-clock-out-input"
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontSize: '1rem' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label className="form-label" style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600 }}>休憩時間</label>
+              <div className="break-input-row">
+                <input
+                  type="number"
+                  min={0}
+                  max={480}
+                  value={staleBreakMinutes}
+                  onChange={e => setStaleBreakMinutes(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="break-input"
+                  data-testid="stale-break-input"
+                />
+                <span className="break-unit">分</span>
+              </div>
+              <div className="break-presets">
+                {[0, 15, 30, 45, 60].map(m => (
+                  <button
+                    key={m}
+                    className={`break-preset ${staleBreakMinutes === m ? 'active' : ''}`}
+                    onClick={() => setStaleBreakMinutes(m)}
+                  >
+                    {m}分
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="break-modal-actions">
+              <button className="break-cancel" onClick={() => setShowStaleModal(false)} data-testid="stale-cancel-btn">
+                キャンセル
+              </button>
+              <button
+                className="break-confirm"
+                onClick={handleStaleCorrect}
+                disabled={!staleClockOut || correctingStale}
+                data-testid="stale-correct-btn"
+              >
+                {correctingStale ? '処理中...' : '修正して出勤'}
               </button>
             </div>
           </div>

@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
+import { showToast } from '../components/Toast';
 
 type ViewMode = 'daily' | 'monthly';
 
 export default function DashboardPage() {
   const { selectedStore } = useAuth();
   const isOwner = selectedStore?.role === 'owner';
+  const isManager = selectedStore?.role === 'manager';
+  const canEdit = isOwner || isManager;
   const [records, setRecords] = useState<any[]>([]);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
@@ -14,13 +17,26 @@ export default function DashboardPage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
+  // 未退勤レコード（ペア不一致）
+  const [staleRecords, setStaleRecords] = useState<any[]>([]);
+
+  // 編集モーダル
+  const [editRecord, setEditRecord] = useState<any>(null);
+  const [editClockIn, setEditClockIn] = useState('');
+  const [editClockOut, setEditClockOut] = useState('');
+  const [editBreakMinutes, setEditBreakMinutes] = useState(0);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState('');
+
   // 日別データ取得
-  useEffect(() => {
+  const loadDailyRecords = () => {
     if (!selectedStore) return;
     api.getDailyRecords(selectedStore.id, date)
       .then(data => setRecords(data.records))
       .catch(() => {});
-  }, [selectedStore, date]);
+  };
+
+  useEffect(() => { loadDailyRecords(); }, [selectedStore, date]);
 
   // 月別データ取得
   useEffect(() => {
@@ -30,8 +46,47 @@ export default function DashboardPage() {
       .catch(() => setMonthlyData(null));
   }, [selectedStore, viewMode, year, month]);
 
+  // 未退勤レコード検出（全日の clock_out = null）
+  useEffect(() => {
+    if (!selectedStore || !canEdit) return;
+    // 今日の日別データから未退勤を取得 + 過去分は別途チェック
+    // 直近7日間をスキャンして未退勤を検出
+    const checkStale = async () => {
+      const stale: any[] = [];
+      const today = new Date();
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        try {
+          const data = await api.getDailyRecords(selectedStore.id, dateStr);
+          const unpaired = (data.records || []).filter((r: any) => !r.clockOut);
+          // 今日の「勤務中」は除外（当日は正常な勤務中の可能性）
+          if (i === 0) {
+            // 当日でも出勤から12時間以上経過していたら異常とみなす
+            const now = Date.now();
+            unpaired.forEach((r: any) => {
+              const elapsed = (now - new Date(r.clockIn).getTime()) / 3600000;
+              if (elapsed > 12) stale.push({ ...r, date: dateStr });
+            });
+          } else {
+            unpaired.forEach((r: any) => stale.push({ ...r, date: dateStr }));
+          }
+        } catch {}
+      }
+      setStaleRecords(stale);
+    };
+    checkStale();
+  }, [selectedStore, canEdit]);
+
   const formatTime = (iso: string) =>
     new Date(iso).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+
+  const toLocalDatetimeStr = (iso: string) => {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
   const calcHours = (record: any) => {
     if (!record.clockOut) return null;
@@ -43,6 +98,55 @@ export default function DashboardPage() {
     const h = calcHours(record);
     if (h === null) return '勤務中';
     return `${h.toFixed(1)}h`;
+  };
+
+  // 編集モーダルを開く
+  const openEditModal = (record: any) => {
+    if (!canEdit) return;
+    setEditRecord(record);
+    setEditClockIn(toLocalDatetimeStr(record.clockIn));
+    setEditClockOut(record.clockOut ? toLocalDatetimeStr(record.clockOut) : '');
+    setEditBreakMinutes(record.breakMinutes || 0);
+    setEditError('');
+  };
+
+  const closeEditModal = () => {
+    setEditRecord(null);
+    setEditError('');
+  };
+
+  const handleEditSubmit = async () => {
+    if (!selectedStore || !editRecord || editSubmitting) return;
+    setEditSubmitting(true);
+    setEditError('');
+
+    try {
+      const updates: any = {};
+      const newClockIn = new Date(editClockIn).toISOString();
+      const newClockOut = editClockOut ? new Date(editClockOut).toISOString() : undefined;
+
+      if (newClockIn !== editRecord.clockIn) updates.clockIn = newClockIn;
+      if (editClockOut && newClockOut !== editRecord.clockOut) updates.clockOut = newClockOut;
+      if (!editClockOut && editRecord.clockOut) updates.clockOut = null;
+      if (editBreakMinutes !== (editRecord.breakMinutes || 0)) updates.breakMinutes = editBreakMinutes;
+
+      if (Object.keys(updates).length === 0) {
+        closeEditModal();
+        return;
+      }
+
+      await api.updateTimeRecord(selectedStore.id, editRecord.id, updates);
+      showToast('勤怠記録を修正しました', 'success');
+      closeEditModal();
+      // データ再読み込み
+      loadDailyRecords();
+      // 未退勤リストも更新
+      setStaleRecords(prev => prev.filter(r => r.id !== editRecord.id));
+    } catch (e: any) {
+      setEditError(e.message);
+    } finally {
+      setEditSubmitting(false);
+    }
   };
 
   // 今日のサマリー計算
@@ -62,6 +166,31 @@ export default function DashboardPage() {
 
   return (
     <>
+      {/* 未退勤アラート */}
+      {canEdit && staleRecords.length > 0 && (
+        <div className="stale-alert" data-testid="stale-alert-banner">
+          <div className="stale-alert-header">
+            <span className="stale-alert-icon">!</span>
+            <strong>退勤未打刻が {staleRecords.length} 件あります</strong>
+          </div>
+          <div className="stale-alert-list">
+            {staleRecords.map((r: any) => (
+              <div key={r.id} className="stale-alert-item">
+                <span>{r.date} {r.staffName || '—'}</span>
+                <span className="stale-alert-time">出勤 {formatTime(r.clockIn)}〜</span>
+                <button
+                  className="stale-alert-fix-btn"
+                  onClick={() => openEditModal(r)}
+                  data-testid={`stale-fix-btn-${r.id}`}
+                >
+                  修正
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ビュー切替タブ */}
       <div className="view-mode-tabs">
         <button
@@ -129,21 +258,35 @@ export default function DashboardPage() {
                     <th>退勤</th>
                     <th>休憩</th>
                     <th>実働</th>
+                    {canEdit && <th></th>}
                   </tr>
                 </thead>
                 <tbody>
                   {records.map((r: any) => (
-                    <tr key={r.id} className={!r.clockOut ? 'row-working' : ''}>
+                    <tr key={r.id} className={!r.clockOut ? 'row-working row-unpaired' : ''}>
                       <td>
                         <span className="staff-name-cell">{r.staffName || '—'}</span>
                         {!r.clockOut && <span className="status-dot" title="勤務中" />}
                       </td>
                       <td>{formatTime(r.clockIn)}</td>
-                      <td>{r.clockOut ? formatTime(r.clockOut) : '—'}</td>
+                      <td className={!r.clockOut ? 'text-unpaired' : ''}>
+                        {r.clockOut ? formatTime(r.clockOut) : '未打刻'}
+                      </td>
                       <td>{r.breakMinutes}分</td>
                       <td className={!r.clockOut ? 'text-working' : ''}>
                         {calcHoursStr(r)}
                       </td>
+                      {canEdit && (
+                        <td>
+                          <button
+                            className="edit-record-btn"
+                            onClick={() => openEditModal(r)}
+                            data-testid={`edit-record-btn-${r.id}`}
+                          >
+                            編集
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -215,6 +358,86 @@ export default function DashboardPage() {
               <p className="empty-state-hint">月を変更して別の期間を確認できます</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 勤怠編集モーダル */}
+      {editRecord && (
+        <div className="break-modal-overlay" onClick={closeEditModal}>
+          <div className="break-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }} data-testid="edit-record-modal">
+            <h3>勤怠記録の修正</h3>
+            <p className="break-modal-desc">
+              {editRecord.staffName || '—'} さんの記録を修正します
+            </p>
+
+            {editError && <div className="error-msg" style={{ marginBottom: 8 }}>{editError}</div>}
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>出勤時刻</label>
+              <input
+                type="datetime-local"
+                value={editClockIn}
+                onChange={e => setEditClockIn(e.target.value)}
+                data-testid="edit-clock-in-input"
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontSize: '1rem' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>退勤時刻</label>
+              <input
+                type="datetime-local"
+                value={editClockOut}
+                onChange={e => setEditClockOut(e.target.value)}
+                data-testid="edit-clock-out-input"
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontSize: '1rem' }}
+              />
+              {!editClockOut && (
+                <p style={{ fontSize: '0.8rem', color: '#ef4444', marginTop: 4 }}>未打刻 — 退勤時刻を入力してください</p>
+              )}
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>休憩時間</label>
+              <div className="break-input-row">
+                <input
+                  type="number"
+                  min={0}
+                  max={480}
+                  value={editBreakMinutes}
+                  onChange={e => setEditBreakMinutes(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="break-input"
+                  data-testid="edit-break-input"
+                />
+                <span className="break-unit">分</span>
+              </div>
+              <div className="break-presets">
+                {[0, 15, 30, 45, 60].map(m => (
+                  <button
+                    key={m}
+                    className={`break-preset ${editBreakMinutes === m ? 'active' : ''}`}
+                    onClick={() => setEditBreakMinutes(m)}
+                  >
+                    {m}分
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="break-modal-actions">
+              <button className="break-cancel" onClick={closeEditModal} data-testid="edit-cancel-btn">
+                キャンセル
+              </button>
+              <button
+                className="break-confirm"
+                onClick={handleEditSubmit}
+                disabled={editSubmitting}
+                data-testid="edit-save-btn"
+              >
+                {editSubmitting ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

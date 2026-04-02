@@ -50,7 +50,20 @@ router.post('/:storeId/clock-in', requireAuth, async (req: Request, res: Respons
       .maybeSingle();
 
     if (open) {
-      res.status(409).json({ error: '既に出勤中です' });
+      // 未退勤レコードの詳細を返す（フロントで修正フローに使う）
+      const { data: staleRecord } = await supabaseAdmin
+        .from('time_records')
+        .select('id, clock_in, break_minutes')
+        .eq('id', open.id)
+        .single();
+      res.status(409).json({
+        error: '既に出勤中です',
+        staleRecord: staleRecord ? {
+          id: staleRecord.id,
+          clockIn: staleRecord.clock_in,
+          breakMinutes: staleRecord.break_minutes,
+        } : null,
+      });
       return;
     }
 
@@ -146,8 +159,14 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
       .is('clock_out', null)
       .maybeSingle();
 
+    // 出勤日が今日でなければ「退勤押し忘れ」と判定
+    const isStale = open
+      ? new Date(open.clock_in).toDateString() !== new Date().toDateString()
+      : false;
+
     res.json({
       isClockedIn: !!open,
+      isStale,
       currentRecord: open ? {
         id: open.id,
         clockIn: open.clock_in,
@@ -282,6 +301,149 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
     });
   } catch (e: any) {
     console.error('[timecard GET /:storeId/monthly] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 未退勤レコードを修正して新規出勤
+router.post('/:storeId/correct-and-clockin', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const { staleRecordId, clockOut, breakMinutes } = req.body;
+
+    if (!staleRecordId || !clockOut) {
+      res.status(400).json({ error: '修正する退勤時刻が必要です' });
+      return;
+    }
+
+    const staff = await requirePunchStaff(storeId, req.user!.id, res);
+    if (!staff) return;
+    const staffId = staff.id;
+
+    // 未退勤レコードが自分のものか確認
+    const { data: stale } = await supabaseAdmin
+      .from('time_records')
+      .select('id, staff_id, clock_in')
+      .eq('id', staleRecordId)
+      .eq('store_id', storeId)
+      .eq('staff_id', staffId)
+      .is('clock_out', null)
+      .maybeSingle();
+
+    if (!stale) {
+      res.status(404).json({ error: '修正対象の未退勤レコードが見つかりません' });
+      return;
+    }
+
+    // 退勤時刻のバリデーション: 出勤時刻より後であること
+    if (new Date(clockOut) <= new Date(stale.clock_in)) {
+      res.status(400).json({ error: '退勤時刻は出勤時刻より後にしてください' });
+      return;
+    }
+
+    // 未退勤レコードをクローズ
+    const update: any = { clock_out: clockOut };
+    if (breakMinutes !== undefined) update.break_minutes = breakMinutes;
+
+    const { error: updateErr } = await supabaseAdmin
+      .from('time_records')
+      .update(update)
+      .eq('id', staleRecordId);
+
+    if (updateErr) {
+      res.status(500).json({ error: updateErr.message });
+      return;
+    }
+
+    // 新規出勤レコードを作成
+    const { data: record, error: insertErr } = await supabaseAdmin
+      .from('time_records')
+      .insert({ store_id: storeId, staff_id: staffId })
+      .select()
+      .single();
+
+    if (insertErr) {
+      res.status(500).json({ error: insertErr.message });
+      return;
+    }
+
+    res.status(201).json({ record: {
+      id: record.id,
+      clockIn: record.clock_in,
+      clockOut: record.clock_out,
+      breakMinutes: record.break_minutes,
+    }});
+  } catch (e: any) {
+    console.error('[timecard POST /:storeId/correct-and-clockin] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// オーナー/マネージャーによる勤怠レコード修正
+router.put('/:storeId/records/:recordId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const recordId = req.params.recordId as string;
+    const { clockIn, clockOut, breakMinutes } = req.body;
+
+    // オーナーまたはマネージャーのみ
+    const staff = await getStoreStaff(storeId, req.user!.id);
+    if (!staff || !['owner', 'manager'].includes(staff.role)) {
+      res.status(403).json({ error: 'オーナーまたはマネージャーのみ修正できます' });
+      return;
+    }
+
+    // 対象レコードが同じ店舗のものか確認
+    const { data: target } = await supabaseAdmin
+      .from('time_records')
+      .select('id, clock_in')
+      .eq('id', recordId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (!target) {
+      res.status(404).json({ error: '勤怠レコードが見つかりません' });
+      return;
+    }
+
+    const update: any = {};
+    if (clockIn !== undefined) update.clock_in = clockIn;
+    if (clockOut !== undefined) update.clock_out = clockOut;
+    if (breakMinutes !== undefined) update.break_minutes = breakMinutes;
+
+    if (Object.keys(update).length === 0) {
+      res.status(400).json({ error: '更新する項目がありません' });
+      return;
+    }
+
+    // バリデーション: 退勤 > 出勤
+    const finalClockIn = clockIn || target.clock_in;
+    const finalClockOut = clockOut;
+    if (finalClockOut && new Date(finalClockOut) <= new Date(finalClockIn)) {
+      res.status(400).json({ error: '退勤時刻は出勤時刻より後にしてください' });
+      return;
+    }
+
+    const { data: record, error } = await supabaseAdmin
+      .from('time_records')
+      .update(update)
+      .eq('id', recordId)
+      .select()
+      .single();
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json({ record: {
+      id: record.id,
+      clockIn: record.clock_in,
+      clockOut: record.clock_out,
+      breakMinutes: record.break_minutes,
+    }});
+  } catch (e: any) {
+    console.error('[timecard PUT /:storeId/records/:recordId] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });

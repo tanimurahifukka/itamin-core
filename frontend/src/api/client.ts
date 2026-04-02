@@ -16,8 +16,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || `HTTP ${res.status}`);
+    const body = await res.json().catch(() => ({ error: 'Request failed' }));
+    const err: any = new Error(body.error || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.body = body;
+    throw err;
   }
 
   return res.json();
@@ -61,10 +64,20 @@ export const api = {
   getTimecardStatus: (storeId: string) => request<any>(`/timecard/${storeId}/status`),
   clockIn: (storeId: string) =>
     request<any>(`/timecard/${storeId}/clock-in`, { method: 'POST' }),
+  correctAndClockIn: (storeId: string, staleRecordId: string, clockOut: string, breakMinutes?: number) =>
+    request<any>(`/timecard/${storeId}/correct-and-clockin`, {
+      method: 'POST',
+      body: JSON.stringify({ staleRecordId, clockOut, breakMinutes }),
+    }),
   clockOut: (storeId: string, breakMinutes?: number) =>
     request<any>(`/timecard/${storeId}/clock-out`, {
       method: 'POST',
       body: JSON.stringify({ breakMinutes }),
+    }),
+  updateTimeRecord: (storeId: string, recordId: string, updates: { clockIn?: string; clockOut?: string; breakMinutes?: number }) =>
+    request<any>(`/timecard/${storeId}/records/${recordId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
     }),
   getDailyRecords: (storeId: string, date?: string) =>
     request<any>(`/timecard/${storeId}/daily${date ? `?date=${date}` : ''}`),
