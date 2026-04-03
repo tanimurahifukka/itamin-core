@@ -310,11 +310,11 @@ export default function ShiftPage() {
         <table className="shift-table" style={isCompact ? { fontSize: '0.75rem' } : undefined}>
           <thead>
             <tr>
-              <th style={isCompact ? { minWidth: 60 } : undefined}>スタッフ</th>
+              <th>スタッフ</th>
               {viewDates.map((d, i) => (
                 <th key={i} style={{
                   color: getDayColor(d),
-                  ...(isCompact ? { padding: '6px 2px', minWidth: 48 } : {}),
+                  ...(isCompact ? { padding: '6px 2px' } : {}),
                 }}>
                   {d.getDate()}{getDayLabel(d)}
                 </th>

@@ -2125,11 +2125,17 @@ body {
   margin: 0 -4px;
 }
 
+@media (min-width: 768px) {
+  .shift-table-wrap {
+    overflow-x: visible;
+  }
+}
+
 .shift-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
-  min-width: 600px;
+  table-layout: fixed;
 }
 
 .shift-table th {
@@ -2149,9 +2155,9 @@ body {
 .shift-cell {
   cursor: pointer;
   text-align: center;
-  min-width: 70px;
   position: relative;
   transition: background 0.15s;
+  overflow: hidden;
 }
 
 .shift-cell:hover {
@@ -2212,6 +2218,9 @@ body {
   font-weight: 500;
   white-space: nowrap;
   padding-left: 8px !important;
+  width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .summary-row {
