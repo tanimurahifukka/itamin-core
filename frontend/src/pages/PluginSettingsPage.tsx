@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
+import { showToast } from '../components/Toast';
 
 interface SettingField {
   key: string;
@@ -26,6 +27,25 @@ interface PluginInfo {
   displayOrder: number;
 }
 
+interface StoreAccount {
+  id: string;
+  name: string;
+  address: string;
+  phone: string;
+  openTime: string;
+  closeTime: string;
+}
+
+type StoreAccountForm = Omit<StoreAccount, 'id'>;
+
+const EMPTY_ACCOUNT_FORM: StoreAccountForm = {
+  name: '',
+  address: '',
+  phone: '',
+  openTime: '',
+  closeTime: '',
+};
+
 const ALL_ROLES = [
   { value: 'owner', label: 'オーナー' },
   { value: 'manager', label: 'マネージャー' },
@@ -34,8 +54,29 @@ const ALL_ROLES = [
   { value: 'part_time', label: 'アルバイト' },
 ];
 
+function normalizeAccount(account: any): StoreAccount {
+  return {
+    id: String(account?.id ?? ''),
+    name: String(account?.name ?? ''),
+    address: String(account?.address ?? ''),
+    phone: String(account?.phone ?? ''),
+    openTime: String(account?.openTime ?? ''),
+    closeTime: String(account?.closeTime ?? ''),
+  };
+}
+
+function toFormState(account: StoreAccount): StoreAccountForm {
+  return {
+    name: account.name,
+    address: account.address,
+    phone: account.phone,
+    openTime: account.openTime,
+    closeTime: account.closeTime,
+  };
+}
+
 export default function PluginSettingsPage() {
-  const { selectedStore } = useAuth();
+  const { selectedStore, refreshStores } = useAuth();
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [expandedPlugin, setExpandedPlugin] = useState<string | null>(null);
   const [localConfigs, setLocalConfigs] = useState<Record<string, Record<string, any>>>({});
@@ -43,33 +84,61 @@ export default function PluginSettingsPage() {
   const [savingConfig, setSavingConfig] = useState<string | null>(null);
   const [configMsg, setConfigMsg] = useState<Record<string, string>>({});
 
-  const loadPlugins = async () => {
+  const [storeAccount, setStoreAccount] = useState<StoreAccount | null>(null);
+  const [accountForm, setAccountForm] = useState<StoreAccountForm>(EMPTY_ACCOUNT_FORM);
+  const [accountSaving, setAccountSaving] = useState(false);
+  const [accountMsg, setAccountMsg] = useState('');
+
+  const [initialPassword, setInitialPassword] = useState('');
+  const [editingInitialPassword, setEditingInitialPassword] = useState(false);
+  const [initialPasswordDraft, setInitialPasswordDraft] = useState('');
+  const [savingInitialPassword, setSavingInitialPassword] = useState(false);
+
+  const loadSettings = async () => {
     if (!selectedStore) return;
     try {
-      const data = await api.getPluginSettings(selectedStore.id);
-      setPlugins(data.plugins);
+      const [pluginData, accountData, passwordData] = await Promise.all([
+        api.getPluginSettings(selectedStore.id),
+        api.getStoreAccount(selectedStore.id),
+        api.getInitialPassword(selectedStore.id),
+      ]);
+
+      setPlugins(pluginData.plugins);
       const configs: Record<string, Record<string, any>> = {};
       const perms: Record<string, string[]> = {};
-      for (const p of data.plugins) {
-        configs[p.name] = { ...p.config };
-        perms[p.name] = [...p.allowedRoles];
+      for (const plugin of pluginData.plugins) {
+        configs[plugin.name] = { ...plugin.config };
+        perms[plugin.name] = [...plugin.allowedRoles];
       }
       setLocalConfigs(configs);
       setLocalPerms(perms);
-    } catch {}
+
+      const normalizedAccount = normalizeAccount(accountData.account);
+      setStoreAccount(normalizedAccount);
+      setAccountForm(toFormState(normalizedAccount));
+      setInitialPassword(passwordData.initialPassword || normalizedAccount.id);
+      setInitialPasswordDraft(passwordData.initialPassword || normalizedAccount.id);
+      setEditingInitialPassword(false);
+      setAccountMsg('');
+    } catch {
+      setStoreAccount(null);
+      setAccountForm(EMPTY_ACCOUNT_FORM);
+    }
   };
 
-  useEffect(() => { loadPlugins(); }, [selectedStore]);
+  useEffect(() => {
+    loadSettings();
+  }, [selectedStore]);
 
   const togglePlugin = async (pluginName: string, enabled: boolean) => {
     if (!selectedStore) return;
     try {
       await api.togglePlugin(selectedStore.id, pluginName, enabled);
-      setPlugins(prev => prev.map(p =>
-        p.name === pluginName ? { ...p, enabled } : p
-      ));
+      setPlugins(prev => prev.map(plugin => (
+        plugin.name === pluginName ? { ...plugin, enabled } : plugin
+      )));
       window.dispatchEvent(new Event('plugins-updated'));
-      await loadPlugins();
+      await loadSettings();
     } catch {}
   };
 
@@ -77,6 +146,13 @@ export default function PluginSettingsPage() {
     setLocalConfigs(prev => ({
       ...prev,
       [pluginName]: { ...prev[pluginName], [key]: value },
+    }));
+  };
+
+  const updateAccountField = (key: keyof StoreAccountForm, value: string) => {
+    setAccountForm(prev => ({
+      ...prev,
+      [key]: value,
     }));
   };
 
@@ -96,7 +172,6 @@ export default function PluginSettingsPage() {
     setSavingConfig(pluginName);
     setConfigMsg(prev => ({ ...prev, [pluginName]: '' }));
     try {
-      // config と permissions を並列保存
       await Promise.all([
         (localConfigs[pluginName] && Object.keys(localConfigs[pluginName]).length > 0)
           ? api.updatePluginConfig(selectedStore.id, pluginName, localConfigs[pluginName])
@@ -104,13 +179,80 @@ export default function PluginSettingsPage() {
         api.updatePluginPermissions(selectedStore.id, pluginName, localPerms[pluginName] || []),
       ]);
       window.dispatchEvent(new Event('plugins-updated'));
-      await loadPlugins();
+      await loadSettings();
       setConfigMsg(prev => ({ ...prev, [pluginName]: '保存しました' }));
       setTimeout(() => setConfigMsg(prev => ({ ...prev, [pluginName]: '' })), 2000);
     } catch (e: any) {
       setConfigMsg(prev => ({ ...prev, [pluginName]: `エラー: ${e.message}` }));
     } finally {
       setSavingConfig(null);
+    }
+  };
+
+  const copyText = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      showToast(`${label}をコピーしました`, 'info');
+    } catch {
+      showToast(`${label}のコピーに失敗しました`, 'error');
+    }
+  };
+
+  const saveStoreAccount = async () => {
+    if (!selectedStore || accountSaving) return;
+
+    const trimmedName = accountForm.name.trim();
+    if (!trimmedName) {
+      setAccountMsg('エラー: 施設名は必須です');
+      return;
+    }
+
+    setAccountSaving(true);
+    setAccountMsg('');
+
+    try {
+      const result = await api.updateStoreAccount(selectedStore.id, {
+        name: trimmedName,
+        address: accountForm.address.trim(),
+        phone: accountForm.phone.trim(),
+        openTime: accountForm.openTime,
+        closeTime: accountForm.closeTime,
+      });
+
+      const normalizedAccount = normalizeAccount(result.account);
+      setStoreAccount(normalizedAccount);
+      setAccountForm(toFormState(normalizedAccount));
+      await refreshStores();
+      setAccountMsg('保存しました');
+      showToast('施設アカウントを更新しました', 'success');
+    } catch (e: any) {
+      setAccountMsg(`エラー: ${e.message}`);
+      showToast(e.message || '施設アカウントの保存に失敗しました', 'error');
+    } finally {
+      setAccountSaving(false);
+    }
+  };
+
+  const saveInitialPassword = async () => {
+    if (!selectedStore || savingInitialPassword) return;
+
+    const nextPassword = initialPasswordDraft.trim();
+    if (nextPassword.length < 6) {
+      showToast('初期パスワードは6文字以上で入力してください', 'error');
+      return;
+    }
+
+    setSavingInitialPassword(true);
+    try {
+      await api.setInitialPassword(selectedStore.id, nextPassword);
+      setInitialPassword(nextPassword);
+      setInitialPasswordDraft(nextPassword);
+      setEditingInitialPassword(false);
+      showToast('初期パスワードを更新しました', 'success');
+    } catch (e: any) {
+      showToast(e.message || '初期パスワードの更新に失敗しました', 'error');
+    } finally {
+      setSavingInitialPassword(false);
     }
   };
 
@@ -125,9 +267,12 @@ export default function PluginSettingsPage() {
             {field.description && <div style={{ fontSize: '0.8rem', color: '#888', marginTop: 2 }}>{field.description}</div>}
           </div>
           <label style={{ position: 'relative', width: 44, height: 24, cursor: 'pointer', flexShrink: 0 }}>
-            <input type="checkbox" checked={!!value}
+            <input
+              type="checkbox"
+              checked={!!value}
               onChange={e => updateLocalConfig(pluginName, field.key, e.target.checked)}
-              style={{ opacity: 0, width: 0, height: 0 }} />
+              style={{ opacity: 0, width: 0, height: 0 }}
+            />
             <span style={{ position: 'absolute', inset: 0, borderRadius: 12, background: value ? '#2563eb' : '#d4d9df', transition: 'background 0.2s' }} />
             <span style={{ position: 'absolute', top: 2, left: value ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
           </label>
@@ -149,6 +294,24 @@ export default function PluginSettingsPage() {
       );
     }
 
+    if (field.type === 'select' && field.options) {
+      return (
+        <div key={field.key} style={{ padding: '8px 0' }}>
+          <div style={{ fontSize: '0.9rem', fontWeight: 500, marginBottom: 4 }}>{field.label}</div>
+          {field.description && <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: 4 }}>{field.description}</div>}
+          <select
+            value={String(value)}
+            onChange={e => updateLocalConfig(pluginName, field.key, e.target.value)}
+            style={inputStyle}
+          >
+            {field.options.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+
     return (
       <div key={field.key} style={{ padding: '8px 0' }}>
         <div style={{ fontSize: '0.9rem', fontWeight: 500, marginBottom: 4 }}>{field.label}</div>
@@ -163,56 +326,237 @@ export default function PluginSettingsPage() {
     );
   };
 
+  const joinUrl = selectedStore && typeof window !== 'undefined'
+    ? `${window.location.origin}?join=${selectedStore.id}`
+    : '';
+
+  const currentAccountId = storeAccount?.id || selectedStore?.id || '';
+  const currentInitialPassword = initialPassword || currentAccountId;
+
   return (
     <div className="main-content">
-      <h3 style={{ marginBottom: 8 }}>プラグイン設定</h3>
+      <h3 style={{ marginBottom: 8 }}>設定</h3>
       <p style={{ color: '#888', marginBottom: 24, fontSize: '0.85rem' }}>
+        施設アカウントとプラグイン権限を一元管理できます
+      </p>
+
+      <div style={sectionCardStyle}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.98rem' }}>施設アカウント</div>
+            <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
+              施設名・住所・営業時間など、事業所の基本設定をここから調整できます。
+            </div>
+          </div>
+          <span style={badgeStyle}>事業所設定</span>
+        </div>
+
+        <div style={accountGridStyle}>
+          <div>
+            <div style={fieldLabelStyle}>施設名</div>
+            <input
+              type="text"
+              value={accountForm.name}
+              onChange={e => updateAccountField('name', e.target.value)}
+              placeholder="例: SUNABACO NEYAGAWA"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <div style={fieldLabelStyle}>電話番号</div>
+            <input
+              type="tel"
+              value={accountForm.phone}
+              onChange={e => updateAccountField('phone', e.target.value)}
+              placeholder="例: 072-000-0000"
+              style={inputStyle}
+            />
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <div style={fieldLabelStyle}>住所</div>
+            <input
+              type="text"
+              value={accountForm.address}
+              onChange={e => updateAccountField('address', e.target.value)}
+              placeholder="例: 大阪府寝屋川市池田中町1-1"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <div style={fieldLabelStyle}>営業開始</div>
+            <input
+              type="time"
+              value={accountForm.openTime}
+              onChange={e => updateAccountField('openTime', e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <div style={fieldLabelStyle}>営業終了</div>
+            <input
+              type="time"
+              value={accountForm.closeTime}
+              onChange={e => updateAccountField('closeTime', e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+        </div>
+
+        <div style={metaGridStyle}>
+          <div style={metaCardStyle}>
+            <div style={metaLabelStyle}>施設ID</div>
+            <code style={metaValueStyle}>{currentAccountId || '未設定'}</code>
+            <button
+              onClick={() => currentAccountId && copyText(currentAccountId, '施設ID')}
+              style={secondaryButtonStyle}
+              disabled={!currentAccountId}
+            >
+              コピー
+            </button>
+          </div>
+          <div style={metaCardStyle}>
+            <div style={metaLabelStyle}>スタッフ登録リンク</div>
+            <code style={metaValueStyle}>{joinUrl || '未設定'}</code>
+            <button
+              onClick={() => joinUrl && copyText(joinUrl, 'スタッフ登録リンク')}
+              style={secondaryButtonStyle}
+              disabled={!joinUrl}
+            >
+              コピー
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid #e8edf3' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#555' }}>スタッフ初期パスワード</div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                スタッフ追加時に自動発行されるパスワードです。初回ログイン後に変更を促します。
+              </div>
+            </div>
+
+            {!editingInitialPassword ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <code style={inlineCodeStyle}>{currentInitialPassword}</code>
+                <button
+                  onClick={() => currentInitialPassword && copyText(currentInitialPassword, '初期パスワード')}
+                  style={secondaryButtonStyle}
+                >
+                  コピー
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingInitialPassword(true);
+                    setInitialPasswordDraft(currentInitialPassword);
+                  }}
+                  style={secondaryButtonStyle}
+                >
+                  変更
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  value={initialPasswordDraft}
+                  onChange={e => setInitialPasswordDraft(e.target.value)}
+                  placeholder="6文字以上で入力"
+                  style={{ ...inputStyle, width: 220 }}
+                />
+                <button
+                  onClick={saveInitialPassword}
+                  style={primaryButtonStyle}
+                  disabled={savingInitialPassword}
+                >
+                  {savingInitialPassword ? '保存中...' : '保存'}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingInitialPassword(false);
+                    setInitialPasswordDraft(currentInitialPassword);
+                  }}
+                  style={secondaryButtonStyle}
+                  disabled={savingInitialPassword}
+                >
+                  取消
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18, flexWrap: 'wrap' }}>
+          <button
+            onClick={saveStoreAccount}
+            disabled={accountSaving}
+            style={primaryButtonStyle}
+          >
+            {accountSaving ? '保存中...' : '施設アカウントを保存'}
+          </button>
+          {accountMsg && (
+            <span style={{
+              fontSize: '0.85rem',
+              color: accountMsg.startsWith('エラー') ? '#c53030' : '#22c55e',
+            }}>
+              {accountMsg}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <h4 style={{ margin: '28px 0 8px', fontSize: '1rem' }}>プラグイン設定</h4>
+      <p style={{ color: '#888', marginBottom: 20, fontSize: '0.85rem' }}>
         機能の有効/無効と、各ロールのアクセス権限を設定
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {plugins.map(p => {
-          const isExpanded = expandedPlugin === p.name;
+        {plugins.map(plugin => {
+          const isExpanded = expandedPlugin === plugin.name;
           return (
-            <div key={p.name} style={{
-              background: 'white', borderRadius: 8,
-              border: '1px solid #d4d9df', overflow: 'hidden',
+            <div key={plugin.name} style={{
+              background: 'white',
+              borderRadius: 8,
+              border: '1px solid #d4d9df',
+              overflow: 'hidden',
             }}>
-              {/* ヘッダー */}
               <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 padding: '14px 20px',
               }}>
                 <div
                   style={{ cursor: 'pointer', flex: 1 }}
-                  onClick={() => setExpandedPlugin(isExpanded ? null : p.name)}
+                  onClick={() => setExpandedPlugin(isExpanded ? null : plugin.name)}
                 >
                   <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>
-                    {p.icon} {p.label}
-                    {p.core && <span style={{ fontSize: '0.65rem', color: '#888', marginLeft: 6, fontWeight: 400 }}>コア</span>}
+                    {plugin.icon} {plugin.label}
+                    {plugin.core && <span style={{ fontSize: '0.65rem', color: '#888', marginLeft: 6, fontWeight: 400 }}>コア</span>}
                     <span style={{ fontSize: '0.75rem', color: '#888', marginLeft: 8 }}>
                       {isExpanded ? '▲' : '▼'}
                     </span>
                   </div>
                   <div style={{ fontSize: '0.8rem', color: '#888', marginTop: 2 }}>
-                    {p.description}
+                    {plugin.description}
                   </div>
                 </div>
-                {!p.core && (
+                {!plugin.core && (
                   <label style={{ position: 'relative', width: 50, height: 28, cursor: 'pointer', flexShrink: 0 }}>
-                    <input type="checkbox" checked={p.enabled}
-                      onChange={e => togglePlugin(p.name, e.target.checked)}
-                      style={{ opacity: 0, width: 0, height: 0 }} />
-                    <span style={{ position: 'absolute', inset: 0, borderRadius: 14, background: p.enabled ? '#2563eb' : '#d4d9df', transition: 'background 0.2s' }} />
-                    <span style={{ position: 'absolute', top: 3, left: p.enabled ? 25 : 3, width: 22, height: 22, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                    <input
+                      type="checkbox"
+                      checked={plugin.enabled}
+                      onChange={e => togglePlugin(plugin.name, e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{ position: 'absolute', inset: 0, borderRadius: 14, background: plugin.enabled ? '#2563eb' : '#d4d9df', transition: 'background 0.2s' }} />
+                    <span style={{ position: 'absolute', top: 3, left: plugin.enabled ? 25 : 3, width: 22, height: 22, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                   </label>
                 )}
               </div>
 
-              {/* 展開パネル */}
               {isExpanded && (
                 <div style={{ borderTop: '1px solid #e8edf3', padding: '16px 20px', background: '#fafbfc' }}>
-                  {/* 表示順 */}
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 8, color: '#555' }}>
                       表示順
@@ -220,8 +564,8 @@ export default function PluginSettingsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <input
                         type="number"
-                        value={localConfigs[p.name]?.display_order ?? p.displayOrder}
-                        onChange={e => updateLocalConfig(p.name, 'display_order', Number(e.target.value) || 0)}
+                        value={localConfigs[plugin.name]?.display_order ?? plugin.displayOrder}
+                        onChange={e => updateLocalConfig(plugin.name, 'display_order', Number(e.target.value) || 0)}
                         style={{ ...inputStyle, width: 80 }}
                         min={0}
                       />
@@ -229,27 +573,29 @@ export default function PluginSettingsPage() {
                     </div>
                   </div>
 
-                  {/* アクセス権限 */}
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 8, color: '#555' }}>
                       アクセス権限
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {ALL_ROLES.map(role => {
-                        const checked = (localPerms[p.name] || []).includes(role.value);
-                        const disabled = p.name === 'punch' && role.value === 'owner';
+                        const checked = (localPerms[plugin.name] || []).includes(role.value);
+                        const disabled = plugin.name === 'punch' && role.value === 'owner';
                         return (
                           <button
                             key={role.value}
-                            onClick={() => toggleRole(p.name, role.value)}
+                            onClick={() => toggleRole(plugin.name, role.value)}
                             disabled={disabled}
                             style={{
-                              padding: '6px 14px', borderRadius: 4,
+                              padding: '6px 14px',
+                              borderRadius: 4,
                               border: `1px solid ${checked ? '#2563eb' : '#d4d9df'}`,
                               background: checked ? '#eff6ff' : '#fff',
                               color: disabled ? '#bbb' : (checked ? '#2563eb' : '#888'),
                               fontWeight: checked ? 600 : 400,
-                              fontSize: '0.85rem', cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
+                              fontSize: '0.85rem',
+                              cursor: disabled ? 'not-allowed' : 'pointer',
+                              fontFamily: 'inherit',
                               opacity: disabled ? 0.6 : 1,
                             }}
                           >
@@ -260,35 +606,29 @@ export default function PluginSettingsPage() {
                     </div>
                   </div>
 
-                  {/* プラグイン固有設定 */}
-                  {p.settingsSchema.length > 0 && (
+                  {plugin.settingsSchema.length > 0 && (
                     <div style={{ marginBottom: 12 }}>
                       <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 8, color: '#555' }}>
                         詳細設定
                       </div>
-                      {p.settingsSchema.map(field => renderField(p.name, field))}
+                      {plugin.settingsSchema.map(field => renderField(plugin.name, field))}
                     </div>
                   )}
 
-                  {/* 保存ボタン */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
                     <button
-                      onClick={() => saveSettings(p.name)}
-                      disabled={savingConfig === p.name}
-                      style={{
-                        padding: '8px 20px', background: '#2563eb', color: 'white',
-                        border: 'none', borderRadius: 6, fontSize: '0.85rem',
-                        fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-                      }}
+                      onClick={() => saveSettings(plugin.name)}
+                      disabled={savingConfig === plugin.name}
+                      style={primaryButtonStyle}
                     >
-                      {savingConfig === p.name ? '保存中...' : '保存'}
+                      {savingConfig === plugin.name ? '保存中...' : '保存'}
                     </button>
-                    {configMsg[p.name] && (
+                    {configMsg[plugin.name] && (
                       <span style={{
                         fontSize: '0.85rem',
-                        color: configMsg[p.name].startsWith('エラー') ? '#c53030' : '#22c55e',
+                        color: configMsg[plugin.name].startsWith('エラー') ? '#c53030' : '#22c55e',
                       }}>
-                        {configMsg[p.name]}
+                        {configMsg[plugin.name]}
                       </span>
                     )}
                   </div>
@@ -303,6 +643,108 @@ export default function PluginSettingsPage() {
 }
 
 const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '8px 12px', border: '1px solid #d4d9df',
-  borderRadius: 6, fontSize: '0.9rem', fontFamily: 'inherit', background: '#fff',
+  width: '100%',
+  padding: '8px 12px',
+  border: '1px solid #d4d9df',
+  borderRadius: 6,
+  fontSize: '0.9rem',
+  fontFamily: 'inherit',
+  background: '#fff',
+};
+
+const sectionCardStyle: React.CSSProperties = {
+  background: '#fff',
+  borderRadius: 8,
+  border: '1px solid #d4d9df',
+  padding: 20,
+};
+
+const accountGridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: 14,
+};
+
+const metaGridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+  gap: 12,
+  marginTop: 18,
+};
+
+const metaCardStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  padding: 14,
+  borderRadius: 8,
+  background: '#f8fafc',
+  border: '1px solid #e2e8f0',
+};
+
+const metaLabelStyle: React.CSSProperties = {
+  fontSize: '0.78rem',
+  fontWeight: 600,
+  color: '#64748b',
+};
+
+const metaValueStyle: React.CSSProperties = {
+  fontSize: '0.76rem',
+  lineHeight: 1.5,
+  color: '#0f172a',
+  wordBreak: 'break-all',
+  background: '#fff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 6,
+  padding: '8px 10px',
+};
+
+const fieldLabelStyle: React.CSSProperties = {
+  fontSize: '0.84rem',
+  fontWeight: 600,
+  color: '#475569',
+  marginBottom: 6,
+};
+
+const badgeStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '4px 10px',
+  borderRadius: 999,
+  background: '#eff6ff',
+  color: '#2563eb',
+  fontSize: '0.78rem',
+  fontWeight: 600,
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  padding: '8px 20px',
+  background: '#2563eb',
+  color: 'white',
+  border: 'none',
+  borderRadius: 6,
+  fontSize: '0.85rem',
+  fontWeight: 500,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  padding: '8px 14px',
+  background: '#fff',
+  color: '#334155',
+  border: '1px solid #cbd5e1',
+  borderRadius: 6,
+  fontSize: '0.82rem',
+  fontWeight: 500,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+};
+
+const inlineCodeStyle: React.CSSProperties = {
+  padding: '8px 12px',
+  borderRadius: 6,
+  border: '1px solid #dbe2ea',
+  background: '#f8fafc',
+  fontSize: '0.82rem',
 };

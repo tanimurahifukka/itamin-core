@@ -31,6 +31,14 @@ export const api = {
   getStores: () => request<any>('/stores'),
   createStore: (name: string, address?: string) =>
     request<any>('/stores', { method: 'POST', body: JSON.stringify({ name, address }) }),
+  getStoreAccount: (storeId: string) => request<any>(`/stores/${storeId}/account`),
+  updateStoreAccount: (
+    storeId: string,
+    updates: { name: string; address?: string; phone?: string; openTime?: string; closeTime?: string }
+  ) => request<any>(`/stores/${storeId}/account`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+  }),
   getStoreStaff: (storeId: string) => request<any>(`/stores/${storeId}/staff`),
   addStaff: (storeId: string, name: string, email: string, role?: string, hourlyWage?: number) =>
     request<any>(`/stores/${storeId}/staff`, {

@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../api/supabase';
 import { api } from '../api/client';
-import type { User, Session } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
 
 interface StoreInfo {
   id: string;
   name: string;
   role: string;
+  address?: string;
 }
 
 interface AuthContextType {
@@ -51,14 +52,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshStores = async () => {
     try {
       const data = await api.getStores();
-      setStores(data.stores);
-      // Auto-select if only one store and nothing selected (or saved selection no longer valid)
-      if (data.stores.length === 1 && !selectedStore) {
-        setSelectedStore(data.stores[0]);
+      const nextStores: StoreInfo[] = data.stores;
+      setStores(nextStores);
+
+      if (nextStores.length === 1 && !selectedStore) {
+        setSelectedStore(nextStores[0]);
+        return;
       }
-      // Validate that saved selectedStore still exists in the store list
-      if (selectedStore && !data.stores.find((s: StoreInfo) => s.id === selectedStore.id)) {
-        setSelectedStore(data.stores.length === 1 ? data.stores[0] : null);
+
+      if (selectedStore) {
+        const refreshedSelected = nextStores.find((store: StoreInfo) => store.id === selectedStore.id);
+        if (!refreshedSelected) {
+          setSelectedStore(nextStores.length === 1 ? nextStores[0] : null);
+          return;
+        }
+
+        if (
+          refreshedSelected.name !== selectedStore.name ||
+          refreshedSelected.role !== selectedStore.role ||
+          refreshedSelected.address !== selectedStore.address
+        ) {
+          setSelectedStore(refreshedSelected);
+        }
       }
     } catch {
       setStores([]);

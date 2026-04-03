@@ -4,6 +4,23 @@ import { supabaseAdmin } from '../config/supabase';
 import { requireManagedStore, VALID_STAFF_ROLES } from './authorization';
 
 const router = Router();
+const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function serializeStoreAccount(store: any) {
+  return {
+    id: store.id,
+    name: store.name || '',
+    address: store.address || '',
+    phone: store.phone || '',
+    openTime: store.settings?.open_time || '',
+    closeTime: store.settings?.close_time || '',
+  };
+}
+
+function normalizeNullableText(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
 
 async function getInvitationRedirectUrl(params: {
   storeId: string;
@@ -136,6 +153,133 @@ router.get('/:storeId/info', async (_req: Request, res: Response) => {
 
     res.json({ store: { id: data.id, name: data.name } });
   } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 施設アカウント（事業所情報）取得
+router.get('/:storeId/account', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const { data: store, error } = await supabaseAdmin
+      .from('stores')
+      .select('id, name, address, phone, settings')
+      .eq('id', storeId)
+      .maybeSingle();
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    if (!store) {
+      res.status(404).json({ error: '事業所が見つかりません' });
+      return;
+    }
+
+    res.json({ account: serializeStoreAccount(store) });
+  } catch (e: any) {
+    console.error('[stores GET /:storeId/account] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 施設アカウント（事業所情報）更新
+router.put('/:storeId/account', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const name = req.body?.name;
+    const address = req.body?.address;
+    const phone = req.body?.phone;
+    const openTime = req.body?.openTime;
+    const closeTime = req.body?.closeTime;
+
+    if (typeof name !== 'string' || !name.trim()) {
+      res.status(400).json({ error: '施設名は必須です' });
+      return;
+    }
+
+    if (address !== undefined && typeof address !== 'string') {
+      res.status(400).json({ error: '住所は文字列で指定してください' });
+      return;
+    }
+
+    if (phone !== undefined && typeof phone !== 'string') {
+      res.status(400).json({ error: '電話番号は文字列で指定してください' });
+      return;
+    }
+
+    if (openTime !== undefined && (typeof openTime !== 'string' || (openTime.trim() && !TIME_PATTERN.test(openTime.trim())))) {
+      res.status(400).json({ error: '営業開始は HH:MM 形式で入力してください' });
+      return;
+    }
+
+    if (closeTime !== undefined && (typeof closeTime !== 'string' || (closeTime.trim() && !TIME_PATTERN.test(closeTime.trim())))) {
+      res.status(400).json({ error: '営業終了は HH:MM 形式で入力してください' });
+      return;
+    }
+
+    const { data: currentStore, error: currentStoreError } = await supabaseAdmin
+      .from('stores')
+      .select('id, settings')
+      .eq('id', storeId)
+      .maybeSingle();
+
+    if (currentStoreError) {
+      res.status(500).json({ error: currentStoreError.message });
+      return;
+    }
+
+    if (!currentStore) {
+      res.status(404).json({ error: '事業所が見つかりません' });
+      return;
+    }
+
+    const settings = { ...(currentStore.settings || {}) };
+    if (typeof openTime === 'string') {
+      const trimmed = openTime.trim();
+      if (trimmed) settings.open_time = trimmed;
+      else delete settings.open_time;
+    }
+    if (typeof closeTime === 'string') {
+      const trimmed = closeTime.trim();
+      if (trimmed) settings.close_time = trimmed;
+      else delete settings.close_time;
+    }
+
+    const updates: Record<string, any> = {
+      name: name.trim(),
+      settings,
+    };
+
+    if (typeof address === 'string') updates.address = normalizeNullableText(address);
+    if (typeof phone === 'string') updates.phone = normalizeNullableText(phone);
+
+    const { data: updatedStore, error: updateError } = await supabaseAdmin
+      .from('stores')
+      .update(updates)
+      .eq('id', storeId)
+      .select('id, name, address, phone, settings')
+      .single();
+
+    if (updateError) {
+      res.status(500).json({ error: updateError.message });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      message: '施設アカウントを更新しました',
+      account: serializeStoreAccount(updatedStore),
+    });
+  } catch (e: any) {
+    console.error('[stores PUT /:storeId/account] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
@@ -600,28 +744,28 @@ router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) =
     }
 
     // auth.usersから最終ログイン時間を取得
-    const userIds = (data || []).map((s: any) => s.user?.id).filter(Boolean);
+    const userIds = (data || []).map((staff: any) => staff.user?.id).filter(Boolean);
     const lastSignInMap = new Map<string, string | null>();
 
     if (userIds.length > 0) {
       const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-      for (const u of users) {
-        if (userIds.includes(u.id)) {
-          lastSignInMap.set(u.id, u.last_sign_in_at || null);
+      for (const user of users) {
+        if (userIds.includes(user.id)) {
+          lastSignInMap.set(user.id, user.last_sign_in_at || null);
         }
       }
     }
 
-    const staff = (data || []).map((s: any) => ({
-      id: s.id,
-      role: s.role,
-      hourlyWage: s.hourly_wage,
-      joinedAt: s.joined_at,
-      userId: s.user.id,
-      userName: s.user.name,
-      email: s.user.email,
-      picture: s.user.picture,
-      lastSignInAt: lastSignInMap.get(s.user.id) || null,
+    const staff = (data || []).map((staff: any) => ({
+      id: staff.id,
+      role: staff.role,
+      hourlyWage: staff.hourly_wage,
+      joinedAt: staff.joined_at,
+      userId: staff.user.id,
+      userName: staff.user.name,
+      email: staff.user.email,
+      picture: staff.user.picture,
+      lastSignInAt: lastSignInMap.get(staff.user.id) || null,
     }));
 
     res.json({ staff });
@@ -658,7 +802,7 @@ router.post('/:storeId/staff/rehire', requireAuth, async (req: Request, res: Res
       .select('id, user:profiles(email)')
       .eq('store_id', storeId);
 
-    const alreadyMember = (existing || []).find((s: any) => s.user?.email === email);
+    const alreadyMember = (existing || []).find((staff: any) => staff.user?.email === email);
     if (alreadyMember) {
       res.status(409).json({ error: 'このスタッフは既に所属しています' });
       return;
@@ -671,7 +815,7 @@ router.post('/:storeId/staff/rehire', requireAuth, async (req: Request, res: Res
       return;
     }
 
-    const authUser = users.find(u => u.email === email);
+    const authUser = users.find(user => user.email === email);
     if (!authUser) {
       res.status(404).json({ error: 'このメールアドレスのアカウントが見つかりません。新規招待してください。' });
       return;
