@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
+import TimePicker15 from '../components/TimePicker15';
 
 interface Shift {
   id: string;
@@ -257,9 +258,9 @@ export default function ShiftPage() {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input placeholder="名前（例: 早番）" value={newTplName} onChange={e => setNewTplName(e.target.value)}
               style={{ ...smallInputStyle, width: 120 }} />
-            <input type="time" step="900" value={newTplStart} onChange={e => setNewTplStart(e.target.value)} style={smallInputStyle} />
+            <TimePicker15 value={newTplStart} onChange={setNewTplStart} />
             <span style={{ color: '#888' }}>〜</span>
-            <input type="time" step="900" value={newTplEnd} onChange={e => setNewTplEnd(e.target.value)} style={smallInputStyle} />
+            <TimePicker15 value={newTplEnd} onChange={setNewTplEnd} />
             <button onClick={handleAddTemplate} style={{ ...navBtnStyle, fontSize: '0.8rem' }}>追加</button>
           </div>
         </div>
@@ -379,9 +380,9 @@ export default function ShiftPage() {
             )}
 
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
-              <input type="time" step="900" value={editStart} onChange={e => setEditStart(e.target.value)} style={inputStyle} />
+              <TimePicker15 value={editStart} onChange={setEditStart} />
               <span>〜</span>
-              <input type="time" step="900" value={editEnd} onChange={e => setEditEnd(e.target.value)} style={inputStyle} />
+              <TimePicker15 value={editEnd} onChange={setEditEnd} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={handleSave} style={{ ...btnStyle, background: '#2563eb', color: 'white', flex: 1 }}>

@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
+import TimePicker15 from '../components/TimePicker15';
 
 interface ShiftRequest {
   id: string;
@@ -373,11 +374,9 @@ export default function ShiftRequestPage() {
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
-                  <input type="time" step="900" value={editStart} onChange={e => setEditStart(e.target.value)}
-                    style={inputStyle} />
+                  <TimePicker15 value={editStart} onChange={setEditStart} />
                   <span style={{ color: '#888' }}>〜</span>
-                  <input type="time" step="900" value={editEnd} onChange={e => setEditEnd(e.target.value)}
-                    style={inputStyle} />
+                  <TimePicker15 value={editEnd} onChange={setEditEnd} />
                 </div>
               </>
             )}
