@@ -41,7 +41,9 @@ interface StaffMember {
   userName: string;
 }
 
-const DAYS = ['月', '火', '水', '木', '金', '土', '日'];
+type ViewSpan = 'week' | 'half-month';
+
+const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
 function getMonday(d: Date) {
   const date = new Date(d);
@@ -54,8 +56,20 @@ function formatDate(d: Date) {
   return d.toISOString().split('T')[0];
 }
 
+function getDayLabel(d: Date) {
+  return DAY_LABELS[d.getDay()];
+}
+
+function getDayColor(d: Date) {
+  const day = d.getDay();
+  if (day === 0) return '#c53030';
+  if (day === 6) return '#2196f3';
+  return undefined;
+}
+
 export default function ShiftPage() {
   const { selectedStore } = useAuth();
+  const [viewSpan, setViewSpan] = useState<ViewSpan>('week');
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [requests, setRequests] = useState<ShiftRequest[]>([]);
@@ -64,7 +78,7 @@ export default function ShiftPage() {
   const [editing, setEditing] = useState<{ staffId: string; date: string } | null>(null);
   const [editStart, setEditStart] = useState('09:00');
   const [editEnd, setEditEnd] = useState('17:00');
-  const [weekDatesRange, setWeekDatesRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
+  const [datesRange, setDatesRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
 
   // テンプレート管理
   const [showTemplateManager, setShowTemplateManager] = useState(false);
@@ -72,7 +86,9 @@ export default function ShiftPage() {
   const [newTplStart, setNewTplStart] = useState('09:00');
   const [newTplEnd, setNewTplEnd] = useState('17:00');
 
-  const weekDates = Array.from({ length: 7 }, (_, i) => {
+  const numDays = viewSpan === 'half-month' ? 15 : 7;
+
+  const viewDates = Array.from({ length: numDays }, (_, i) => {
     const d = new Date(weekStart);
     d.setDate(weekStart.getDate() + i);
     return d;
@@ -83,23 +99,24 @@ export default function ShiftPage() {
     const dateStr = formatDate(weekStart);
     try {
       const [shiftData, staffData, requestData, tplData] = await Promise.all([
-        api.getWeeklyShifts(selectedStore.id, dateStr),
+        api.getWeeklyShifts(selectedStore.id, dateStr, numDays),
         api.getStoreStaff(selectedStore.id),
-        api.getWeeklyRequests(selectedStore.id, dateStr),
+        api.getWeeklyRequests(selectedStore.id, dateStr, numDays),
         api.getTemplates(selectedStore.id),
       ]);
       setShifts(shiftData.shifts);
-      setWeekDatesRange({ start: shiftData.startDate, end: shiftData.endDate });
+      setDatesRange({ start: shiftData.startDate, end: shiftData.endDate });
       setStaffList(staffData.staff.map((s: any) => ({ id: s.id, userName: s.userName })));
       setRequests(requestData.requests);
       setTemplates(tplData.templates);
     } catch {}
   };
 
-  useEffect(() => { loadData(); }, [selectedStore, weekStart]);
+  useEffect(() => { loadData(); }, [selectedStore, weekStart, numDays]);
 
-  const prevWeek = () => { const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d); };
-  const nextWeek = () => { const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d); };
+  const stepDays = viewSpan === 'half-month' ? 15 : 7;
+  const prevPeriod = () => { const d = new Date(weekStart); d.setDate(d.getDate() - stepDays); setWeekStart(getMonday(d)); };
+  const nextPeriod = () => { const d = new Date(weekStart); d.setDate(d.getDate() + stepDays); setWeekStart(getMonday(d)); };
 
   const getShift = (staffId: string, date: string) =>
     shifts.find(s => s.staffId === staffId && s.date === date);
@@ -140,9 +157,9 @@ export default function ShiftPage() {
   };
 
   const handlePublish = async () => {
-    if (!selectedStore || !weekDatesRange.start) return;
+    if (!selectedStore || !datesRange.start) return;
     try {
-      const result = await api.publishShifts(selectedStore.id, weekDatesRange.start, weekDatesRange.end);
+      const result = await api.publishShifts(selectedStore.id, datesRange.start, datesRange.end);
       if (result.published > 0) {
         showToast(`${result.published}件のシフトを確定しました`, 'success');
       } else {
@@ -181,7 +198,7 @@ export default function ShiftPage() {
   };
 
   // サマリー計算
-  const daySummary = weekDates.map(d => {
+  const daySummary = viewDates.map(d => {
     const dateStr = formatDate(d);
     const dayShifts = shifts.filter(s => s.date === dateStr);
     const totalStaff = dayShifts.length;
@@ -207,12 +224,36 @@ export default function ShiftPage() {
     return '#22c55e';
   };
 
+  const lastDate = viewDates[viewDates.length - 1];
+  const periodLabel = viewSpan === 'half-month'
+    ? `${weekStart.getMonth() + 1}/${weekStart.getDate()} 〜 ${lastDate.getMonth() + 1}/${lastDate.getDate()}`
+    : `${weekStart.getMonth() + 1}/${weekStart.getDate()} 〜`;
+
+  const isCompact = viewSpan === 'half-month';
+
   return (
     <div className="main-content">
       {/* ヘッダー */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <h3>シフト表</h3>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* 表示切替 */}
+          <div className="view-mode-tabs" style={{ marginBottom: 0 }}>
+            <button
+              className={`view-mode-tab ${viewSpan === 'week' ? 'active' : ''}`}
+              onClick={() => setViewSpan('week')}
+              data-testid="shift-view-week"
+            >
+              週
+            </button>
+            <button
+              className={`view-mode-tab ${viewSpan === 'half-month' ? 'active' : ''}`}
+              onClick={() => setViewSpan('half-month')}
+              data-testid="shift-view-half-month"
+            >
+              半月
+            </button>
+          </div>
           <button onClick={() => setShowTemplateManager(!showTemplateManager)} style={{ ...navBtnStyle, fontSize: '0.8rem' }}>
             テンプレート
           </button>
@@ -224,13 +265,11 @@ export default function ShiftPage() {
         </div>
       </div>
 
-      {/* 週ナビ */}
+      {/* 期間ナビ */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
-        <button onClick={prevWeek} style={navBtnStyle}>&lt;</button>
-        <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>
-          {weekStart.getMonth() + 1}/{weekStart.getDate()} 〜
-        </span>
-        <button onClick={nextWeek} style={navBtnStyle}>&gt;</button>
+        <button onClick={prevPeriod} style={navBtnStyle}>&lt;</button>
+        <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{periodLabel}</span>
+        <button onClick={nextPeriod} style={navBtnStyle}>&gt;</button>
       </div>
 
       {/* テンプレート管理パネル */}
@@ -268,15 +307,16 @@ export default function ShiftPage() {
 
       {/* シフト表 */}
       <div className="shift-table-wrap">
-        <table className="shift-table">
+        <table className="shift-table" style={isCompact ? { fontSize: '0.75rem' } : undefined}>
           <thead>
             <tr>
-              <th>スタッフ</th>
-              {weekDates.map((d, i) => (
+              <th style={isCompact ? { minWidth: 60 } : undefined}>スタッフ</th>
+              {viewDates.map((d, i) => (
                 <th key={i} style={{
-                  color: i >= 5 ? (i === 5 ? '#2196f3' : '#c53030') : undefined,
+                  color: getDayColor(d),
+                  ...(isCompact ? { padding: '6px 2px', minWidth: 48 } : {}),
                 }}>
-                  {d.getDate()}{DAYS[i]}
+                  {d.getDate()}{getDayLabel(d)}
                 </th>
               ))}
             </tr>
@@ -284,8 +324,10 @@ export default function ShiftPage() {
           <tbody>
             {staffList.map(staff => (
               <tr key={staff.id}>
-                <td className="staff-name-col">{staff.userName}</td>
-                {weekDates.map((d, i) => {
+                <td className="staff-name-col" style={isCompact ? { fontSize: '0.75rem', padding: '4px 6px' } : undefined}>
+                  {staff.userName}
+                </td>
+                {viewDates.map((d, i) => {
                   const dateStr = formatDate(d);
                   const shift = getShift(staff.id, dateStr);
                   const req = getRequest(staff.id, dateStr);
@@ -293,17 +335,18 @@ export default function ShiftPage() {
                     <td
                       key={i}
                       className="shift-cell"
+                      style={isCompact ? { padding: '3px 1px' } : undefined}
                       onClick={() => handleCellClick(staff.id, dateStr)}
                     >
                       {req && (
-                        <div className="request-marker" style={{ color: requestColor(req) }}>
+                        <div className="request-marker" style={{ color: requestColor(req), ...(isCompact ? { fontSize: '0.65rem' } : {}) }}>
                           {requestLabel(req)}
                         </div>
                       )}
                       {shift ? (
-                        <div className={`shift-badge ${shift.status}`}>
-                          <div className="shift-time">{shift.startTime.slice(0, 5)}</div>
-                          <div className="shift-time-end">{shift.endTime.slice(0, 5)}</div>
+                        <div className={`shift-badge ${shift.status}`} style={isCompact ? { padding: '2px 3px' } : undefined}>
+                          <div className="shift-time" style={isCompact ? { fontSize: '0.7rem' } : undefined}>{shift.startTime.slice(0, 5)}</div>
+                          <div className="shift-time-end" style={isCompact ? { fontSize: '0.65rem' } : undefined}>{shift.endTime.slice(0, 5)}</div>
                         </div>
                       ) : !req ? (
                         <span style={{ color: '#ddd' }}>-</span>
@@ -314,9 +357,9 @@ export default function ShiftPage() {
               </tr>
             ))}
             <tr className="summary-row">
-              <td className="staff-name-col">合計</td>
+              <td className="staff-name-col" style={isCompact ? { fontSize: '0.75rem' } : undefined}>合計</td>
               {daySummary.map((s, i) => (
-                <td key={i}>
+                <td key={i} style={isCompact ? { fontSize: '0.7rem', padding: '4px 2px' } : undefined}>
                   <div>{s.totalStaff}人</div>
                   <div>{s.totalHours}h</div>
                 </td>
@@ -415,9 +458,6 @@ function parseTime(t: string): number {
 const navBtnStyle: React.CSSProperties = {
   background: 'white', border: '1px solid #d4d9df', borderRadius: 6, padding: '6px 12px',
   cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 500,
-};
-const inputStyle: React.CSSProperties = {
-  padding: '8px 10px', border: '1px solid #d4d9df', borderRadius: 6, flex: 1, fontFamily: 'inherit',
 };
 const smallInputStyle: React.CSSProperties = {
   padding: '6px 10px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.85rem',

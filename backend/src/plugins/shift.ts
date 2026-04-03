@@ -18,16 +18,17 @@ router.get('/:storeId/weekly', requireAuth, async (req: Request, res: Response) 
       return;
     }
     const dateStr = req.query.date as string;
+    const days = Math.min(Math.max(parseInt(req.query.days as string) || 7, 1), 31);
     const baseDate = dateStr ? new Date(dateStr) : new Date();
 
     const day = baseDate.getDay();
     const monday = new Date(baseDate);
     monday.setDate(baseDate.getDate() - (day === 0 ? 6 : day - 1));
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
+    const lastDay = new Date(monday);
+    lastDay.setDate(monday.getDate() + days - 1);
 
     const startDate = monday.toISOString().split('T')[0];
-    const endDate = sunday.toISOString().split('T')[0];
+    const endDate = lastDay.toISOString().split('T')[0];
 
     const supabase = supabaseAdmin;
 
@@ -207,16 +208,17 @@ router.get('/:storeId/requests', requireAuth, async (req: Request, res: Response
       return;
     }
     const dateStr = req.query.date as string;
+    const days = Math.min(Math.max(parseInt(req.query.days as string) || 7, 1), 31);
     const baseDate = dateStr ? new Date(dateStr) : new Date();
 
     const day = baseDate.getDay();
     const monday = new Date(baseDate);
     monday.setDate(baseDate.getDate() - (day === 0 ? 6 : day - 1));
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
+    const lastDay = new Date(monday);
+    lastDay.setDate(monday.getDate() + days - 1);
 
     const startDate = monday.toISOString().split('T')[0];
-    const endDate = sunday.toISOString().split('T')[0];
+    const endDate = lastDay.toISOString().split('T')[0];
 
     const supabase = supabaseAdmin;
 

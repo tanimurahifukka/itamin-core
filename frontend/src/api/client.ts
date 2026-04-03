@@ -107,8 +107,8 @@ export const api = {
     }),
 
   // Shift
-  getWeeklyShifts: (storeId: string, date: string) =>
-    request<any>(`/shift/${storeId}/weekly?date=${date}`),
+  getWeeklyShifts: (storeId: string, date: string, days?: number) =>
+    request<any>(`/shift/${storeId}/weekly?date=${date}${days ? `&days=${days}` : ''}`),
   saveShift: (storeId: string, shift: { staffId: string; date: string; startTime: string; endTime: string; status?: string }) =>
     request<any>(`/shift/${storeId}`, { method: 'POST', body: JSON.stringify(shift) }),
   publishShifts: (storeId: string, startDate: string, endDate: string) =>
@@ -117,8 +117,8 @@ export const api = {
     request<any>(`/shift/${storeId}/${shiftId}`, { method: 'DELETE' }),
 
   // Shift Requests
-  getWeeklyRequests: (storeId: string, date: string) =>
-    request<any>(`/shift/${storeId}/requests?date=${date}`),
+  getWeeklyRequests: (storeId: string, date: string, days?: number) =>
+    request<any>(`/shift/${storeId}/requests?date=${date}${days ? `&days=${days}` : ''}`),
   saveRequest: (storeId: string, data: { staffId: string; date: string; requestType: string; startTime?: string; endTime?: string; note?: string }) =>
     request<any>(`/shift/${storeId}/requests`, { method: 'POST', body: JSON.stringify(data) }),
   deleteRequest: (storeId: string, requestId: string) =>
