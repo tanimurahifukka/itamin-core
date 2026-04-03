@@ -373,10 +373,10 @@ export default function ShiftRequestPage() {
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
-                  <input type="time" value={editStart} onChange={e => setEditStart(e.target.value)}
+                  <input type="time" step="900" value={editStart} onChange={e => setEditStart(e.target.value)}
                     style={inputStyle} />
                   <span style={{ color: '#888' }}>〜</span>
-                  <input type="time" value={editEnd} onChange={e => setEditEnd(e.target.value)}
+                  <input type="time" step="900" value={editEnd} onChange={e => setEditEnd(e.target.value)}
                     style={inputStyle} />
                 </div>
               </>

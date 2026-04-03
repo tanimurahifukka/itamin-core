@@ -257,9 +257,9 @@ export default function ShiftPage() {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input placeholder="名前（例: 早番）" value={newTplName} onChange={e => setNewTplName(e.target.value)}
               style={{ ...smallInputStyle, width: 120 }} />
-            <input type="time" value={newTplStart} onChange={e => setNewTplStart(e.target.value)} style={smallInputStyle} />
+            <input type="time" step="900" value={newTplStart} onChange={e => setNewTplStart(e.target.value)} style={smallInputStyle} />
             <span style={{ color: '#888' }}>〜</span>
-            <input type="time" value={newTplEnd} onChange={e => setNewTplEnd(e.target.value)} style={smallInputStyle} />
+            <input type="time" step="900" value={newTplEnd} onChange={e => setNewTplEnd(e.target.value)} style={smallInputStyle} />
             <button onClick={handleAddTemplate} style={{ ...navBtnStyle, fontSize: '0.8rem' }}>追加</button>
           </div>
         </div>
@@ -379,9 +379,9 @@ export default function ShiftPage() {
             )}
 
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
-              <input type="time" value={editStart} onChange={e => setEditStart(e.target.value)} style={inputStyle} />
+              <input type="time" step="900" value={editStart} onChange={e => setEditStart(e.target.value)} style={inputStyle} />
               <span>〜</span>
-              <input type="time" value={editEnd} onChange={e => setEditEnd(e.target.value)} style={inputStyle} />
+              <input type="time" step="900" value={editEnd} onChange={e => setEditEnd(e.target.value)} style={inputStyle} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={handleSave} style={{ ...btnStyle, background: '#2563eb', color: 'white', flex: 1 }}>
