@@ -172,14 +172,34 @@ export default function App() {
   }>({ active: false, checked: false });
 
   useEffect(() => {
-    const liff = (window as any).liff;
     const liffId = (import.meta as any).env?.VITE_LINE_LIFF_ID;
-    if (!liffId || !liff) {
+    if (!liffId) {
       setLiffMode(prev => ({ ...prev, checked: true }));
       return;
     }
 
+    // LIFF SDK がまだ読み込まれていない場合、最大3秒待つ
+    const waitForLiff = (retries: number): Promise<any> => {
+      return new Promise((resolve) => {
+        if ((window as any).liff) {
+          resolve((window as any).liff);
+          return;
+        }
+        if (retries <= 0) {
+          resolve(null);
+          return;
+        }
+        setTimeout(() => waitForLiff(retries - 1).then(resolve), 200);
+      });
+    };
+
     const initLiff = async () => {
+      const liff = await waitForLiff(15); // 最大3秒
+      if (!liff) {
+        setLiffMode({ active: false, checked: true });
+        return;
+      }
+
       try {
         await liff.init({ liffId });
 
