@@ -3,6 +3,9 @@
  * - LINE Login 開始 / callback
  * - 連携コード発行・使用
  * - 連携状態管理
+ *
+ * LINE チャネル情報は施設（store）単位で store_plugins.config から読み取る。
+ * 未設定の場合は process.env にフォールバックする。
  */
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '../../middleware/auth';
@@ -13,14 +16,42 @@ import crypto from 'crypto';
 
 const router = Router();
 
+/**
+ * 施設のLINE設定を取得する。
+ * store_plugins.config → process.env の優先順でフォールバック。
+ */
+async function getLineConfig(storeId: string): Promise<{
+  channelId: string | undefined;
+  channelSecret: string | undefined;
+  callbackUrl: string | undefined;
+  liffId: string | undefined;
+}> {
+  const { data } = await supabaseAdmin
+    .from('store_plugins')
+    .select('config')
+    .eq('store_id', storeId)
+    .eq('plugin_name', 'line_attendance')
+    .maybeSingle();
+
+  const cfg = data?.config || {};
+  return {
+    channelId: cfg.line_login_channel_id || process.env.LINE_LOGIN_CHANNEL_ID,
+    channelSecret: cfg.line_login_channel_secret || process.env.LINE_LOGIN_CHANNEL_SECRET,
+    callbackUrl: cfg.line_login_callback_url || process.env.LINE_LOGIN_CALLBACK_URL,
+    liffId: cfg.line_liff_id || process.env.VITE_LINE_LIFF_ID,
+  };
+}
+
 // ================================================================
 // LINE Login 開始（リダイレクト URL を返す）
 // ================================================================
-router.get('/login', (_req: Request, res: Response) => {
-  const channelId = process.env.LINE_LOGIN_CHANNEL_ID;
-  const callbackUrl = process.env.LINE_LOGIN_CALLBACK_URL;
-  if (!channelId || !callbackUrl) {
-    res.status(500).json({ error: 'LINE Login is not configured' });
+router.get('/login', async (req: Request, res: Response) => {
+  const storeId = req.query.storeId as string;
+  if (!storeId) { res.status(400).json({ error: 'storeId is required' }); return; }
+
+  const lineCfg = await getLineConfig(storeId);
+  if (!lineCfg.channelId || !lineCfg.callbackUrl) {
+    res.status(500).json({ error: 'この施設のLINE Login が設定されていません。設定画面でLINEチャネル情報を入力してください。' });
     return;
   }
 
@@ -28,11 +59,11 @@ router.get('/login', (_req: Request, res: Response) => {
   const nonce = crypto.randomBytes(16).toString('hex');
 
   const url = `https://access.line.me/oauth2/v2.1/authorize?` +
-    `response_type=code&client_id=${channelId}` +
-    `&redirect_uri=${encodeURIComponent(callbackUrl)}` +
+    `response_type=code&client_id=${lineCfg.channelId}` +
+    `&redirect_uri=${encodeURIComponent(lineCfg.callbackUrl)}` +
     `&state=${state}&scope=profile%20openid&nonce=${nonce}`;
 
-  res.json({ url, state, nonce });
+  res.json({ url, state, nonce, liffId: lineCfg.liffId });
 });
 
 // ================================================================
@@ -40,14 +71,13 @@ router.get('/login', (_req: Request, res: Response) => {
 // ================================================================
 router.post('/callback', async (req: Request, res: Response) => {
   try {
-    const { code, state } = req.body;
+    const { code, state, storeId } = req.body;
     if (!code) { res.status(400).json({ error: 'code is required' }); return; }
+    if (!storeId) { res.status(400).json({ error: 'storeId is required' }); return; }
 
-    const channelId = process.env.LINE_LOGIN_CHANNEL_ID;
-    const channelSecret = process.env.LINE_LOGIN_CHANNEL_SECRET;
-    const callbackUrl = process.env.LINE_LOGIN_CALLBACK_URL;
+    const lineCfg = await getLineConfig(storeId);
 
-    if (!channelId || !channelSecret || !callbackUrl) {
+    if (!lineCfg.channelId || !lineCfg.channelSecret || !lineCfg.callbackUrl) {
       res.status(500).json({ error: 'LINE Login not configured' });
       return;
     }
@@ -59,9 +89,9 @@ router.post('/callback', async (req: Request, res: Response) => {
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,
-        redirect_uri: callbackUrl,
-        client_id: channelId,
-        client_secret: channelSecret,
+        redirect_uri: lineCfg.callbackUrl!,
+        client_id: lineCfg.channelId!,
+        client_secret: lineCfg.channelSecret!,
       }),
     });
     const tokenData: any = await tokenRes.json();

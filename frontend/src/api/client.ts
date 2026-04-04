@@ -321,9 +321,9 @@ export const api = {
     request<any>('/attendance/admin/policy', { method: 'PUT', body: JSON.stringify({ storeId, ...data }) }),
 
   // LINE
-  getLineLoginUrl: () => request<any>('/auth/line/login'),
-  lineCallback: (code: string, state?: string) =>
-    request<any>('/auth/line/callback', { method: 'POST', body: JSON.stringify({ code, state }) }),
+  getLineLoginUrl: (storeId: string) => request<any>(`/auth/line/login?storeId=${storeId}`),
+  lineCallback: (storeId: string, code: string, state?: string) =>
+    request<any>('/auth/line/callback', { method: 'POST', body: JSON.stringify({ storeId, code, state }) }),
   lineLinkWithCode: (code: string, lineUserId: string, displayName?: string, pictureUrl?: string) =>
     request<any>('/auth/line/link-with-code', { method: 'POST', body: JSON.stringify({ code, lineUserId, displayName, pictureUrl }) }),
   lineResolve: (lineUserId: string) =>
