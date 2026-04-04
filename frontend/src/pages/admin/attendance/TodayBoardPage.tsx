@@ -17,6 +17,29 @@ function formatTime(iso: string | null) {
   return new Date(iso).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 }
 
+function ChecklistBadge({ currentStatus, clockIn, clockOut }: {
+  currentStatus: string;
+  clockIn?: boolean;
+  clockOut?: boolean;
+}) {
+  if (currentStatus === 'not_clocked_in') return <span className="checklist-na">—</span>;
+
+  const items: React.ReactElement[] = [];
+  items.push(
+    <span key="in" className={`checklist-chip ${clockIn ? 'done' : 'missing'}`}>
+      出勤 {clockIn ? '済' : '未'}
+    </span>
+  );
+  if (currentStatus === 'completed') {
+    items.push(
+      <span key="out" className={`checklist-chip ${clockOut ? 'done' : 'missing'}`}>
+        退勤 {clockOut ? '済' : '未'}
+      </span>
+    );
+  }
+  return <div className="checklist-badges">{items}</div>;
+}
+
 interface Props {
   onSelectStaff: (userId: string) => void;
 }
@@ -78,6 +101,7 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
               <th>出勤</th>
               <th>退勤</th>
               <th>休憩</th>
+              <th>チェックリスト</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -94,6 +118,13 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
                 <td>{formatTime(s.clockInAt)}</td>
                 <td>{formatTime(s.clockOutAt)}</td>
                 <td>{s.breakMinutes}分</td>
+                <td data-testid="checklist-status">
+                  <ChecklistBadge
+                    currentStatus={s.currentStatus}
+                    clockIn={s.checklist?.clockIn}
+                    clockOut={s.checklist?.clockOut}
+                  />
+                </td>
                 <td>
                   <button
                     className="button button-small"
@@ -106,7 +137,7 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
               </tr>
             ))}
             {(!data?.staff || data.staff.length === 0) && (
-              <tr><td colSpan={7} className="admin-empty">スタッフがいません</td></tr>
+              <tr><td colSpan={8} className="admin-empty">スタッフがいません</td></tr>
             )}
           </tbody>
         </table>

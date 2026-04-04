@@ -600,10 +600,28 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
       shiftByStaffId.set(s.staff_id, s);
     }
 
+    // 当日のチェック記録（出勤/退勤チェックリスト実施状況）
+    const { data: checkRecords } = await supabaseAdmin
+      .from('check_records')
+      .select('staff_id, timing, all_checked, checked_at')
+      .eq('store_id', storeId)
+      .gte('checked_at', `${businessDate}T00:00:00`)
+      .lte('checked_at', `${businessDate}T23:59:59`);
+
+    // staff_id → { clock_in: bool, clock_out: bool }
+    const checkByStaffId = new Map<string, { clockIn: boolean; clockOut: boolean }>();
+    for (const cr of checkRecords || []) {
+      const entry = checkByStaffId.get(cr.staff_id) || { clockIn: false, clockOut: false };
+      if (cr.timing === 'clock_in' && cr.all_checked) entry.clockIn = true;
+      if (cr.timing === 'clock_out' && cr.all_checked) entry.clockOut = true;
+      checkByStaffId.set(cr.staff_id, entry);
+    }
+
     let staffList = (allStaff || []).map((s: any) => {
       const userRecords = recordByUser.get(s.user_id) || [];
       const openSession = openByUser.get(s.user_id);
       const shift = shiftByStaffId.get(s.id);
+      const checkStatus = checkByStaffId.get(s.id) || { clockIn: false, clockOut: false };
 
       let currentStatus = 'not_clocked_in';
       if (openSession) {
@@ -627,6 +645,7 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
         breakMinutes,
         shift: shift ? { startTime: shift.start_time, endTime: shift.end_time } : null,
         sessions: userRecords.map((r: any) => formatSession(r)),
+        checklist: checkStatus,
       };
     });
 
