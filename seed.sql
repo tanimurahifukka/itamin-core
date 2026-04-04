@@ -143,3 +143,7 @@ INSERT INTO shift_templates (store_id, name, start_time, end_time, break_minutes
 -- STORE_INVITATIONS
 INSERT INTO store_invitations (store_id, name, email, role, hourly_wage, invited_by) VALUES
   ('a0000000-0000-0000-0000-000000000001', '中村 真理', 'nakamura@example.com', 'staff', 1100, '7ce8ec96-a689-41b8-983e-3cb66528b908');
+
+-- ATTENDANCE_POLICIES
+INSERT INTO attendance_policies (store_id, timezone, business_day_cutoff_hour, rounding_unit_minutes, rounding_mode, auto_close_break_before_clock_out, require_manager_approval) VALUES
+  ('a0000000-0000-0000-0000-000000000001', 'Asia/Tokyo', 5, 1, 'none', false, true);

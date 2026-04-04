@@ -277,4 +277,60 @@ export const api = {
     request<any>(`/sales-capture/${storeId}/cash-close/${date}`),
   saveCashClose: (storeId: string, data: { businessDate: string; expectedCash: number; countedCash: number; note?: string }) =>
     request<any>(`/sales-capture/${storeId}/cash-close`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // ========== Attendance (LINE打刻) ==========
+  getAttendanceToday: (storeId: string) =>
+    request<any>(`/attendance/me/today?storeId=${storeId}`),
+  attendanceClockIn: (storeId: string, source?: string, idempotencyKey?: string) =>
+    request<any>('/attendance/clock-in', { method: 'POST', body: JSON.stringify({ storeId, source, idempotencyKey }) }),
+  attendanceBreakStart: (storeId: string, reason?: string, idempotencyKey?: string) =>
+    request<any>('/attendance/break-start', { method: 'POST', body: JSON.stringify({ storeId, reason, idempotencyKey }) }),
+  attendanceBreakEnd: (storeId: string, idempotencyKey?: string) =>
+    request<any>('/attendance/break-end', { method: 'POST', body: JSON.stringify({ storeId, idempotencyKey }) }),
+  attendanceClockOut: (storeId: string, idempotencyKey?: string) =>
+    request<any>('/attendance/clock-out', { method: 'POST', body: JSON.stringify({ storeId, idempotencyKey }) }),
+  getAttendanceHistory: (storeId: string, month?: string) =>
+    request<any>(`/attendance/me/history?storeId=${storeId}${month ? `&month=${month}` : ''}`),
+  createCorrection: (storeId: string, data: any) =>
+    request<any>('/attendance/corrections', { method: 'POST', body: JSON.stringify({ storeId, ...data }) }),
+  getMyCorrections: (storeId: string) =>
+    request<any>(`/attendance/corrections/me?storeId=${storeId}`),
+
+  // Admin Attendance
+  getAdminAttendanceToday: (storeId: string, status?: string, q?: string) => {
+    const params = new URLSearchParams({ storeId });
+    if (status) params.set('status', status);
+    if (q) params.set('q', q);
+    return request<any>(`/attendance/admin/today?${params}`);
+  },
+  getAdminAttendanceMonthly: (storeId: string, month?: string) =>
+    request<any>(`/attendance/admin/monthly?storeId=${storeId}${month ? `&month=${month}` : ''}`),
+  getAdminStaffAttendance: (storeId: string, userId: string, month?: string) =>
+    request<any>(`/attendance/admin/staff/${userId}?storeId=${storeId}${month ? `&month=${month}` : ''}`),
+  adminUpdateRecord: (storeId: string, recordId: string, data: any) =>
+    request<any>(`/attendance/admin/records/${recordId}`, { method: 'PATCH', body: JSON.stringify({ storeId, ...data }) }),
+  getAdminCorrections: (storeId: string) =>
+    request<any>(`/attendance/admin/corrections?storeId=${storeId}`),
+  approveCorrection: (storeId: string, correctionId: string, comment?: string) =>
+    request<any>(`/attendance/admin/corrections/${correctionId}/approve`, { method: 'POST', body: JSON.stringify({ storeId, comment }) }),
+  rejectCorrection: (storeId: string, correctionId: string, comment?: string) =>
+    request<any>(`/attendance/admin/corrections/${correctionId}/reject`, { method: 'POST', body: JSON.stringify({ storeId, comment }) }),
+  getAttendancePolicy: (storeId: string) =>
+    request<any>(`/attendance/admin/policy?storeId=${storeId}`),
+  updateAttendancePolicy: (storeId: string, data: any) =>
+    request<any>('/attendance/admin/policy', { method: 'PUT', body: JSON.stringify({ storeId, ...data }) }),
+
+  // LINE
+  getLineLoginUrl: () => request<any>('/auth/line/login'),
+  lineCallback: (code: string, state?: string) =>
+    request<any>('/auth/line/callback', { method: 'POST', body: JSON.stringify({ code, state }) }),
+  lineLinkWithCode: (code: string, lineUserId: string, displayName?: string, pictureUrl?: string) =>
+    request<any>('/auth/line/link-with-code', { method: 'POST', body: JSON.stringify({ code, lineUserId, displayName, pictureUrl }) }),
+  lineResolve: (lineUserId: string) =>
+    request<any>('/auth/line/resolve', { method: 'POST', body: JSON.stringify({ lineUserId }) }),
+  getLineMe: () => request<any>('/auth/line/me'),
+  adminIssueLinkToken: (storeId: string, userId: string) =>
+    request<any>('/auth/line/admin/link-tokens', { method: 'POST', body: JSON.stringify({ storeId, userId }) }),
+  adminGetLineLinks: (storeId: string) =>
+    request<any>(`/auth/line/admin/links?storeId=${storeId}`),
 };

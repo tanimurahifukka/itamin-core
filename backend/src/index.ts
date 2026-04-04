@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import { config } from './config';
 import { storesRouter } from './auth/stores';
 import { timecardRouter } from './timecard/routes';
+import { attendanceApiRouter } from './services/attendance/routes';
+import { lineRouter } from './services/line/routes';
 import { pluginRegistry } from './plugins/registry';
 import { pluginSettingsRouter } from './plugins/settings';
 import { shiftPlugin, shiftRequestPlugin } from './plugins/shift';
@@ -19,6 +21,7 @@ import { feedbackPlugin } from './plugins/feedback';
 import { menuPlugin } from './plugins/menu';
 import { punchPlugin, attendancePlugin, staffPlugin, settingsPlugin } from './plugins/core';
 import { salesCapturePlugin } from './plugins/sales_capture';
+import { lineAttendancePlugin, attendanceAdminPlugin } from './plugins/line_attendance';
 
 const app = express();
 
@@ -35,6 +38,8 @@ app.use(express.json());
 // Core routes（認証はSupabase Auth JWT）
 app.use('/api/stores', storesRouter);
 app.use('/api/timecard', timecardRouter);
+app.use('/api/attendance', attendanceApiRouter);
+app.use('/api/auth/line', lineRouter);
 
 // Core plugins（無効化不可）
 pluginRegistry.register(punchPlugin);
@@ -55,6 +60,8 @@ pluginRegistry.register(paidLeavePlugin);
 pluginRegistry.register(expensePlugin);
 pluginRegistry.register(feedbackPlugin);
 pluginRegistry.register(salesCapturePlugin);
+pluginRegistry.register(lineAttendancePlugin);
+pluginRegistry.register(attendanceAdminPlugin);
 
 // 設定は常に最後
 pluginRegistry.register(settingsPlugin);
