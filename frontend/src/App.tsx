@@ -165,44 +165,67 @@ export default function App() {
   // LIFF / LINE連携モード検知
   const [liffMode, setLiffMode] = useState<{
     active: boolean;
+    checked: boolean;
     lineUserId?: string;
     displayName?: string;
     pictureUrl?: string;
-  }>({ active: false });
+  }>({ active: false, checked: false });
 
   useEffect(() => {
-    // URL に liff.state が含まれている、またはLIFF SDK内で開かれている場合
-    const isLiffAccess = window.location.href.includes('liff.state') ||
-      (window as any).liff?.isInClient?.() ||
-      new URLSearchParams(window.location.search).has('liff.state');
-
-    if (!isLiffAccess) return;
+    const liff = (window as any).liff;
+    const liffId = (import.meta as any).env?.VITE_LINE_LIFF_ID;
+    if (!liffId || !liff) {
+      setLiffMode(prev => ({ ...prev, checked: true }));
+      return;
+    }
 
     const initLiff = async () => {
-      const liffId = (import.meta as any).env?.VITE_LINE_LIFF_ID;
-      if (!liffId || !(window as any).liff) return;
-
       try {
-        await (window as any).liff.init({ liffId });
-        if (!(window as any).liff.isLoggedIn()) {
-          (window as any).liff.login();
+        await liff.init({ liffId });
+
+        // LIFF内ブラウザかどうかをinit後に判定
+        const isInClient = liff.isInClient();
+        if (!isInClient) {
+          // 通常ブラウザからのアクセス → LIFF モードにしない
+          setLiffMode({ active: false, checked: true });
           return;
         }
-        const profile = await (window as any).liff.getProfile();
+
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+
+        const profile = await liff.getProfile();
+
+        // 既に連携済みかチェック
+        try {
+          const resolveRes = await api.lineResolve(profile.userId);
+          if (resolveRes.linked) {
+            // 連携済み → 通常フローに戻す
+            setLiffMode({ active: false, checked: true });
+            return;
+          }
+        } catch {
+          // resolve 失敗は無視して連携画面を出す
+        }
+
         setLiffMode({
           active: true,
+          checked: true,
           lineUserId: profile.userId,
           displayName: profile.displayName,
           pictureUrl: profile.pictureUrl,
         });
       } catch (e) {
         console.error('LIFF init error:', e);
+        setLiffMode({ active: false, checked: true });
       }
     };
     initLiff();
   }, []);
 
-  if (loading) {
+  if (loading || !liffMode.checked) {
     return <div className="loading">読み込み中...</div>;
   }
 
@@ -218,7 +241,7 @@ export default function App() {
           displayName={liffMode.displayName}
           pictureUrl={liffMode.pictureUrl}
           onLinked={() => {
-            setLiffMode({ active: false });
+            setLiffMode({ active: false, checked: true });
             window.location.reload();
           }}
         />
