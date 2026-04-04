@@ -58,7 +58,7 @@ LINE打刻機能を使用するには、以下が必要です。
 2. `.env` に以下を設定
    - `LINE_LOGIN_CHANNEL_ID`
    - `LINE_LOGIN_CHANNEL_SECRET`
-   - `LINE_LOGIN_CALLBACK_URL`
+   - `LINE_LOGIN_CALLBACK_URL`（推奨: `{APP_URL}/auth/line/callback?storeId={STORE_ID}`）
    - `VITE_LINE_LIFF_ID`
 3. Supabase に `attendance.sql` を実行
 

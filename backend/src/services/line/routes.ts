@@ -16,6 +16,13 @@ import crypto from 'crypto';
 
 const router = Router();
 
+function createLineLoginState(storeId: string) {
+  return `itamin:${Buffer.from(JSON.stringify({
+    storeId,
+    ts: Date.now(),
+  })).toString('base64url')}`;
+}
+
 /**
  * 施設のLINE設定を取得する。
  * store_plugins.config → process.env の優先順でフォールバック。
@@ -55,7 +62,7 @@ router.get('/login', async (req: Request, res: Response) => {
     return;
   }
 
-  const state = crypto.randomBytes(16).toString('hex');
+  const state = createLineLoginState(storeId);
   const nonce = crypto.randomBytes(16).toString('hex');
 
   const url = `https://access.line.me/oauth2/v2.1/authorize?` +

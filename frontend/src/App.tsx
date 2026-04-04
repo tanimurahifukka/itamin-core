@@ -25,6 +25,26 @@ import SalesCapturePage from './pages/SalesCapturePage';
 import AttendanceStaffPage from './pages/AttendanceStaffPage';
 import AttendanceAdminPage from './pages/AttendanceAdminPage';
 
+function decodeLineLoginStateStoreId(state: string | null): string | null {
+  if (!state?.startsWith('itamin:')) return null;
+  try {
+    const encoded = state.slice('itamin:'.length);
+    const normalized = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+    const parsed = JSON.parse(atob(padded));
+    return typeof parsed?.storeId === 'string' && parsed.storeId.trim() ? parsed.storeId : null;
+  } catch {
+    return null;
+  }
+}
+
+function getLineCallbackStoreId(searchParams: URLSearchParams): string | null {
+  return (
+    searchParams.get('storeId') ||
+    decodeLineLoginStateStoreId(searchParams.get('state'))
+  );
+}
+
 // プラグイン名 → コンポーネント対応表
 const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   punch: PunchClockPage,
@@ -166,17 +186,81 @@ export default function App() {
   const [liffMode, setLiffMode] = useState<{
     active: boolean;
     checked: boolean;
+    source?: 'liff' | 'callback';
+    storeId?: string;
     lineUserId?: string;
     displayName?: string;
     pictureUrl?: string;
+    message?: string;
+    error?: string;
   }>({ active: false, checked: false });
 
   useEffect(() => {
+    let cancelled = false;
+    const pathname = window.location.pathname;
+    const searchParams = new URLSearchParams(window.location.search);
+    const authCode = searchParams.get('code');
+
+    const handleLineCallback = async () => {
+      if (pathname !== '/auth/line/callback' || !authCode) {
+        return false;
+      }
+
+      const storeId = getLineCallbackStoreId(searchParams);
+      if (!storeId) {
+        if (!cancelled) {
+          setLiffMode({
+            active: false,
+            checked: true,
+            error: 'storeId を特定できませんでした。LINE Login のコールバックURLに ?storeId=... を付けるか、/api/auth/line/login?storeId=... からログインを開始してください。',
+          });
+        }
+        return true;
+      }
+
+      try {
+        const callbackRes = await api.lineCallback(
+          storeId,
+          authCode,
+          searchParams.get('state') || undefined
+        );
+
+        if (cancelled) return true;
+
+        if (callbackRes.linked) {
+          setLiffMode({
+            active: false,
+            checked: true,
+            source: 'callback',
+            storeId,
+            message: 'このLINEアカウントは既に連携済みです。確認コードの入力は不要です。',
+          });
+          return true;
+        }
+
+        setLiffMode({
+          active: true,
+          checked: true,
+          source: 'callback',
+          storeId,
+          lineUserId: callbackRes.lineUserId,
+          displayName: callbackRes.displayName,
+          pictureUrl: callbackRes.pictureUrl,
+        });
+      } catch (e: any) {
+        if (!cancelled) {
+          setLiffMode({
+            active: false,
+            checked: true,
+            error: e.body?.error || e.message || 'LINEログインの処理に失敗しました',
+          });
+        }
+      }
+
+      return true;
+    };
+
     const liffId = (import.meta as any).env?.VITE_LINE_LIFF_ID;
-    if (!liffId) {
-      setLiffMode(prev => ({ ...prev, checked: true }));
-      return;
-    }
 
     // LIFF SDK がまだ読み込まれていない場合、最大3秒待つ
     const waitForLiff = (retries: number): Promise<any> => {
@@ -194,9 +278,21 @@ export default function App() {
     };
 
     const initLiff = async () => {
+      const callbackHandled = await handleLineCallback();
+      if (callbackHandled) return;
+
+      if (!liffId) {
+        if (!cancelled) {
+          setLiffMode(prev => ({ ...prev, checked: true }));
+        }
+        return;
+      }
+
       const liff = await waitForLiff(15); // 最大3秒
       if (!liff) {
-        setLiffMode({ active: false, checked: true });
+        if (!cancelled) {
+          setLiffMode({ active: false, checked: true });
+        }
         return;
       }
 
@@ -208,7 +304,9 @@ export default function App() {
           // LIFF内ならauto login、外部ブラウザならlogin()でリダイレクト
           if (liff.isInClient()) {
             // LIFF内なのにログインしていない → 異常、通常フローへ
-            setLiffMode({ active: false, checked: true });
+            if (!cancelled) {
+              setLiffMode({ active: false, checked: true });
+            }
             return;
           }
           // 外部ブラウザ → URL に liff パラメータがあるかで判定
@@ -217,7 +315,9 @@ export default function App() {
             document.referrer.includes('line.me');
           if (!hasLiffParam) {
             // 通常アクセス → LIFFモードにしない
-            setLiffMode({ active: false, checked: true });
+            if (!cancelled) {
+              setLiffMode({ active: false, checked: true });
+            }
             return;
           }
           liff.login();
@@ -231,26 +331,42 @@ export default function App() {
           const resolveRes = await api.lineResolve(profile.userId);
           if (resolveRes.linked) {
             // 連携済み → 通常フローに戻す
-            setLiffMode({ active: false, checked: true });
+            if (!cancelled) {
+              setLiffMode({
+                active: false,
+                checked: true,
+                source: 'liff',
+                message: 'このLINEアカウントは既に連携済みです。現在のURLからは確認コード入力は不要です。',
+              });
+            }
             return;
           }
         } catch {
           // resolve 失敗は無視して連携画面を出す
         }
 
-        setLiffMode({
-          active: true,
-          checked: true,
-          lineUserId: profile.userId,
-          displayName: profile.displayName,
-          pictureUrl: profile.pictureUrl,
-        });
+        if (!cancelled) {
+          setLiffMode({
+            active: true,
+            checked: true,
+            source: 'liff',
+            lineUserId: profile.userId,
+            displayName: profile.displayName,
+            pictureUrl: profile.pictureUrl,
+          });
+        }
       } catch (e) {
         console.error('LIFF init error:', e);
-        setLiffMode({ active: false, checked: true });
+        if (!cancelled) {
+          setLiffMode({ active: false, checked: true });
+        }
       }
     };
     initLiff();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (loading || !liffMode.checked) {
@@ -269,10 +385,34 @@ export default function App() {
           displayName={liffMode.displayName}
           pictureUrl={liffMode.pictureUrl}
           onLinked={() => {
-            setLiffMode({ active: false, checked: true });
-            window.location.reload();
+            window.history.replaceState({}, '', '/');
+            setLiffMode({
+              active: false,
+              checked: true,
+              source: liffMode.source,
+              storeId: liffMode.storeId,
+              message: 'LINE連携が完了しました。必要に応じてLINEから打刻画面を開き直してください。',
+            });
           }}
         />
+      </div>
+    );
+  }
+
+  if (liffMode.message || liffMode.error) {
+    return (
+      <div className="app">
+        <header className="header">
+          <div className="header-logo">ITA<span>MIN</span></div>
+        </header>
+        <div className="attendance-link-page">
+          <div className="attendance-link-card">
+            <h2 className="attendance-link-title">LINEログイン</h2>
+            <div className={liffMode.error ? 'alert alert-error' : 'alert alert-success'}>
+              {liffMode.error || liffMode.message}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

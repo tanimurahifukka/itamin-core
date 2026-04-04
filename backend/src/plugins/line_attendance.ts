@@ -34,7 +34,7 @@ export const lineAttendancePlugin: Plugin = {
       key: 'line_login_callback_url',
       label: 'LINE Login コールバック URL',
       type: 'text',
-      description: 'LINE Login 認可後のリダイレクト先（例: https://your-app.vercel.app/auth/line/callback）',
+      description: 'LINE Login 認可後のリダイレクト先（例: https://your-app.vercel.app/auth/line/callback?storeId=YOUR_STORE_ID）',
     },
     {
       key: 'line_liff_id',
