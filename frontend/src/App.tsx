@@ -21,6 +21,8 @@ import ExpensePage from './pages/ExpensePage';
 import FeedbackPage from './pages/FeedbackPage';
 import MenuPage from './pages/MenuPage';
 import SalesCapturePage from './pages/SalesCapturePage';
+import AttendanceStaffPage from './pages/AttendanceStaffPage';
+import AttendanceAdminPage from './pages/AttendanceAdminPage';
 
 // プラグイン名 → コンポーネント対応表
 const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
@@ -40,6 +42,8 @@ const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   feedback: FeedbackPage,
   menu: MenuPage,
   sales_capture: SalesCapturePage,
+  line_attendance: AttendanceStaffPage,
+  attendance_admin: AttendanceAdminPage,
   settings: PluginSettingsPage,
 };
 
