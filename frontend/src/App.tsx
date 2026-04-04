@@ -203,15 +203,23 @@ export default function App() {
       try {
         await liff.init({ liffId });
 
-        // LIFF内ブラウザかどうかをinit後に判定
-        const isInClient = liff.isInClient();
-        if (!isInClient) {
-          // 通常ブラウザからのアクセス → LIFF モードにしない
-          setLiffMode({ active: false, checked: true });
-          return;
-        }
-
+        // LIFF経由でログイン済みならLINE連携モードへ
         if (!liff.isLoggedIn()) {
+          // LIFF内ならauto login、外部ブラウザならlogin()でリダイレクト
+          if (liff.isInClient()) {
+            // LIFF内なのにログインしていない → 異常、通常フローへ
+            setLiffMode({ active: false, checked: true });
+            return;
+          }
+          // 外部ブラウザ → URL に liff パラメータがあるかで判定
+          const hasLiffParam = window.location.href.includes('liff.state') ||
+            new URLSearchParams(window.location.search).has('liff.state') ||
+            document.referrer.includes('line.me');
+          if (!hasLiffParam) {
+            // 通常アクセス → LIFFモードにしない
+            setLiffMode({ active: false, checked: true });
+            return;
+          }
           liff.login();
           return;
         }
