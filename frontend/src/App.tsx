@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { api } from './api/client';
+import LineLinkPage from './pages/attendance/LineLinkPage';
 import LoginPage from './pages/LoginPage';
 import PasswordChangePage from './pages/PasswordChangePage';
 import StoreSelectPage from './pages/StoreSelectPage';
@@ -161,8 +162,68 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  // LIFF / LINE連携モード検知
+  const [liffMode, setLiffMode] = useState<{
+    active: boolean;
+    lineUserId?: string;
+    displayName?: string;
+    pictureUrl?: string;
+  }>({ active: false });
+
+  useEffect(() => {
+    // URL に liff.state が含まれている、またはLIFF SDK内で開かれている場合
+    const isLiffAccess = window.location.href.includes('liff.state') ||
+      (window as any).liff?.isInClient?.() ||
+      new URLSearchParams(window.location.search).has('liff.state');
+
+    if (!isLiffAccess) return;
+
+    const initLiff = async () => {
+      const liffId = (import.meta as any).env?.VITE_LINE_LIFF_ID;
+      if (!liffId || !(window as any).liff) return;
+
+      try {
+        await (window as any).liff.init({ liffId });
+        if (!(window as any).liff.isLoggedIn()) {
+          (window as any).liff.login();
+          return;
+        }
+        const profile = await (window as any).liff.getProfile();
+        setLiffMode({
+          active: true,
+          lineUserId: profile.userId,
+          displayName: profile.displayName,
+          pictureUrl: profile.pictureUrl,
+        });
+      } catch (e) {
+        console.error('LIFF init error:', e);
+      }
+    };
+    initLiff();
+  }, []);
+
   if (loading) {
     return <div className="loading">読み込み中...</div>;
+  }
+
+  // LIFF経由: LINE連携画面を表示（ITAMINログイン不要）
+  if (liffMode.active && liffMode.lineUserId) {
+    return (
+      <div className="app">
+        <header className="header">
+          <div className="header-logo">ITA<span>MIN</span></div>
+        </header>
+        <LineLinkPage
+          lineUserId={liffMode.lineUserId}
+          displayName={liffMode.displayName}
+          pictureUrl={liffMode.pictureUrl}
+          onLinked={() => {
+            setLiffMode({ active: false });
+            window.location.reload();
+          }}
+        />
+      </div>
+    );
   }
 
   if (!user) {
