@@ -284,17 +284,19 @@ export default function App() {
       // /liff パスまたは ?mode=liff があれば連携画面を即表示
       const isLiffAccess = pathname === '/liff' || searchParams.get('mode') === 'liff';
       if (isLiffAccess) {
-        // LIFF SDK でプロフィール取得を試みる（取れなくてもOK）
         let lineProfile: { userId?: string; displayName?: string; pictureUrl?: string } = {};
         if (liffId) {
           const liff = await waitForLiff(15);
           if (liff) {
             try {
               await liff.init({ liffId });
-              if (liff.isLoggedIn()) {
-                const p = await liff.getProfile();
-                lineProfile = { userId: p.userId, displayName: p.displayName, pictureUrl: p.pictureUrl };
+              if (!liff.isLoggedIn()) {
+                // 未ログイン → LINE認証にリダイレクト（戻り先は /liff）
+                liff.login({ redirectUri: window.location.href });
+                return; // リダイレクトされるので以降実行されない
               }
+              const p = await liff.getProfile();
+              lineProfile = { userId: p.userId, displayName: p.displayName, pictureUrl: p.pictureUrl };
             } catch (e) {
               console.error('LIFF profile error:', e);
             }
