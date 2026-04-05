@@ -281,8 +281,8 @@ export default function App() {
       const callbackHandled = await handleLineCallback();
       if (callbackHandled) return;
 
-      // ?mode=liff があれば連携画面を即表示（LIFF SDK に依存しない）
-      const isLiffAccess = searchParams.get('mode') === 'liff';
+      // /liff パスまたは ?mode=liff があれば連携画面を即表示
+      const isLiffAccess = pathname === '/liff' || searchParams.get('mode') === 'liff';
       if (isLiffAccess) {
         // LIFF SDK でプロフィール取得を試みる（取れなくてもOK）
         let lineProfile: { userId?: string; displayName?: string; pictureUrl?: string } = {};
