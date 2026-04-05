@@ -3175,6 +3175,42 @@ body {
 .checklist-chip.missing { background: #fef2f2; color: #991b1b; }
 .checklist-na { color: #9ca3af; }
 
+/* --- LINE メニュータブ --- */
+.line-menu-page { min-height: 80vh; }
+.line-menu-tabs {
+  display: flex;
+  overflow-x: auto;
+  gap: 2px;
+  background: #f3f4f6;
+  padding: 4px 4px 0;
+  -webkit-overflow-scrolling: touch;
+}
+.line-menu-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  color: #6b7280;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 52px;
+}
+.line-menu-tab.active {
+  color: #2563eb;
+  background: #fff;
+  border-bottom-color: #2563eb;
+  font-weight: 600;
+}
+.line-menu-tab-icon { font-size: 18px; }
+.line-menu-tab-label { font-size: 10px; }
+.line-menu-content { padding: 0; }
+
 /* --- レスポンシブ --- */
 @media (max-width: 768px) {
   .admin-attendance-table { font-size: 13px; }

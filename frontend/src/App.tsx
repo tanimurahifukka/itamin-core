@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { api } from './api/client';
 import LineLinkPage from './pages/attendance/LineLinkPage';
-import LinePunchPage from './pages/attendance/LinePunchPage';
+import LineMenuPage from './pages/attendance/LineMenuPage';
 import LoginPage from './pages/LoginPage';
 import PasswordChangePage from './pages/PasswordChangePage';
 import StoreSelectPage from './pages/StoreSelectPage';
@@ -341,7 +341,7 @@ export default function App() {
         <header className="header">
           <div className="header-logo">ITA<span>MIN</span></div>
         </header>
-        <LinePunchPage
+        <LineMenuPage
           lineUserId={liffMode.lineUserId}
           storeId={liffMode.storeId}
           displayName={liffMode.displayName}

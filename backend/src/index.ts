@@ -7,6 +7,7 @@ import { timecardRouter } from './timecard/routes';
 import { attendanceApiRouter } from './services/attendance/routes';
 import { lineRouter } from './services/line/routes';
 import { linePunchRouter } from './services/line/punch';
+import { lineStaffRouter } from './services/line/staff';
 import { pluginRegistry } from './plugins/registry';
 import { pluginSettingsRouter } from './plugins/settings';
 import { shiftPlugin, shiftRequestPlugin } from './plugins/shift';
@@ -42,6 +43,7 @@ app.use('/api/timecard', timecardRouter);
 app.use('/api/attendance', attendanceApiRouter);
 app.use('/api/auth/line', lineRouter);
 app.use('/api/line-punch', linePunchRouter);
+app.use('/api/line-staff', lineStaffRouter);
 
 // Core plugins（無効化不可）
 pluginRegistry.register(punchPlugin);
