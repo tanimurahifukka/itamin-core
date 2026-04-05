@@ -106,6 +106,27 @@ router.post('/shifts', async (req: Request, res: Response) => {
 });
 
 // ================================================================
+// シフトテンプレート取得
+// ================================================================
+router.post('/shift-templates', async (req: Request, res: Response) => {
+  try {
+    const auth = await requireLineUser(req, res);
+    if (!auth) return;
+
+    const { data, error } = await supabaseAdmin
+      .from('shift_templates')
+      .select('id, name, start_time, end_time, break_minutes, color')
+      .eq('store_id', auth.storeId)
+      .order('name');
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.json({ templates: data || [] });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ================================================================
 // 2. シフト希望 取得
 // ================================================================
 router.post('/shift-requests', async (req: Request, res: Response) => {

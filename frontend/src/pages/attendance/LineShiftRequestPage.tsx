@@ -1,6 +1,6 @@
 /**
  * LINEシフト希望ページ（Supabase Auth不要）
- * 自分のシフト希望を閲覧・登録する。
+ * シフトテンプレート（通し・SUNABACO等）から選択して希望を出せる。
  */
 import { useState, useEffect } from 'react';
 
@@ -18,6 +18,15 @@ interface ShiftRequest {
   startTime: string | null;
   endTime: string | null;
   note: string | null;
+}
+
+interface ShiftTemplate {
+  id: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+  break_minutes: number;
+  color: string | null;
 }
 
 const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -48,8 +57,14 @@ function formatDate(dateStr: string) {
   return `${d.getMonth() + 1}/${d.getDate()}(${DAY_LABELS[d.getDay()]})`;
 }
 
-export default function LineShiftRequestPage({ lineUserId, storeId, displayName }: Props) {
+function formatTime(t: string) {
+  // "09:30:00" → "09:30"
+  return t ? t.slice(0, 5) : '';
+}
+
+export default function LineShiftRequestPage({ lineUserId, storeId }: Props) {
   const [requests, setRequests] = useState<ShiftRequest[]>([]);
+  const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
@@ -57,16 +72,21 @@ export default function LineShiftRequestPage({ lineUserId, storeId, displayName 
 
   // フォーム
   const [formDate, setFormDate] = useState('');
-  const [formType, setFormType] = useState<string>('available');
+  const [formType, setFormType] = useState<string>('preferred');
   const [formStartTime, setFormStartTime] = useState('');
   const [formEndTime, setFormEndTime] = useState('');
   const [formNote, setFormNote] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
 
   const load = async () => {
     try {
       setLoading(true);
-      const res = await lineStaffApi('/shift-requests', { lineUserId, storeId });
-      setRequests(res.requests);
+      const [reqRes, tplRes] = await Promise.all([
+        lineStaffApi('/shift-requests', { lineUserId, storeId }),
+        lineStaffApi('/shift-templates', { lineUserId, storeId }),
+      ]);
+      setRequests(reqRes.requests);
+      setTemplates(tplRes.templates || []);
     } catch (e: any) {
       setError(e.body?.error || e.message || 'エラーが発生しました');
     } finally {
@@ -80,6 +100,28 @@ export default function LineShiftRequestPage({ lineUserId, storeId, displayName 
     const t = setTimeout(() => setToast(null), 3000);
     return () => clearTimeout(t);
   }, [toast]);
+
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    if (templateId === '') {
+      // カスタム
+      setFormStartTime('');
+      setFormEndTime('');
+      return;
+    }
+    if (templateId === '_unavailable') {
+      setFormType('unavailable');
+      setFormStartTime('');
+      setFormEndTime('');
+      return;
+    }
+    const tpl = templates.find(t => t.id === templateId);
+    if (tpl) {
+      setFormType('preferred');
+      setFormStartTime(formatTime(tpl.start_time));
+      setFormEndTime(formatTime(tpl.end_time));
+    }
+  };
 
   const handleSave = async () => {
     if (!formDate) {
@@ -101,6 +143,7 @@ export default function LineShiftRequestPage({ lineUserId, storeId, displayName 
       setFormStartTime('');
       setFormEndTime('');
       setFormNote('');
+      setSelectedTemplate('');
       await load();
     } catch (e: any) {
       setToast({ msg: e.body?.error || e.message || 'エラー', type: 'error' });
@@ -124,8 +167,10 @@ export default function LineShiftRequestPage({ lineUserId, storeId, displayName 
 
       {/* 登録フォーム */}
       <div style={{ marginBottom: 20, padding: 12, backgroundColor: '#f9fafb', borderRadius: 8 }}>
-        <h3 style={{ fontSize: 14, marginBottom: 8 }}>希望を登録</h3>
-        <div style={{ marginBottom: 8 }}>
+        <h3 style={{ fontSize: 14, marginBottom: 12 }}>希望を登録</h3>
+
+        {/* 日付 */}
+        <div style={{ marginBottom: 10 }}>
           <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>日付</label>
           <input
             type="date"
@@ -135,44 +180,122 @@ export default function LineShiftRequestPage({ lineUserId, storeId, displayName 
             data-testid="shift-request-date-input"
           />
         </div>
-        <div style={{ marginBottom: 8 }}>
-          <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>区分</label>
-          <select
-            className="form-input"
-            value={formType}
-            onChange={e => setFormType(e.target.value)}
-            data-testid="shift-request-type-select"
-          >
-            <option value="available">出勤可</option>
-            <option value="unavailable">出勤不可</option>
-            <option value="preferred">希望</option>
-          </select>
+
+        {/* テンプレートプリセット選択 */}
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 6 }}>シフト区分</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {templates.map(tpl => (
+              <button
+                key={tpl.id}
+                type="button"
+                className={`button ${selectedTemplate === tpl.id ? 'button-primary' : ''}`}
+                onClick={() => handleTemplateSelect(tpl.id)}
+                data-testid={`template-${tpl.name}`}
+                style={{
+                  fontSize: 13,
+                  padding: '8px 14px',
+                  borderRadius: 20,
+                  border: selectedTemplate === tpl.id ? 'none' : '1px solid #d4d9df',
+                  backgroundColor: selectedTemplate === tpl.id
+                    ? (tpl.color || '#2563eb')
+                    : '#fff',
+                  color: selectedTemplate === tpl.id ? '#fff' : '#374151',
+                  minHeight: 40,
+                }}
+              >
+                {tpl.name}
+                <span style={{ fontSize: 10, display: 'block', opacity: 0.8 }}>
+                  {formatTime(tpl.start_time)}〜{formatTime(tpl.end_time)}
+                </span>
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`button ${selectedTemplate === '_unavailable' ? 'button-primary' : ''}`}
+              onClick={() => handleTemplateSelect('_unavailable')}
+              data-testid="template-unavailable"
+              style={{
+                fontSize: 13,
+                padding: '8px 14px',
+                borderRadius: 20,
+                border: selectedTemplate === '_unavailable' ? 'none' : '1px solid #d4d9df',
+                backgroundColor: selectedTemplate === '_unavailable' ? '#ef4444' : '#fff',
+                color: selectedTemplate === '_unavailable' ? '#fff' : '#374151',
+                minHeight: 40,
+              }}
+            >
+              出勤不可
+            </button>
+            <button
+              type="button"
+              className={`button ${selectedTemplate === '' && formType !== 'unavailable' ? '' : ''}`}
+              onClick={() => { setSelectedTemplate(''); setFormType('available'); }}
+              data-testid="template-custom"
+              style={{
+                fontSize: 13,
+                padding: '8px 14px',
+                borderRadius: 20,
+                border: '1px dashed #9ca3af',
+                backgroundColor: '#fff',
+                color: '#6b7280',
+                minHeight: 40,
+              }}
+            >
+              カスタム
+            </button>
+          </div>
         </div>
-        {formType !== 'unavailable' && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>開始</label>
-              <input
-                type="time"
+
+        {/* カスタム時間入力（テンプレート未選択 or カスタム時のみ） */}
+        {formType !== 'unavailable' && selectedTemplate === '' && (
+          <>
+            <div style={{ marginBottom: 8 }}>
+              <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>区分</label>
+              <select
                 className="form-input"
-                value={formStartTime}
-                onChange={e => setFormStartTime(e.target.value)}
-                data-testid="shift-request-start-time-input"
-              />
+                value={formType}
+                onChange={e => setFormType(e.target.value)}
+                data-testid="shift-request-type-select"
+              >
+                <option value="available">出勤可</option>
+                <option value="preferred">希望</option>
+              </select>
             </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>終了</label>
-              <input
-                type="time"
-                className="form-input"
-                value={formEndTime}
-                onChange={e => setFormEndTime(e.target.value)}
-                data-testid="shift-request-end-time-input"
-              />
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>開始</label>
+                <input
+                  type="time"
+                  className="form-input"
+                  value={formStartTime}
+                  onChange={e => setFormStartTime(e.target.value)}
+                  data-testid="shift-request-start-time-input"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>終了</label>
+                <input
+                  type="time"
+                  className="form-input"
+                  value={formEndTime}
+                  onChange={e => setFormEndTime(e.target.value)}
+                  data-testid="shift-request-end-time-input"
+                />
+              </div>
             </div>
+          </>
+        )}
+
+        {/* 選択中テンプレートの時間表示 */}
+        {formType !== 'unavailable' && selectedTemplate !== '' && selectedTemplate !== '_unavailable' && (
+          <div style={{ fontSize: 13, color: '#374151', marginBottom: 8, padding: '8px 12px', background: '#eff6ff', borderRadius: 6 }}>
+            {formStartTime} 〜 {formEndTime}
           </div>
         )}
-        <div style={{ marginBottom: 8 }}>
+
+        {/* メモ */}
+        <div style={{ marginBottom: 10 }}>
           <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>メモ</label>
           <input
             type="text"
@@ -183,6 +306,7 @@ export default function LineShiftRequestPage({ lineUserId, storeId, displayName 
             data-testid="shift-request-note-input"
           />
         </div>
+
         <button
           className="button button-primary"
           onClick={handleSave}
@@ -213,7 +337,7 @@ export default function LineShiftRequestPage({ lineUserId, storeId, displayName 
                 </div>
                 {(r.startTime || r.endTime) && (
                   <div style={{ fontSize: 13, marginTop: 4 }}>
-                    {r.startTime || '--:--'} - {r.endTime || '--:--'}
+                    {r.startTime ? formatTime(r.startTime) : '--:--'} - {r.endTime ? formatTime(r.endTime) : '--:--'}
                   </div>
                 )}
                 {r.note && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{r.note}</div>}
