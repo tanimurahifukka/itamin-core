@@ -331,14 +331,14 @@ export default function App() {
   }
 
   // LIFF経由: LINE連携画面を表示（ITAMINログイン不要）
-  if (liffMode.active && liffMode.lineUserId) {
+  if (liffMode.active) {
     return (
       <div className="app">
         <header className="header">
           <div className="header-logo">ITA<span>MIN</span></div>
         </header>
         <LineLinkPage
-          lineUserId={liffMode.lineUserId}
+          lineUserId={liffMode.lineUserId || ''}
           displayName={liffMode.displayName}
           pictureUrl={liffMode.pictureUrl}
           onLinked={() => {
