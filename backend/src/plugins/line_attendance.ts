@@ -38,9 +38,9 @@ export const lineAttendancePlugin: Plugin = {
     },
     {
       key: 'line_liff_id',
-      label: 'LIFF アプリ ID',
+      label: 'LIFF アプリ ID（旧方式・未使用）',
       type: 'text',
-      description: 'LINE Developers Console で作成した LIFF アプリの ID',
+      description: '現在の LINE 連携は LINE Login OAuth に統一しているため未使用です',
     },
     {
       key: 'line_bot_channel_secret',

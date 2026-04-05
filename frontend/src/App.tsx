@@ -45,6 +45,17 @@ function getLineCallbackStoreId(searchParams: URLSearchParams): string | null {
   );
 }
 
+function getSavedStoreId(): string | null {
+  try {
+    const raw = window.localStorage.getItem('itamin_selectedStore');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return typeof parsed?.id === 'string' && parsed.id.trim() ? parsed.id : null;
+  } catch {
+    return null;
+  }
+}
+
 // プラグイン名 → コンポーネント対応表
 const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   punch: PunchClockPage,
@@ -182,11 +193,11 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // LIFF / LINE連携モード検知
+  // LINE Login / 連携モード検知
   const [liffMode, setLiffMode] = useState<{
     active: boolean;
     checked: boolean;
-    source?: 'liff' | 'callback';
+    source?: 'entry' | 'callback';
     storeId?: string;
     lineUserId?: string;
     displayName?: string;
@@ -260,68 +271,54 @@ export default function App() {
       return true;
     };
 
-    const liffId = (import.meta as any).env?.VITE_LINE_LIFF_ID;
-
-    // LIFF SDK がまだ読み込まれていない場合、最大3秒待つ
-    const waitForLiff = (retries: number): Promise<any> => {
-      return new Promise((resolve) => {
-        if ((window as any).liff) {
-          resolve((window as any).liff);
-          return;
-        }
-        if (retries <= 0) {
-          resolve(null);
-          return;
-        }
-        setTimeout(() => waitForLiff(retries - 1).then(resolve), 200);
-      });
-    };
-
-    const initLiff = async () => {
+    const initLineLogin = async () => {
       const callbackHandled = await handleLineCallback();
       if (callbackHandled) return;
 
-      // /liff パスまたは ?mode=liff があれば連携画面を即表示
-      const isLiffAccess = pathname === '/liff' || searchParams.get('mode') === 'liff';
-      if (isLiffAccess) {
-        let lineProfile: { userId?: string; displayName?: string; pictureUrl?: string } = {};
-        if (liffId) {
-          const liff = await waitForLiff(15);
-          if (liff) {
-            try {
-              await liff.init({ liffId });
-              if (!liff.isLoggedIn()) {
-                // 未ログイン → LINE認証にリダイレクト（戻り先は /liff）
-                liff.login({ redirectUri: window.location.href });
-                return; // リダイレクトされるので以降実行されない
-              }
-              const p = await liff.getProfile();
-              lineProfile = { userId: p.userId, displayName: p.displayName, pictureUrl: p.pictureUrl };
-            } catch (e) {
-              console.error('LIFF profile error:', e);
-            }
+      // /liff パスまたは ?mode=liff は LINE Login 開始専用の入口として扱う
+      const isLineEntry = pathname === '/liff' || searchParams.get('mode') === 'liff';
+      if (isLineEntry) {
+        const storeId =
+          searchParams.get('storeId') ||
+          selectedStore?.id ||
+          getSavedStoreId();
+
+        if (!storeId) {
+          if (!cancelled) {
+            setLiffMode({
+              active: false,
+              checked: true,
+              error: 'storeId を特定できませんでした。LINE打刻URLに ?storeId=... を付けて開いてください。',
+            });
           }
+          return;
         }
 
-        if (!cancelled) {
-          setLiffMode({
-            active: true,
-            checked: true,
-            source: 'liff',
-            lineUserId: lineProfile.userId || '',
-            displayName: lineProfile.displayName,
-            pictureUrl: lineProfile.pictureUrl,
-          });
+        try {
+          const loginRes = await api.getLineLoginUrl(storeId);
+          if (!loginRes?.url) {
+            throw new Error('LINEログインURLを取得できませんでした');
+          }
+          window.location.assign(loginRes.url);
+          return;
+        } catch (e: any) {
+          if (!cancelled) {
+            setLiffMode({
+              active: false,
+              checked: true,
+              error: e.body?.error || e.message || 'LINEログインの開始に失敗しました',
+            });
+          }
         }
         return;
       }
 
-      // 通常アクセス → LIFFモードにしない
+      // 通常アクセス → LINE連携モードにしない
       if (!cancelled) {
         setLiffMode({ active: false, checked: true });
       }
     };
-    initLiff();
+    initLineLogin();
 
     return () => {
       cancelled = true;
@@ -332,7 +329,7 @@ export default function App() {
     return <div className="loading">読み込み中...</div>;
   }
 
-  // LIFF経由: LINE連携画面を表示（ITAMINログイン不要）
+  // LINE Login経由: LINE連携画面を表示（ITAMINログイン不要）
   if (liffMode.active) {
     return (
       <div className="app">

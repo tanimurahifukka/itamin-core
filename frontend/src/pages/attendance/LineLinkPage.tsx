@@ -20,6 +20,10 @@ export default function LineLinkPage({ lineUserId, displayName, pictureUrl, onLi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim() || loading) return;
+    if (!lineUserId) {
+      setError('LINEユーザー情報を取得できませんでした。LINEログインからやり直してください。');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -68,7 +72,7 @@ export default function LineLinkPage({ lineUserId, displayName, pictureUrl, onLi
           <button
             type="submit"
             className="button button-primary attendance-link-btn"
-            disabled={loading || code.trim().length < 6}
+            disabled={loading || code.trim().length < 6 || !lineUserId}
             data-testid="link-submit-button"
           >
             {loading ? '連携中...' : '連携する'}

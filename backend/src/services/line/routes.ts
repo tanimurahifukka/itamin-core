@@ -31,7 +31,6 @@ async function getLineConfig(storeId: string): Promise<{
   channelId: string | undefined;
   channelSecret: string | undefined;
   callbackUrl: string | undefined;
-  liffId: string | undefined;
 }> {
   const { data } = await supabaseAdmin
     .from('store_plugins')
@@ -45,7 +44,6 @@ async function getLineConfig(storeId: string): Promise<{
     channelId: cfg.line_login_channel_id || process.env.LINE_LOGIN_CHANNEL_ID,
     channelSecret: cfg.line_login_channel_secret || process.env.LINE_LOGIN_CHANNEL_SECRET,
     callbackUrl: cfg.line_login_callback_url || process.env.LINE_LOGIN_CALLBACK_URL,
-    liffId: cfg.line_liff_id || process.env.VITE_LINE_LIFF_ID,
   };
 }
 
@@ -70,7 +68,7 @@ router.get('/login', async (req: Request, res: Response) => {
     `&redirect_uri=${encodeURIComponent(lineCfg.callbackUrl)}` +
     `&state=${state}&scope=profile%20openid&nonce=${nonce}`;
 
-  res.json({ url, state, nonce, liffId: lineCfg.liffId });
+  res.json({ url, state, nonce });
 });
 
 // ================================================================

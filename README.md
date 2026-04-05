@@ -54,12 +54,10 @@ LINE打刻機能を使用するには、以下が必要です。
 
 1. [LINE Developers Console](https://developers.line.biz/) でチャネル作成
    - LINE Login チャネル（必須）
-   - LIFF アプリの作成（エンドポイントURL: `{APP_URL}/attendance`）
 2. `.env` に以下を設定
    - `LINE_LOGIN_CHANNEL_ID`
    - `LINE_LOGIN_CHANNEL_SECRET`
    - `LINE_LOGIN_CALLBACK_URL`（推奨: `{APP_URL}/auth/line/callback?storeId={STORE_ID}`）
-   - `VITE_LINE_LIFF_ID`
 3. Supabase に `attendance.sql` を実行
 
 ### 開発サーバーの起動
@@ -87,7 +85,7 @@ itamin-core/
 ### 1. LINE連携フロー
 1. 管理者ログイン → 「勤怠管理(LINE)」 → 「LINE連携」タブ
 2. スタッフの「コード発行」ボタンをクリック → 6桁コードが表示される
-3. スタッフが LINE から LIFF を開く → 未連携なら連携コード入力画面
+3. スタッフが LINE打刻用URLを開く → LINE Login 後、未連携なら連携コード入力画面
 4. 6桁コードを入力 → 連携完了 → 打刻ホームへ遷移
 
 ### 2. 打刻フロー
