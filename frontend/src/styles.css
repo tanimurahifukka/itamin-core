@@ -3210,6 +3210,12 @@ body {
 .line-menu-tab-icon { font-size: 18px; }
 .line-menu-tab-label { font-size: 10px; }
 .line-menu-content { padding: 0; }
+.line-menu-content .button,
+.line-menu-content button[type="submit"] {
+  min-height: 48px;
+  font-size: 15px;
+  padding: 12px 24px;
+}
 
 /* --- レスポンシブ --- */
 @media (max-width: 768px) {
