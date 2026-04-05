@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { api } from './api/client';
 import LineLinkPage from './pages/attendance/LineLinkPage';
+import LinePunchPage from './pages/attendance/LinePunchPage';
 import LoginPage from './pages/LoginPage';
 import PasswordChangePage from './pages/PasswordChangePage';
 import StoreSelectPage from './pages/StoreSelectPage';
@@ -239,12 +240,15 @@ export default function App() {
         if (cancelled) return true;
 
         if (callbackRes.linked) {
+          // 連携済み → 打刻ページへ
           setLiffMode({
-            active: false,
+            active: true,
             checked: true,
             source: 'callback',
             storeId,
-            message: 'このLINEアカウントは既に連携済みです。確認コードの入力は不要です。',
+            lineUserId: callbackRes.lineUserId,
+            displayName: callbackRes.displayName,
+            pictureUrl: callbackRes.pictureUrl,
           });
           return true;
         }
@@ -329,8 +333,26 @@ export default function App() {
     return <div className="loading">読み込み中...</div>;
   }
 
-  // LINE Login経由: LINE連携画面を表示（ITAMINログイン不要）
+  // LINE Login 経由
+  if (liffMode.active && liffMode.lineUserId && liffMode.storeId) {
+    // lineUserId + storeId がある → 連携済み → 打刻ページ
+    return (
+      <div className="app">
+        <header className="header">
+          <div className="header-logo">ITA<span>MIN</span></div>
+        </header>
+        <LinePunchPage
+          lineUserId={liffMode.lineUserId}
+          storeId={liffMode.storeId}
+          displayName={liffMode.displayName}
+          pictureUrl={liffMode.pictureUrl}
+        />
+      </div>
+    );
+  }
+
   if (liffMode.active) {
+    // lineUserId はあるが未連携 → 連携コード入力ページ
     return (
       <div className="app">
         <header className="header">
@@ -347,7 +369,7 @@ export default function App() {
               checked: true,
               source: liffMode.source,
               storeId: liffMode.storeId,
-              message: 'LINE連携が完了しました。必要に応じてLINEから打刻画面を開き直してください。',
+              message: 'LINE連携が完了しました。LINEから打刻画面を開き直してください。',
             });
           }}
         />
