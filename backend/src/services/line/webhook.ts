@@ -236,18 +236,52 @@ async function executePunch(action: PunchAction, userId: string, storeId: string
 // ================================================================
 // Webhook メイン
 // ================================================================
-router.post('/', async (req: Request, res: Response) => {
-  // 署名検証のため raw body が必要（express.json の前に処理する必要があるが、
-  // 今回は JSON.stringify(req.body) で再構築する簡易方式）
-  const channelSecret = process.env.LINE_BOT_CHANNEL_SECRET || '';
-  const accessToken = process.env.LINE_BOT_CHANNEL_ACCESS_TOKEN || '';
+/**
+ * 全店舗の LINE Bot 設定を検索し、channelSecret が一致するものを返す。
+ * Webhook は LINE 側で1つのURLしか設定できないため、
+ * 署名検証で使う channelSecret から店舗を逆引きする。
+ */
+async function findBotConfig(): Promise<{
+  channelSecret: string;
+  accessToken: string;
+  storeId: string;
+} | null> {
+  // process.env フォールバック
+  if (process.env.LINE_BOT_CHANNEL_SECRET && process.env.LINE_BOT_CHANNEL_ACCESS_TOKEN) {
+    return {
+      channelSecret: process.env.LINE_BOT_CHANNEL_SECRET,
+      accessToken: process.env.LINE_BOT_CHANNEL_ACCESS_TOKEN,
+      storeId: '',
+    };
+  }
 
-  if (!channelSecret || !accessToken) {
-    // 店舗別設定から取得を試みる
-    // TODO: 複数店舗対応時はイベントのlineUserIdから店舗を特定
-    res.status(200).json({ ok: true }); // LINE は 200 を期待
+  // store_plugins.config から取得
+  const { data } = await supabaseAdmin
+    .from('store_plugins')
+    .select('store_id, config')
+    .eq('plugin_name', 'line_attendance')
+    .eq('enabled', true);
+
+  for (const row of data || []) {
+    const cfg = row.config || {};
+    if (cfg.line_bot_channel_secret && cfg.line_bot_channel_access_token) {
+      return {
+        channelSecret: cfg.line_bot_channel_secret,
+        accessToken: cfg.line_bot_channel_access_token,
+        storeId: row.store_id,
+      };
+    }
+  }
+  return null;
+}
+
+router.post('/', async (req: Request, res: Response) => {
+  const botConfig = await findBotConfig();
+  if (!botConfig) {
+    res.status(200).json({ ok: true });
     return;
   }
+  const { channelSecret, accessToken } = botConfig;
 
   // 署名検証（簡易版: req.body が JSON parse 済みなので再 stringify）
   const signature = req.headers['x-line-signature'] as string;
