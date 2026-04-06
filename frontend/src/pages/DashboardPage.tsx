@@ -159,12 +159,25 @@ export default function DashboardPage() {
     return Math.round(h * record.hourlyWage);
   };
 
+  // 1日コスト計算（人件費 + 交通費）
+  const calcDailyCost = (record: any) => {
+    const labor = calcLaborCost(record);
+    if (labor === null) return null;
+    return labor + (record.transportFee || 0);
+  };
+
   // 今日のサマリー計算
   const isToday = date === new Date().toISOString().split('T')[0];
   const working = records.filter(r => !r.clockOut);
   const finished = records.filter(r => r.clockOut);
   const totalHoursToday = finished.reduce((sum, r) => sum + (calcHours(r) || 0), 0);
   const totalLaborCost = finished.reduce((sum, r) => sum + (calcLaborCost(r) || 0), 0);
+  // 出勤したスタッフのユニーク交通費合計
+  const uniqueStaffIds = new Set(records.map((r: any) => r.staffId));
+  const totalTransportFee = records
+    .filter((r: any, i: number, arr: any[]) => arr.findIndex((a: any) => a.staffId === r.staffId) === i)
+    .reduce((sum: number, r: any) => sum + (r.transportFee || 0), 0);
+  const totalDailyCost = totalLaborCost + totalTransportFee;
 
   const handlePrevMonth = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
@@ -248,6 +261,18 @@ export default function DashboardPage() {
                 <div className="summary-card labor" data-testid="daily-labor-cost">
                   <div className="summary-number">¥{totalLaborCost.toLocaleString()}</div>
                   <div className="summary-label">概算人件費</div>
+                </div>
+              )}
+              {isOwner && totalTransportFee > 0 && (
+                <div className="summary-card" data-testid="daily-transport-cost">
+                  <div className="summary-number">¥{totalTransportFee.toLocaleString()}</div>
+                  <div className="summary-label">交通費</div>
+                </div>
+              )}
+              {isOwner && (
+                <div className="summary-card" data-testid="daily-total-cost" style={{ borderLeft: '4px solid #ef4444' }}>
+                  <div className="summary-number">¥{totalDailyCost.toLocaleString()}</div>
+                  <div className="summary-label">1日コスト合計</div>
                 </div>
               )}
             </div>
@@ -367,6 +392,8 @@ export default function DashboardPage() {
                   <th>平均/日</th>
                   {isOwner && <th>時給</th>}
                   {isOwner && <th>概算給与</th>}
+                  {isOwner && <th>交通費計</th>}
+                  {isOwner && <th>合計コスト</th>}
                 </tr>
               </thead>
               <tbody>
@@ -389,8 +416,14 @@ export default function DashboardPage() {
                         : '—'}
                     </td>
                     {isOwner && <td>{s.hourlyWage ? `¥${Number(s.hourlyWage).toLocaleString()}` : '—'}</td>}
-                    {isOwner && <td style={{ fontWeight: 600 }}>
+                    {isOwner && <td>
                       {s.estimatedSalary != null ? `¥${Number(s.estimatedSalary).toLocaleString()}` : '—'}
+                    </td>}
+                    {isOwner && <td>
+                      {s.totalTransportFee != null ? `¥${Number(s.totalTransportFee).toLocaleString()}` : '—'}
+                    </td>}
+                    {isOwner && <td style={{ fontWeight: 600 }}>
+                      {s.totalCost != null ? `¥${Number(s.totalCost).toLocaleString()}` : '—'}
                     </td>}
                   </tr>
                 ))}

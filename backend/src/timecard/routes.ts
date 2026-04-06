@@ -189,7 +189,7 @@ router.get('/:storeId/daily', requireAuth, async (req: Request, res: Response) =
     const date = dateStr || new Date().toISOString().split('T')[0];
     const { data, error } = await supabaseAdmin
       .from('time_records')
-      .select('*, staff:store_staff(id, hourly_wage, user:profiles(name, picture))')
+      .select('*, staff:store_staff(id, hourly_wage, transport_fee, user:profiles(name, picture))')
       .eq('store_id', storeId)
       .gte('clock_in', `${date}T00:00:00`)
       .lte('clock_in', `${date}T23:59:59`)
@@ -210,6 +210,7 @@ router.get('/:storeId/daily', requireAuth, async (req: Request, res: Response) =
       staffName: r.staff?.user?.name,
       staffPicture: r.staff?.user?.picture,
       hourlyWage: r.staff?.hourly_wage || 0,
+      transportFee: r.staff?.transport_fee || 0,
     }));
 
     res.json({ date, records });
@@ -240,7 +241,7 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
     // 全スタッフの勤怠レコードを取得（スタッフ名・時給付き）
     const { data, error } = await supabaseAdmin
       .from('time_records')
-      .select('*, staff:store_staff(id, hourly_wage, user:profiles(name))')
+      .select('*, staff:store_staff(id, hourly_wage, transport_fee, user:profiles(name))')
       .eq('store_id', storeId)
       .gte('clock_in', startDate)
       .lt('clock_in', endDate)
@@ -256,6 +257,7 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
       staffId: string;
       staffName: string;
       hourlyWage: number;
+      transportFee: number;
       totalMinutes: number;
       workDays: Set<string>;
     }>();
@@ -267,6 +269,7 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
           staffId: sid,
           staffName: r.staff?.user?.name || '—',
           hourlyWage: r.staff?.hourly_wage || 0,
+          transportFee: r.staff?.transport_fee || 0,
           totalMinutes: 0,
           workDays: new Set(),
         });
@@ -283,14 +286,19 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
 
     const summary = Array.from(staffMap.values()).map(s => {
       const totalWorkHours = Math.round(s.totalMinutes / 60 * 100) / 100;
+      const totalTransportFee = s.workDays.size * s.transportFee;
+      const estimatedSalary = Math.round(totalWorkHours * s.hourlyWage);
       return {
         staffId: s.staffId,
         staffName: s.staffName,
         hourlyWage: s.hourlyWage,
+        transportFee: s.transportFee,
         workDays: s.workDays.size,
         totalWorkMinutes: Math.round(s.totalMinutes),
         totalWorkHours,
-        estimatedSalary: Math.round(totalWorkHours * s.hourlyWage),
+        estimatedSalary,
+        totalTransportFee,
+        totalCost: estimatedSalary + totalTransportFee,
       };
     });
 

@@ -385,7 +385,7 @@ export default function StaffPage() {
                     title="クリックして交通費を編集"
                     data-testid="transport-fee-display"
                   >
-                    {s.transportFee ? `交通費 ¥${Number(s.transportFee).toLocaleString()}/日` : '交通費未設定'}
+                    {s.transportFee !== null && s.transportFee !== undefined ? `交通費 ¥${Number(s.transportFee).toLocaleString()}/日` : '交通費未設定'}
                   </button>
                 )
               )}
