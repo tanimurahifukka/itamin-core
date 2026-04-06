@@ -38,6 +38,14 @@ export default function StaffPage() {
   const [editingWageId, setEditingWageId] = useState<string | null>(null);
   const [editWageValue, setEditWageValue] = useState('');
 
+  // 交通費編集
+  const [editingTransportId, setEditingTransportId] = useState<string | null>(null);
+  const [editTransportValue, setEditTransportValue] = useState('');
+
+  // 入社日編集
+  const [editingJoinedId, setEditingJoinedId] = useState<string | null>(null);
+  const [editJoinedValue, setEditJoinedValue] = useState('');
+
   // ロール変更
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
 
@@ -107,6 +115,31 @@ export default function StaffPage() {
       await api.updateStaff(selectedStore.id, staffId, { hourlyWage: wage });
       showToast('時給を更新しました', 'success');
       setEditingWageId(null);
+      loadStaff();
+    } catch (e: any) {
+      showToast(e.message || '更新に失敗しました', 'error');
+    }
+  };
+
+  const handleSaveTransport = async (staffId: string) => {
+    if (!selectedStore) return;
+    const fee = parseInt(editTransportValue) || 0;
+    try {
+      await api.updateStaff(selectedStore.id, staffId, { transportFee: fee });
+      showToast('交通費を更新しました', 'success');
+      setEditingTransportId(null);
+      loadStaff();
+    } catch (e: any) {
+      showToast(e.message || '更新に失敗しました', 'error');
+    }
+  };
+
+  const handleSaveJoined = async (staffId: string) => {
+    if (!selectedStore) return;
+    try {
+      await api.updateStaff(selectedStore.id, staffId, { joinedAt: editJoinedValue || null });
+      showToast('入社日を更新しました', 'success');
+      setEditingJoinedId(null);
       loadStaff();
     } catch (e: any) {
       showToast(e.message || '更新に失敗しました', 'error');
@@ -327,6 +360,57 @@ export default function StaffPage() {
                     title="クリックして時給を編集"
                   >
                     {s.hourlyWage ? `¥${Number(s.hourlyWage).toLocaleString()}/h` : '時給未設定'}
+                  </button>
+                )
+              )}
+              {isOwner && s.role !== 'owner' && (
+                editingTransportId === s.id ? (
+                  <div className="wage-edit">
+                    <span className="wage-yen">¥</span>
+                    <input
+                      type="number"
+                      className="wage-input"
+                      value={editTransportValue}
+                      onChange={e => setEditTransportValue(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSaveTransport(s.id); if (e.key === 'Escape') setEditingTransportId(null); }}
+                      autoFocus
+                      data-testid="transport-fee-input"
+                    />
+                    <button className="wage-save" onClick={() => handleSaveTransport(s.id)}>✓</button>
+                  </div>
+                ) : (
+                  <button
+                    className="wage-display"
+                    onClick={() => { setEditingTransportId(s.id); setEditTransportValue(String(s.transportFee || '')); }}
+                    title="クリックして交通費を編集"
+                    data-testid="transport-fee-display"
+                  >
+                    {s.transportFee ? `交通費 ¥${Number(s.transportFee).toLocaleString()}/日` : '交通費未設定'}
+                  </button>
+                )
+              )}
+              {isOwner && s.role !== 'owner' && (
+                editingJoinedId === s.id ? (
+                  <div className="wage-edit">
+                    <input
+                      type="date"
+                      className="wage-input"
+                      value={editJoinedValue}
+                      onChange={e => setEditJoinedValue(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSaveJoined(s.id); if (e.key === 'Escape') setEditingJoinedId(null); }}
+                      autoFocus
+                      data-testid="joined-at-input"
+                    />
+                    <button className="wage-save" onClick={() => handleSaveJoined(s.id)}>✓</button>
+                  </div>
+                ) : (
+                  <button
+                    className="wage-display"
+                    onClick={() => { setEditingJoinedId(s.id); setEditJoinedValue(s.joinedAt ? s.joinedAt.split('T')[0] : ''); }}
+                    title="クリックして入社日を編集"
+                    data-testid="joined-at-display"
+                  >
+                    {s.joinedAt ? `入社 ${new Date(s.joinedAt).toLocaleDateString('ja-JP')}` : '入社日未設定'}
                   </button>
                 )
               )}

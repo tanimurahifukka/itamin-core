@@ -642,10 +642,14 @@ router.put('/:storeId/staff/:staffId', requireAuth, async (req: Request, res: Re
     if (!membership) return;
 
     const hourlyWage = req.body?.hourlyWage;
+    const transportFee = req.body?.transportFee;
+    const joinedAt = req.body?.joinedAt;
     const newRole = req.body?.role;
 
     const updates: Record<string, any> = {};
     if (hourlyWage !== undefined) updates.hourly_wage = hourlyWage;
+    if (transportFee !== undefined) updates.transport_fee = transportFee;
+    if (joinedAt !== undefined) updates.joined_at = joinedAt;
     if (newRole !== undefined) {
       if (!VALID_STAFF_ROLES.includes(newRole) || newRole === 'owner') {
         res.status(400).json({ error: '不正なロールです' });
@@ -735,7 +739,7 @@ router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) =
 
     const { data, error } = await supabase
       .from('store_staff')
-      .select('id, role, hourly_wage, joined_at, user:profiles(id, name, email, picture)')
+      .select('id, role, hourly_wage, transport_fee, joined_at, user:profiles(id, name, email, picture)')
       .eq('store_id', storeId);
 
     if (error) {
@@ -760,6 +764,7 @@ router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) =
       id: staff.id,
       role: staff.role,
       hourlyWage: staff.hourly_wage,
+      transportFee: staff.transport_fee || 0,
       joinedAt: staff.joined_at,
       userId: staff.user.id,
       userName: staff.user.name,
