@@ -310,6 +310,7 @@ export default function DashboardPage() {
                     <th>休憩</th>
                     <th>実働</th>
                     {isOwner && <th>人件費</th>}
+                    {isOwner && <th>交通費</th>}
                     {canEdit && <th></th>}
                   </tr>
                 </thead>
@@ -335,6 +336,11 @@ export default function DashboardPage() {
                             {cost !== null ? `¥${cost.toLocaleString()}` : '—'}
                           </td>
                         )}
+                        {isOwner && (
+                          <td style={{ textAlign: 'right' }}>
+                            ¥{(r.transportFee || 0).toLocaleString()}
+                          </td>
+                        )}
                         {canEdit && (
                           <td>
                             <button
@@ -358,7 +364,8 @@ export default function DashboardPage() {
                       <td></td>
                       <td></td>
                       <td>{totalHoursToday.toFixed(1)}h</td>
-                      <td style={{ textAlign: 'right', color: '#2563eb' }}>¥{totalLaborCost.toLocaleString()}</td>
+                      <td style={{ textAlign: 'right' }}>¥{totalLaborCost.toLocaleString()}</td>
+                      <td style={{ textAlign: 'right' }}>¥{totalTransportFee.toLocaleString()}</td>
                       {canEdit && <td></td>}
                     </tr>
                   </tfoot>
