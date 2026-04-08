@@ -285,3 +285,4 @@ router.post('/:storeId/punch', requireKiosk, async (req: Request, res: Response)
 });
 
 export const kioskRouter = router;
+// kiosk deploy trigger 2026年 4月 9日 木曜日 06時19分21秒 JST
