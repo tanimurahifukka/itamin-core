@@ -76,6 +76,23 @@ function daysInMonth(dateStr: string): number {
   return new Date(y, m, 0).getDate();
 }
 
+function parseMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function shiftHours(startTime: string, endTime: string, breakMinutes: number): number {
+  const mins = parseMinutes(endTime) - parseMinutes(startTime) - breakMinutes;
+  return Math.max(0, mins) / 60;
+}
+
+function fmtHours(h: number): string {
+  if (h === 0) return '–';
+  const hrs = Math.floor(h);
+  const mins = Math.round((h - hrs) * 60);
+  return mins > 0 ? `${hrs}h${mins}m` : `${hrs}h`;
+}
+
 function fmtDate(dateStr: string) {
   const d = new Date(dateStr + 'T00:00:00');
   const days = ['日', '月', '火', '水', '木', '金', '土'];
@@ -327,7 +344,69 @@ export default function KioskShiftManager({ storeId, staff }: Props) {
               </tr>
             ))}
           </tbody>
+
+          {/* ── 集計 tfoot ── */}
+          <tfoot>
+            {/* 日別人数行 */}
+            <tr>
+              <td style={g.summaryLabel}>出勤人数</td>
+              {dates.map(d => {
+                const count = staff.filter(st => !!getShift(st.id, d)).length;
+                return (
+                  <td key={d} style={{ ...g.summaryCell, color: count === 0 ? '#ccc' : count >= 3 ? '#1565c0' : '#333' }}>
+                    {count > 0 ? `${count}人` : '–'}
+                  </td>
+                );
+              })}
+            </tr>
+            {/* 日別合計時間行 */}
+            <tr>
+              <td style={g.summaryLabel}>合計時間</td>
+              {dates.map(d => {
+                const total = staff.reduce((sum, st) => {
+                  const sh = getShift(st.id, d);
+                  return sum + (sh ? shiftHours(sh.startTime, sh.endTime, sh.breakMinutes) : 0);
+                }, 0);
+                return (
+                  <td key={d} style={{ ...g.summaryCell, fontSize: 10 }}>
+                    {fmtHours(total)}
+                  </td>
+                );
+              })}
+            </tr>
+          </tfoot>
         </table>
+      </div>
+
+      {/* ── スタッフ別集計 ── */}
+      <div style={g.staffSummaryWrap}>
+        <div style={g.staffSummaryTitle}>スタッフ別集計</div>
+        <div style={g.staffSummaryGrid}>
+          {staff.map(st => {
+            const staffShifts = shifts.filter(sh => sh.staffId === st.id);
+            const totalH = staffShifts.reduce((sum, sh) => sum + shiftHours(sh.startTime, sh.endTime, sh.breakMinutes), 0);
+            const count = staffShifts.length;
+            return (
+              <div key={st.id} style={g.staffSummaryCard}>
+                <div style={g.staffSummaryName}>{st.name}</div>
+                <div style={g.staffSummaryStats}>
+                  <span style={g.statBadge}>{count}日</span>
+                  <span style={{ ...g.statBadge, background: '#e8f0fe', color: '#1a56db' }}>{fmtHours(totalH)}</span>
+                </div>
+              </div>
+            );
+          })}
+          {/* 合計 */}
+          <div style={{ ...g.staffSummaryCard, background: '#f0f4ff', borderColor: '#c7d4f0' }}>
+            <div style={{ ...g.staffSummaryName, color: '#1a56db' }}>合計</div>
+            <div style={g.staffSummaryStats}>
+              <span style={g.statBadge}>{shifts.length}件</span>
+              <span style={{ ...g.statBadge, background: '#e8f0fe', color: '#1a56db' }}>
+                {fmtHours(shifts.reduce((sum, sh) => sum + shiftHours(sh.startTime, sh.endTime, sh.breakMinutes), 0))}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 編集パネル */}
@@ -426,4 +505,15 @@ const g: Record<string, React.CSSProperties> = {
   legend: { display: 'flex', gap: 16, fontSize: 11, color: '#888', flexWrap: 'wrap' },
   legendItem: { display: 'flex', alignItems: 'center', gap: 4 },
   legendDot: { width: 8, height: 8, borderRadius: '50%', display: 'inline-block' },
+  // 集計 tfoot
+  summaryLabel: { position: 'sticky' as const, left: 0, zIndex: 1, background: '#f0f4ff', padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#4f8ef7', borderTop: '2px solid #e0e7ff', borderRight: '1px solid #e2e8f0', width: 100, minWidth: 100 },
+  summaryCell: { padding: '4px 3px', fontSize: 11, fontWeight: 600, textAlign: 'center' as const, borderTop: '1px solid #e8edf6', borderRight: '1px solid #f0f0f0', background: '#f8fafc' },
+  // スタッフ別集計
+  staffSummaryWrap: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 16px' },
+  staffSummaryTitle: { fontSize: 13, fontWeight: 700, color: '#555', marginBottom: 10 },
+  staffSummaryGrid: { display: 'flex', gap: 8, flexWrap: 'wrap' as const },
+  staffSummaryCard: { background: '#fafbfc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 12px', minWidth: 110 },
+  staffSummaryName: { fontSize: 12, fontWeight: 700, color: '#333', marginBottom: 6 },
+  staffSummaryStats: { display: 'flex', gap: 6 },
+  statBadge: { fontSize: 11, fontWeight: 600, background: '#f0fdf4', color: '#2e7d32', borderRadius: 4, padding: '2px 7px' },
 };
