@@ -94,6 +94,10 @@ export default function PluginSettingsPage() {
   const [initialPasswordDraft, setInitialPasswordDraft] = useState('');
   const [savingInitialPassword, setSavingInitialPassword] = useState(false);
 
+  const [kioskPinDraft, setKioskPinDraft] = useState('');
+  const [editingKioskPin, setEditingKioskPin] = useState(false);
+  const [savingKioskPin, setSavingKioskPin] = useState(false);
+
   const loadSettings = async () => {
     if (!selectedStore) return;
     try {
@@ -233,6 +237,26 @@ export default function PluginSettingsPage() {
     }
   };
 
+  const saveKioskPin = async () => {
+    if (!selectedStore || savingKioskPin) return;
+    const pin = kioskPinDraft.trim();
+    if (!/^\d{4,8}$/.test(pin)) {
+      showToast('PINは4〜8桁の数字で設定してください', 'error');
+      return;
+    }
+    setSavingKioskPin(true);
+    try {
+      await api.setKioskPin(selectedStore.id, pin);
+      setEditingKioskPin(false);
+      setKioskPinDraft('');
+      showToast('キオスクPINを設定しました', 'success');
+    } catch (e: any) {
+      showToast(e.message || 'PINの設定に失敗しました', 'error');
+    } finally {
+      setSavingKioskPin(false);
+    }
+  };
+
   const saveInitialPassword = async () => {
     if (!selectedStore || savingInitialPassword) return;
 
@@ -328,6 +352,10 @@ export default function PluginSettingsPage() {
 
   const joinUrl = selectedStore && typeof window !== 'undefined'
     ? `${window.location.origin}?join=${selectedStore.id}`
+    : '';
+
+  const kioskUrl = selectedStore && typeof window !== 'undefined'
+    ? `${window.location.origin}/kiosk?store=${selectedStore.id}`
     : '';
 
   const currentAccountId = storeAccount?.id || selectedStore?.id || '';
@@ -502,6 +530,84 @@ export default function PluginSettingsPage() {
               {accountMsg}
             </span>
           )}
+        </div>
+      </div>
+
+      {/* キオスクモード設定 */}
+      <div style={{ ...sectionCardStyle, marginTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.98rem' }}>キオスクモード</div>
+            <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
+              店舗共用端末（レジ横のタブレット等）から打刻・シフト確認ができます。PINを設定して専用URLをブックマークしてください。
+            </div>
+          </div>
+          <span style={{ ...badgeStyle, background: '#f0fdf4', color: '#16a34a' }}>キオスク</span>
+        </div>
+
+        <div style={metaGridStyle}>
+          <div style={metaCardStyle}>
+            <div style={metaLabelStyle}>キオスクURL</div>
+            <code style={metaValueStyle}>{kioskUrl || '未設定'}</code>
+            <button
+              onClick={() => kioskUrl && copyText(kioskUrl, 'キオスクURL')}
+              style={secondaryButtonStyle}
+              disabled={!kioskUrl}
+            >
+              コピー
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid #e8edf3' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#555' }}>キオスクPIN</div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+                4〜8桁の数字。キオスク端末でのログインに使用します。
+              </div>
+            </div>
+
+            {!editingKioskPin ? (
+              <button
+                onClick={() => { setEditingKioskPin(true); setKioskPinDraft(''); }}
+                style={secondaryButtonStyle}
+                data-testid="kiosk-pin-edit-button"
+              >
+                PIN設定
+              </button>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  pattern="\d*"
+                  value={kioskPinDraft}
+                  onChange={e => setKioskPinDraft(e.target.value.replace(/\D/g, ''))}
+                  placeholder="4〜8桁の数字"
+                  maxLength={8}
+                  style={{ ...inputStyle, width: 160 }}
+                  autoFocus
+                  data-testid="kiosk-pin-setting-input"
+                />
+                <button
+                  onClick={saveKioskPin}
+                  style={primaryButtonStyle}
+                  disabled={savingKioskPin || !/^\d{4,8}$/.test(kioskPinDraft)}
+                  data-testid="kiosk-pin-save-button"
+                >
+                  {savingKioskPin ? '設定中...' : '設定'}
+                </button>
+                <button
+                  onClick={() => { setEditingKioskPin(false); setKioskPinDraft(''); }}
+                  style={secondaryButtonStyle}
+                  disabled={savingKioskPin}
+                >
+                  取消
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

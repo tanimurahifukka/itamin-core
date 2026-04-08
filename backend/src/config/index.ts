@@ -17,4 +17,5 @@ export const config = {
   },
 
   frontendUrl: env('FRONTEND_URL', 'http://localhost:3000'),
+  kioskJwtSecret: env('KIOSK_JWT_SECRET', 'itamin-kiosk-dev-secret-change-in-prod'),
 };

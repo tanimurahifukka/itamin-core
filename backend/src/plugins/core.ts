@@ -43,6 +43,18 @@ export const staffPlugin: Plugin = {
   initialize: (_app: Express) => {},
 };
 
+// キオスクモード（店舗共用端末へのリンク）
+export const kioskPlugin: Plugin = {
+  name: 'kiosk',
+  version: '1.0.0',
+  description: '店舗共用端末（タブレット等）からの打刻・シフト確認',
+  label: 'キオスク',
+  icon: '🖥️',
+  core: false,
+  defaultRoles: ['owner', 'manager'],
+  initialize: (_app: Express) => {},
+};
+
 // プラグイン設定（オーナーのみ）
 export const settingsPlugin: Plugin = {
   name: 'settings',

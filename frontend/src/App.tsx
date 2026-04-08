@@ -1,6 +1,9 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { api } from './api/client';
+import { getKioskStore, getKioskToken, clearKioskSession } from './api/kioskClient';
+import KioskLoginPage from './pages/KioskLoginPage';
+import KioskDashboard from './pages/KioskDashboard';
 import LineLinkPage from './pages/attendance/LineLinkPage';
 import LineMenuPage from './pages/attendance/LineMenuPage';
 import LoginPage from './pages/LoginPage';
@@ -25,6 +28,7 @@ import MenuPage from './pages/MenuPage';
 import SalesCapturePage from './pages/SalesCapturePage';
 import AttendanceStaffPage from './pages/AttendanceStaffPage';
 import AttendanceAdminPage from './pages/AttendanceAdminPage';
+import KioskLinkPage from './pages/KioskLinkPage';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -77,6 +81,7 @@ const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   sales_capture: SalesCapturePage,
   line_attendance: AttendanceStaffPage,
   attendance_admin: AttendanceAdminPage,
+  kiosk: KioskLinkPage,
   settings: PluginSettingsPage,
 };
 
@@ -84,6 +89,57 @@ interface PluginTab {
   name: string;
   label: string;
   icon: string;
+}
+
+// キオスクモード: /kiosk?store=<storeId> でアクセス
+function KioskApp() {
+  const searchParams = new URLSearchParams(window.location.search);
+  const storeIdFromUrl = searchParams.get('store') || '';
+
+  const [kioskStoreId, setKioskStoreId] = useState<string>(() => {
+    const saved = getKioskStore();
+    return saved?.storeId || storeIdFromUrl;
+  });
+  const [kioskStoreName, setKioskStoreName] = useState<string>(() => {
+    return getKioskStore()?.storeName || '';
+  });
+  const [loggedIn, setLoggedIn] = useState<boolean>(() => {
+    const token = getKioskToken();
+    const saved = getKioskStore();
+    return !!(token && saved);
+  });
+
+  if (!kioskStoreId) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
+        URLに ?store=店舗ID を指定してください
+      </div>
+    );
+  }
+
+  if (!loggedIn) {
+    return (
+      <KioskLoginPage
+        storeId={kioskStoreId}
+        onLogin={(id, name) => {
+          setKioskStoreId(id);
+          setKioskStoreName(name);
+          setLoggedIn(true);
+        }}
+      />
+    );
+  }
+
+  return (
+    <KioskDashboard
+      storeId={kioskStoreId}
+      storeName={kioskStoreName}
+      onLogout={() => {
+        clearKioskSession();
+        setLoggedIn(false);
+      }}
+    />
+  );
 }
 
 export default function App() {
@@ -328,6 +384,11 @@ export default function App() {
       cancelled = true;
     };
   }, []);
+
+  // キオスクモード判定（フック呼び出し後に行う）
+  if (window.location.pathname === '/kiosk') {
+    return <KioskApp />;
+  }
 
   if (loading || !liffMode.checked) {
     return <div className="loading">読み込み中...</div>;

@@ -333,4 +333,8 @@ export const api = {
     request<any>('/auth/line/admin/link-tokens', { method: 'POST', body: JSON.stringify({ storeId, userId }) }),
   adminGetLineLinks: (storeId: string) =>
     request<any>(`/auth/line/admin/links?storeId=${storeId}`),
+
+  // Kiosk PIN管理（管理者用）
+  setKioskPin: (storeId: string, pin: string) =>
+    request<any>(`/kiosk/${storeId}/pin`, { method: 'PUT', body: JSON.stringify({ pin }) }),
 };
