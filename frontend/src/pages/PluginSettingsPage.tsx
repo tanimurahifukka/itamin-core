@@ -533,83 +533,6 @@ export default function PluginSettingsPage() {
         </div>
       </div>
 
-      {/* キオスクモード設定 */}
-      <div style={{ ...sectionCardStyle, marginTop: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: '0.98rem' }}>キオスクモード</div>
-            <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
-              店舗共用端末（レジ横のタブレット等）から打刻・シフト確認ができます。PINを設定して専用URLをブックマークしてください。
-            </div>
-          </div>
-          <span style={{ ...badgeStyle, background: '#f0fdf4', color: '#16a34a' }}>キオスク</span>
-        </div>
-
-        <div style={metaGridStyle}>
-          <div style={metaCardStyle}>
-            <div style={metaLabelStyle}>キオスクURL</div>
-            <code style={metaValueStyle}>{kioskUrl || '未設定'}</code>
-            <button
-              onClick={() => kioskUrl && copyText(kioskUrl, 'キオスクURL')}
-              style={secondaryButtonStyle}
-              disabled={!kioskUrl}
-            >
-              コピー
-            </button>
-          </div>
-        </div>
-
-        <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid #e8edf3' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#555' }}>キオスクPIN</div>
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
-                4〜8桁の数字。キオスク端末でのログインに使用します。
-              </div>
-            </div>
-
-            {!editingKioskPin ? (
-              <button
-                onClick={() => { setEditingKioskPin(true); setKioskPinDraft(''); }}
-                style={secondaryButtonStyle}
-                data-testid="kiosk-pin-edit-button"
-              >
-                PIN設定
-              </button>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  pattern="\d*"
-                  value={kioskPinDraft}
-                  onChange={e => setKioskPinDraft(e.target.value.replace(/\D/g, ''))}
-                  placeholder="4〜8桁の数字"
-                  maxLength={8}
-                  style={{ ...inputStyle, width: 160 }}
-                  autoFocus
-                  data-testid="kiosk-pin-setting-input"
-                />
-                <button
-                  onClick={saveKioskPin}
-                  style={primaryButtonStyle}
-                  disabled={savingKioskPin || !/^\d{4,8}$/.test(kioskPinDraft)}
-                  data-testid="kiosk-pin-save-button"
-                >
-                  {savingKioskPin ? '設定中...' : '設定'}
-                </button>
-                <button
-                  onClick={() => { setEditingKioskPin(false); setKioskPinDraft(''); }}
-                  style={secondaryButtonStyle}
-                  disabled={savingKioskPin}
-                >
-                  取消
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       <h4 style={{ margin: '28px 0 8px', fontSize: '1rem' }}>プラグイン設定</h4>
       <p style={{ color: '#888', marginBottom: 20, fontSize: '0.85rem' }}>
@@ -711,6 +634,63 @@ export default function PluginSettingsPage() {
                       })}
                     </div>
                   </div>
+
+                  {plugin.name === 'kiosk' && (
+                    <div style={{ marginBottom: 16, padding: '14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 12, color: '#555' }}>キオスク設定</div>
+
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={metaLabelStyle}>キオスクURL（タブレットでブックマーク）</div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
+                          <code style={{ ...metaValueStyle, flex: 1, fontSize: '0.75rem' }}>{kioskUrl}</code>
+                          <button onClick={() => copyText(kioskUrl, 'キオスクURL')} style={secondaryButtonStyle}>コピー</button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={metaLabelStyle}>キオスクPIN（4〜8桁の数字）</div>
+                        {!editingKioskPin ? (
+                          <button
+                            onClick={() => { setEditingKioskPin(true); setKioskPinDraft(''); }}
+                            style={{ ...secondaryButtonStyle, marginTop: 6 }}
+                            data-testid="kiosk-pin-edit-button"
+                          >
+                            PINを設定・変更
+                          </button>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                            <input
+                              type="password"
+                              inputMode="numeric"
+                              pattern="\d*"
+                              value={kioskPinDraft}
+                              onChange={e => setKioskPinDraft(e.target.value.replace(/\D/g, ''))}
+                              placeholder="例: 1234"
+                              maxLength={8}
+                              style={{ ...inputStyle, width: 140 }}
+                              autoFocus
+                              data-testid="kiosk-pin-setting-input"
+                            />
+                            <button
+                              onClick={saveKioskPin}
+                              style={primaryButtonStyle}
+                              disabled={savingKioskPin || !/^\d{4,8}$/.test(kioskPinDraft)}
+                              data-testid="kiosk-pin-save-button"
+                            >
+                              {savingKioskPin ? '設定中...' : '設定'}
+                            </button>
+                            <button
+                              onClick={() => { setEditingKioskPin(false); setKioskPinDraft(''); }}
+                              style={secondaryButtonStyle}
+                              disabled={savingKioskPin}
+                            >
+                              取消
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {plugin.settingsSchema.length > 0 && (
                     <div style={{ marginBottom: 12 }}>
