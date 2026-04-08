@@ -63,9 +63,20 @@ export const kioskApi = {
 
   getShifts: (storeId: string, date?: string) =>
     kioskRequest<{
-      shifts: Array<{ id: string; staffId: string; startTime: string; endTime: string; staffName: string }>;
-      date: string;
+      shifts: Array<{ id: string; staffId: string; date: string; startTime: string; endTime: string; breakMinutes: number; staffName: string }>;
+      date?: string;
     }>(`/kiosk/${storeId}/shifts${date ? `?date=${date}` : ''}`),
+
+  getShiftRange: (storeId: string, startDate: string, endDate: string) =>
+    kioskRequest<{
+      shifts: Array<{ id: string; staffId: string; date: string; startTime: string; endTime: string; breakMinutes: number; staffName: string }>;
+      startDate: string; endDate: string;
+    }>(`/kiosk/${storeId}/shifts?startDate=${startDate}&endDate=${endDate}`),
+
+  getShiftRequests: (storeId: string, startDate: string, endDate: string) =>
+    kioskRequest<{
+      requests: Array<{ id: string; staffId: string; staffName: string; date: string; requestType: string; startTime?: string; endTime?: string; note?: string }>;
+    }>(`/kiosk/${storeId}/shift-requests?startDate=${startDate}&endDate=${endDate}`),
 
   createShift: (storeId: string, data: { staffId: string; date: string; startTime: string; endTime: string; breakMinutes?: number }) =>
     kioskRequest<{ ok: boolean }>(

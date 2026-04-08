@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { kioskApi, clearKioskSession } from '../api/kioskClient';
+import KioskShiftManager from './KioskShiftManager';
 
 interface Staff {
   id: string;
@@ -67,6 +68,7 @@ const EMPTY_FORM = { staffId: '', startTime: '09:00', endTime: '17:00', breakMin
 export default function KioskDashboard({ storeId, storeName, onLogout }: Props) {
   const today = toDateStr(new Date());
 
+  const [tab, setTab] = useState<'punch' | 'shift'>('punch');
   const [staff, setStaff] = useState<Staff[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [shiftDate, setShiftDate] = useState(today);
@@ -175,10 +177,14 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
     <div style={s.container}>
       <header style={s.header}>
         <div style={s.headerLogo}>ITA<span style={{ color: '#4f8ef7' }}>MIN</span></div>
-        <div style={s.headerStore}>{storeName}</div>
-        <button style={s.logoutBtn} onClick={() => { clearKioskSession(); onLogout(); }} data-testid="kiosk-logout">
-          終了
-        </button>
+        <div style={s.headerTabs}>
+          <button style={{ ...s.tab, ...(tab === 'punch' ? s.tabActive : {}) }} onClick={() => setTab('punch')}>打刻</button>
+          <button style={{ ...s.tab, ...(tab === 'shift' ? s.tabActive : {}) }} onClick={() => setTab('shift')}>シフト管理</button>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={s.headerStore}>{storeName}</div>
+          <button style={s.logoutBtn} onClick={() => { clearKioskSession(); onLogout(); }} data-testid="kiosk-logout">終了</button>
+        </div>
       </header>
 
       {message && (
@@ -187,7 +193,15 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
         </div>
       )}
 
-      <div style={s.body}>
+      {/* シフト管理タブ */}
+      {tab === 'shift' && (
+        <div style={{ ...s.body, maxWidth: '100%', padding: '16px 20px' }}>
+          <KioskShiftManager storeId={storeId} staff={staff.map(st => ({ id: st.id, name: st.name }))} />
+        </div>
+      )}
+
+      {/* 打刻タブ */}
+      {tab === 'punch' && <div style={s.body}>
         <Clock />
 
         {loading ? (
@@ -343,17 +357,20 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
             </section>
           </>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
 
 const s: Record<string, React.CSSProperties> = {
   container: { minHeight: '100vh', background: '#f0f4ff', fontFamily: 'sans-serif' },
-  header: { display: 'flex', alignItems: 'center', padding: '16px 24px', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' },
-  headerLogo: { fontSize: 22, fontWeight: 800, letterSpacing: 1, flex: 1 },
-  headerStore: { fontSize: 15, color: '#444', flex: 2, textAlign: 'center' },
-  logoutBtn: { background: 'none', border: '1px solid #ccc', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 13, color: '#666' },
+  header: { display: 'flex', alignItems: 'center', padding: '12px 24px', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', gap: 16 },
+  headerLogo: { fontSize: 22, fontWeight: 800, letterSpacing: 1 },
+  headerTabs: { display: 'flex', gap: 4, flex: 1 },
+  tab: { padding: '7px 20px', border: '1px solid #d0d7e2', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: 14, color: '#555', fontFamily: 'sans-serif' },
+  tabActive: { background: '#4f8ef7', color: '#fff', borderColor: '#4f8ef7', fontWeight: 700 },
+  headerStore: { fontSize: 14, color: '#666' },
+  logoutBtn: { background: 'none', border: '1px solid #ccc', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 13, color: '#666', whiteSpace: 'nowrap' as const },
   message: { padding: '16px 24px', fontSize: 18, fontWeight: 600, textAlign: 'center', position: 'fixed', top: 64, left: 0, right: 0, zIndex: 100 },
   body: { maxWidth: 960, margin: '0 auto', padding: '24px 16px' },
   loadingText: { textAlign: 'center', color: '#999', paddingTop: 40 },

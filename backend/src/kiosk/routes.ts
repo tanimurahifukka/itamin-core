@@ -144,7 +144,9 @@ router.get('/:storeId/staff', requireKiosk, async (req: Request, res: Response) 
 });
 
 // ============================================================
-// シフト一覧（キオスク認証）?date=YYYY-MM-DD
+// シフト一覧（キオスク認証）
+//   単日: ?date=YYYY-MM-DD
+//   範囲: ?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 // ============================================================
 router.get('/:storeId/shifts', requireKiosk, async (req: Request, res: Response) => {
   try {
@@ -155,31 +157,102 @@ router.get('/:storeId/shifts', requireKiosk, async (req: Request, res: Response)
       return;
     }
 
-    const date = typeof req.query.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
-      ? req.query.date
-      : new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    const isRange = typeof req.query.startDate === 'string' && typeof req.query.endDate === 'string';
 
-    const { data, error } = await supabaseAdmin
-      .from('shifts')
-      .select('id, start_time, end_time, staff_id, staff:store_staff(id, user:profiles(name))')
-      .eq('store_id', storeId)
-      .eq('date', date)
-      .order('start_time');
+    if (isRange) {
+      const startDate = req.query.startDate as string;
+      const endDate = req.query.endDate as string;
 
-    if (error) {
-      res.status(500).json({ error: error.message });
+      const { data, error } = await supabaseAdmin
+        .from('shifts')
+        .select('id, start_time, end_time, staff_id, date, break_minutes, staff:store_staff(id, user:profiles(name))')
+        .eq('store_id', storeId)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date')
+        .order('start_time');
+
+      if (error) { res.status(500).json({ error: error.message }); return; }
+
+      const shifts = (data || []).map((s: any) => ({
+        id: s.id,
+        staffId: s.staff_id,
+        date: s.date,
+        startTime: s.start_time,
+        endTime: s.end_time,
+        breakMinutes: s.break_minutes || 0,
+        staffName: s.staff?.user?.name || '',
+      }));
+
+      res.json({ shifts, startDate, endDate });
+    } else {
+      const date = typeof req.query.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
+        ? req.query.date : today;
+
+      const { data, error } = await supabaseAdmin
+        .from('shifts')
+        .select('id, start_time, end_time, staff_id, date, break_minutes, staff:store_staff(id, user:profiles(name))')
+        .eq('store_id', storeId)
+        .eq('date', date)
+        .order('start_time');
+
+      if (error) { res.status(500).json({ error: error.message }); return; }
+
+      const shifts = (data || []).map((s: any) => ({
+        id: s.id,
+        staffId: s.staff_id,
+        date: s.date,
+        startTime: s.start_time,
+        endTime: s.end_time,
+        breakMinutes: s.break_minutes || 0,
+        staffName: s.staff?.user?.name || '',
+      }));
+
+      res.json({ shifts, date });
+    }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// シフト希望一覧（キオスク認証）?startDate=&endDate=
+// ============================================================
+router.get('/:storeId/shift-requests', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const kioskStoreId = (req as any).kioskStoreId as string;
+    if (storeId !== kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' });
       return;
     }
 
-    const shifts = (data || []).map((s: any) => ({
-      id: s.id,
-      staffId: s.staff_id,
-      startTime: s.start_time,
-      endTime: s.end_time,
-      staffName: s.staff?.user?.name || '',
+    const startDate = typeof req.query.startDate === 'string' ? req.query.startDate : new Date().toISOString().split('T')[0];
+    const endDate = typeof req.query.endDate === 'string' ? req.query.endDate : startDate;
+
+    const { data, error } = await supabaseAdmin
+      .from('shift_requests')
+      .select('id, staff_id, date, request_type, start_time, end_time, note, staff:store_staff(id, user:profiles(name))')
+      .eq('store_id', storeId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date');
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    const requests = (data || []).map((r: any) => ({
+      id: r.id,
+      staffId: r.staff_id,
+      staffName: r.staff?.user?.name || '',
+      date: r.date,
+      requestType: r.request_type,
+      startTime: r.start_time,
+      endTime: r.end_time,
+      note: r.note,
     }));
 
-    res.json({ shifts, date });
+    res.json({ requests, startDate, endDate });
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
