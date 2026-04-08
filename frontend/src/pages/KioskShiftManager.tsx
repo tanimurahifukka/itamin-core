@@ -331,8 +331,14 @@ export default function KioskShiftManager({ storeId, staff }: Props) {
                       )}
                       {reqs.map(r => (
                         <div key={r.id} style={{ ...g.reqChip, background: REQUEST_TYPE_COLOR[r.requestType] + '22', color: REQUEST_TYPE_COLOR[r.requestType] }}>
-                          {REQUEST_TYPE_LABEL[r.requestType] || r.requestType}
-                          {r.startTime && <span style={{ fontSize: 9, marginLeft: 2 }}>{r.startTime}</span>}
+                          <div>{REQUEST_TYPE_LABEL[r.requestType] || r.requestType}
+                            {r.startTime && <span style={{ fontSize: 9, marginLeft: 2 }}>{r.startTime}</span>}
+                          </div>
+                          {r.note && (
+                            <div style={g.reqNote} title={r.note}>
+                              💬 {r.note}
+                            </div>
+                          )}
                         </div>
                       ))}
                       {!shift && reqs.length === 0 && (
@@ -446,14 +452,20 @@ export default function KioskShiftManager({ storeId, staff }: Props) {
 
           {/* 希望表示 */}
           {getRequests(editing.staffId, editing.date).length > 0 && (
-            <div style={g.reqList}>
-              <span style={{ fontSize: 11, color: '#666', marginRight: 8 }}>希望:</span>
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 11, color: '#666', fontWeight: 700 }}>シフト希望</span>
               {getRequests(editing.staffId, editing.date).map(r => (
-                <span key={r.id} style={{ ...g.reqTag, background: REQUEST_TYPE_COLOR[r.requestType] + '22', color: REQUEST_TYPE_COLOR[r.requestType] }}>
-                  {REQUEST_TYPE_LABEL[r.requestType] || r.requestType}
-                  {r.startTime && `  ${r.startTime}〜${r.endTime}`}
-                  {r.note && `  「${r.note}」`}
-                </span>
+                <div key={r.id} style={{ ...g.reqTag, background: REQUEST_TYPE_COLOR[r.requestType] + '18', color: REQUEST_TYPE_COLOR[r.requestType], display: 'flex', flexDirection: 'column', gap: 3, padding: '6px 10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontWeight: 700 }}>{REQUEST_TYPE_LABEL[r.requestType] || r.requestType}</span>
+                    {r.startTime && <span style={{ fontSize: 11 }}>{r.startTime} 〜 {r.endTime}</span>}
+                  </div>
+                  {r.note && (
+                    <div style={{ fontSize: 12, color: '#444', background: '#fff8', borderRadius: 4, padding: '3px 8px' }}>
+                      💬 {r.note}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -490,7 +502,8 @@ const g: Record<string, React.CSSProperties> = {
   cell: { padding: '4px 3px', borderBottom: '1px solid #f0f0f0', borderRight: '1px solid #f0f0f0', verticalAlign: 'top', minHeight: 40, transition: 'background 0.1s' },
   shiftChip: { background: '#e8f0fe', borderRadius: 4, padding: '2px 4px', marginBottom: 2 },
   shiftTime: { fontSize: 10, color: '#1a56db', fontWeight: 600 },
-  reqChip: { borderRadius: 4, padding: '1px 4px', fontSize: 10, fontWeight: 600, marginBottom: 1 },
+  reqChip: { borderRadius: 4, padding: '2px 4px', fontSize: 10, fontWeight: 600, marginBottom: 1 },
+  reqNote: { fontSize: 9, marginTop: 1, opacity: 0.85, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 80 },
   emptyCell: { textAlign: 'center', fontSize: 12, color: '#ddd', lineHeight: '32px' },
   editPanel: { background: '#fff', border: '2px solid #4f8ef7', borderRadius: 10, padding: '12px 16px' },
   editTitle: { fontSize: 13, fontWeight: 700, color: '#1a56db', marginBottom: 10 },
