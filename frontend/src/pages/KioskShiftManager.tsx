@@ -455,10 +455,39 @@ export default function KioskShiftManager({ storeId, staff }: Props) {
             <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ fontSize: 11, color: '#666', fontWeight: 700 }}>シフト希望</span>
               {getRequests(editing.staffId, editing.date).map(r => (
-                <div key={r.id} style={{ ...g.reqTag, background: REQUEST_TYPE_COLOR[r.requestType] + '18', color: REQUEST_TYPE_COLOR[r.requestType], display: 'flex', flexDirection: 'column', gap: 3, padding: '6px 10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div key={r.id} style={{ ...g.reqTag, background: REQUEST_TYPE_COLOR[r.requestType] + '18', color: REQUEST_TYPE_COLOR[r.requestType], display: 'flex', flexDirection: 'column', gap: 4, padding: '8px 10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700 }}>{REQUEST_TYPE_LABEL[r.requestType] || r.requestType}</span>
                     {r.startTime && <span style={{ fontSize: 11 }}>{r.startTime} 〜 {r.endTime}</span>}
+                    {/* 希望時間帯があれば確定ボタン */}
+                    {r.startTime && r.endTime && (
+                      <button
+                        style={g.confirmReqBtn}
+                        disabled={saving}
+                        data-testid={`kiosk-confirm-req-${r.id}`}
+                        onClick={async () => {
+                          setSaving(true);
+                          try {
+                            await kioskApi.createShift(storeId, {
+                              staffId: editing.staffId,
+                              date: editing.date,
+                              startTime: r.startTime!,
+                              endTime: r.endTime!,
+                              breakMinutes: 60,
+                            });
+                            showMsg('希望をシフトに確定しました', true);
+                            setEditing(null);
+                            await load();
+                          } catch (e: any) {
+                            showMsg(e.message || '確定失敗', false);
+                          } finally {
+                            setSaving(false);
+                          }
+                        }}
+                      >
+                        ✓ この希望で確定
+                      </button>
+                    )}
                   </div>
                   {r.note && (
                     <div style={{ fontSize: 12, color: '#444', background: '#fff8', borderRadius: 4, padding: '3px 8px' }}>
@@ -504,6 +533,7 @@ const g: Record<string, React.CSSProperties> = {
   shiftTime: { fontSize: 10, color: '#1a56db', fontWeight: 600 },
   reqChip: { borderRadius: 4, padding: '2px 4px', fontSize: 10, fontWeight: 600, marginBottom: 1 },
   reqNote: { fontSize: 9, marginTop: 1, opacity: 0.85, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 80 },
+  confirmReqBtn: { marginLeft: 'auto', padding: '4px 12px', background: '#4caf50', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'sans-serif', whiteSpace: 'nowrap' as const },
   emptyCell: { textAlign: 'center', fontSize: 12, color: '#ddd', lineHeight: '32px' },
   editPanel: { background: '#fff', border: '2px solid #4f8ef7', borderRadius: 10, padding: '12px 16px' },
   editTitle: { fontSize: 13, fontWeight: 700, color: '#1a56db', marginBottom: 10 },
