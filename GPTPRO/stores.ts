@@ -1,0 +1,877 @@
+import { Router, Request, Response } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { supabaseAdmin } from '../config/supabase';
+import { requireManagedStore, VALID_STAFF_ROLES } from './authorization';
+
+const router = Router();
+const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function serializeStoreAccount(store: any) {
+  return {
+    id: store.id,
+    name: store.name || '',
+    address: store.address || '',
+    phone: store.phone || '',
+    openTime: store.settings?.open_time || '',
+    closeTime: store.settings?.close_time || '',
+  };
+}
+
+function normalizeNullableText(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+async function getInvitationRedirectUrl(params: {
+  storeId: string;
+  email: string;
+  name: string;
+  origin?: string;
+}) {
+  const { storeId, email, name, origin } = params;
+  const { data: store } = await supabaseAdmin
+    .from('stores')
+    .select('name')
+    .eq('id', storeId)
+    .maybeSingle();
+
+  const redirectUrl = new URL(origin || 'https://itamin-core.vercel.app');
+  redirectUrl.searchParams.set('invite', '1');
+  redirectUrl.searchParams.set('email', email);
+  redirectUrl.searchParams.set('name', name);
+  redirectUrl.searchParams.set('storeName', store?.name || '');
+  return redirectUrl.toString();
+}
+
+// ============================================================
+// 公開：リンク経由のスタッフ登録（認証不要）
+// ============================================================
+router.post('/:storeId/join', async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    if (!name) { res.status(400).json({ error: '名前は必須です' }); return; }
+    if (!email) { res.status(400).json({ error: 'メールアドレスは必須です' }); return; }
+    if (password.length < 6) { res.status(400).json({ error: 'パスワードは6文字以上で入力してください' }); return; }
+
+    // 店舗の存在確認
+    const { data: store, error: storeErr } = await supabaseAdmin
+      .from('stores')
+      .select('id, name')
+      .eq('id', storeId)
+      .maybeSingle();
+
+    if (storeErr || !store) {
+      res.status(404).json({ error: '事業所が見つかりません' });
+      return;
+    }
+
+    // 既存ユーザーチェック
+    const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+    let authUser = users.find(u => u.email === email);
+
+    if (authUser) {
+      // 既にアカウントがある場合、この店舗に所属しているかチェック
+      const { data: existing } = await supabaseAdmin
+        .from('store_staff')
+        .select('id')
+        .eq('store_id', storeId)
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+
+      if (existing) {
+        res.status(409).json({ error: '既にこの事業所に登録済みです。ログインしてください。' });
+        return;
+      }
+    } else {
+      // 新規ユーザー作成
+      const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: name },
+      });
+
+      if (createErr) {
+        res.status(500).json({ error: createErr.message });
+        return;
+      }
+      authUser = newUser.user;
+
+      // profiles に追加
+      await supabaseAdmin
+        .from('profiles')
+        .upsert({
+          id: authUser.id,
+          name,
+          email,
+        }, { onConflict: 'id' });
+    }
+
+    // store_staff に追加（デフォルト: part_time）
+    const { error: staffErr } = await supabaseAdmin
+      .from('store_staff')
+      .insert({
+        store_id: storeId,
+        user_id: authUser!.id,
+        role: 'part_time',
+      });
+
+    if (staffErr) {
+      res.status(500).json({ error: staffErr.message });
+      return;
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: `${store.name} にスタッフ登録しました。ログインしてください。`,
+      storeName: store.name,
+    });
+  } catch (e: any) {
+    console.error('[stores POST /:storeId/join] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 公開：店舗情報取得（名前のみ、認証不要）
+router.get('/:storeId/info', async (_req: Request, res: Response) => {
+  try {
+    const storeId = String(_req.params.storeId);
+    const { data, error } = await supabaseAdmin
+      .from('stores')
+      .select('id, name')
+      .eq('id', storeId)
+      .maybeSingle();
+
+    if (error || !data) {
+      res.status(404).json({ error: '事業所が見つかりません' });
+      return;
+    }
+
+    res.json({ store: { id: data.id, name: data.name } });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 施設アカウント（事業所情報）取得
+router.get('/:storeId/account', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const { data: store, error } = await supabaseAdmin
+      .from('stores')
+      .select('id, name, address, phone, settings')
+      .eq('id', storeId)
+      .maybeSingle();
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    if (!store) {
+      res.status(404).json({ error: '事業所が見つかりません' });
+      return;
+    }
+
+    res.json({ account: serializeStoreAccount(store) });
+  } catch (e: any) {
+    console.error('[stores GET /:storeId/account] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 施設アカウント（事業所情報）更新
+router.put('/:storeId/account', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const name = req.body?.name;
+    const address = req.body?.address;
+    const phone = req.body?.phone;
+    const openTime = req.body?.openTime;
+    const closeTime = req.body?.closeTime;
+
+    if (typeof name !== 'string' || !name.trim()) {
+      res.status(400).json({ error: '施設名は必須です' });
+      return;
+    }
+
+    if (address !== undefined && typeof address !== 'string') {
+      res.status(400).json({ error: '住所は文字列で指定してください' });
+      return;
+    }
+
+    if (phone !== undefined && typeof phone !== 'string') {
+      res.status(400).json({ error: '電話番号は文字列で指定してください' });
+      return;
+    }
+
+    if (openTime !== undefined && (typeof openTime !== 'string' || (openTime.trim() && !TIME_PATTERN.test(openTime.trim())))) {
+      res.status(400).json({ error: '営業開始は HH:MM 形式で入力してください' });
+      return;
+    }
+
+    if (closeTime !== undefined && (typeof closeTime !== 'string' || (closeTime.trim() && !TIME_PATTERN.test(closeTime.trim())))) {
+      res.status(400).json({ error: '営業終了は HH:MM 形式で入力してください' });
+      return;
+    }
+
+    const { data: currentStore, error: currentStoreError } = await supabaseAdmin
+      .from('stores')
+      .select('id, settings')
+      .eq('id', storeId)
+      .maybeSingle();
+
+    if (currentStoreError) {
+      res.status(500).json({ error: currentStoreError.message });
+      return;
+    }
+
+    if (!currentStore) {
+      res.status(404).json({ error: '事業所が見つかりません' });
+      return;
+    }
+
+    const settings = { ...(currentStore.settings || {}) };
+    if (typeof openTime === 'string') {
+      const trimmed = openTime.trim();
+      if (trimmed) settings.open_time = trimmed;
+      else delete settings.open_time;
+    }
+    if (typeof closeTime === 'string') {
+      const trimmed = closeTime.trim();
+      if (trimmed) settings.close_time = trimmed;
+      else delete settings.close_time;
+    }
+
+    const updates: Record<string, any> = {
+      name: name.trim(),
+      settings,
+    };
+
+    if (typeof address === 'string') updates.address = normalizeNullableText(address);
+    if (typeof phone === 'string') updates.phone = normalizeNullableText(phone);
+
+    const { data: updatedStore, error: updateError } = await supabaseAdmin
+      .from('stores')
+      .update(updates)
+      .eq('id', storeId)
+      .select('id, name, address, phone, settings')
+      .single();
+
+    if (updateError) {
+      res.status(500).json({ error: updateError.message });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      message: '施設アカウントを更新しました',
+      account: serializeStoreAccount(updatedStore),
+    });
+  } catch (e: any) {
+    console.error('[stores PUT /:storeId/account] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 店舗作成（サーバーサイドでRLSバイパス — 認証済みユーザーのみ）
+router.post('/', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const name = req.body?.name;
+    const address = req.body?.address;
+    if (!name) {
+      res.status(400).json({ error: '店舗名は必須です' });
+      return;
+    }
+
+    const userId = req.user!.id;
+
+    // 店舗を作成（service role でRLSバイパス）
+    const { data: store, error: storeErr } = await supabaseAdmin
+      .from('stores')
+      .insert({ name, address, owner_id: userId })
+      .select()
+      .single();
+
+    if (storeErr) {
+      res.status(500).json({ error: storeErr.message });
+      return;
+    }
+
+    // オーナーをスタッフとして自動登録
+    const { data: staff, error: staffErr } = await supabaseAdmin
+      .from('store_staff')
+      .insert({ store_id: store.id, user_id: userId, role: 'owner' })
+      .select()
+      .single();
+
+    if (staffErr) {
+      res.status(500).json({ error: staffErr.message });
+      return;
+    }
+
+    res.status(201).json({ store, staffId: staff.id });
+  } catch (e: any) {
+    console.error('[stores POST /] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 自分の所属店舗一覧
+router.get('/', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const supabase = supabaseAdmin;
+
+    const { data, error } = await supabase
+      .from('store_staff')
+      .select('role, store:stores(id, name, address)')
+      .eq('user_id', req.user!.id);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    const stores = (data || []).map((d: any) => ({
+      id: d.store.id,
+      name: d.store.name,
+      address: d.store.address,
+      role: d.role,
+    }));
+
+    res.json({ stores });
+  } catch (e: any) {
+    console.error('[stores GET /] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 初期パスワード取得
+router.get('/:storeId/initial-password', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const { data } = await supabaseAdmin
+      .from('stores')
+      .select('settings')
+      .eq('id', storeId)
+      .single();
+
+    const initialPassword = data?.settings?.initial_password || storeId;
+    res.json({ initialPassword });
+  } catch (e: any) {
+    console.error('[stores GET /:storeId/initial-password] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 初期パスワード変更
+router.put('/:storeId/initial-password', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const password = req.body?.password;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    if (!password || password.length < 6) {
+      res.status(400).json({ error: '6文字以上で設定してください' });
+      return;
+    }
+
+    // settings JSONB を更新
+    const { data: store } = await supabaseAdmin
+      .from('stores')
+      .select('settings')
+      .eq('id', storeId)
+      .single();
+
+    const settings = { ...(store?.settings || {}), initial_password: password };
+    const { error } = await supabaseAdmin
+      .from('stores')
+      .update({ settings })
+      .eq('id', storeId);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json({ ok: true, message: '初期パスワードを変更しました' });
+  } catch (e: any) {
+    console.error('[stores PUT /:storeId/initial-password] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// スタッフ招待（既存ユーザーは即追加、未登録は招待メール送信）
+router.post('/:storeId/staff', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const name = req.body?.name;
+    const email = req.body?.email;
+    const role = req.body?.role ?? 'part_time';
+    const hourlyWage = req.body?.hourlyWage;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) {
+      return;
+    }
+
+    if (!email || !name) {
+      res.status(400).json({ error: '名前とメールアドレスは必須です' });
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ error: '有効なメールアドレスを入力してください' });
+      return;
+    }
+
+    if (!VALID_STAFF_ROLES.includes(role)) {
+      res.status(400).json({ error: '不正な role が指定されています' });
+      return;
+    }
+
+    // 既存ユーザーか検索
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .single();
+
+    if (profile) {
+      // 既存ユーザー → 即スタッフ追加
+      const { data: staff, error } = await supabaseAdmin
+        .from('store_staff')
+        .insert({
+          store_id: storeId,
+          user_id: profile.id,
+          role,
+          hourly_wage: hourlyWage,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') {
+          res.status(409).json({ error: '既にこの事業所に所属しています' });
+        } else {
+          res.status(500).json({ error: error.message });
+        }
+        return;
+      }
+
+      res.status(201).json({ staff, invited: false });
+    } else {
+      // 未登録ユーザー → 初期パスワードでユーザー作成 + 即スタッフ追加
+      const { data: storeData } = await supabaseAdmin
+        .from('stores')
+        .select('settings')
+        .eq('id', storeId)
+        .single();
+      const initialPassword = storeData?.settings?.initial_password || storeId;
+
+      const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password: initialPassword,
+        email_confirm: true,
+        user_metadata: { full_name: name, password_changed: false },
+      });
+
+      if (createErr) {
+        res.status(500).json({ error: createErr.message });
+        return;
+      }
+
+      // スタッフとして追加（profilesはauth triggerで自動作成される）
+      const { error: staffErr } = await supabaseAdmin
+        .from('store_staff')
+        .insert({
+          store_id: storeId,
+          user_id: newUser.user.id,
+          role,
+          hourly_wage: hourlyWage,
+        });
+
+      if (staffErr) {
+        res.status(500).json({ error: staffErr.message });
+        return;
+      }
+
+      res.status(201).json({
+        invited: false,
+        message: `${name} さんを追加しました。初期パスワードは事業所IDです。`,
+      });
+    }
+  } catch (e: any) {
+    console.error('[stores POST /:storeId/staff] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 未登録の招待一覧
+router.get('/:storeId/invitations', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) {
+      return;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('store_invitations')
+      .select('id, name, email, role, hourly_wage, created_at')
+      .eq('store_id', storeId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json({
+      invitations: (data || []).map((inv: any) => ({
+        id: inv.id,
+        name: inv.name,
+        email: inv.email,
+        role: inv.role,
+        hourlyWage: inv.hourly_wage,
+        createdAt: inv.created_at,
+      })),
+    });
+  } catch (e: any) {
+    console.error('[stores GET /:storeId/invitations] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 招待キャンセル（削除）
+router.delete('/:storeId/invitations/:invitationId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const invitationId = req.params.invitationId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const { error } = await supabaseAdmin
+      .from('store_invitations')
+      .delete()
+      .eq('id', invitationId)
+      .eq('store_id', storeId);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json({ ok: true, message: '招待をキャンセルしました' });
+  } catch (e: any) {
+    console.error('[stores DELETE /:storeId/invitations/:invitationId] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 招待メール再送
+router.post('/:storeId/invitations/:invitationId/resend', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const invitationId = req.params.invitationId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) {
+      return;
+    }
+
+    const { data: invitation, error } = await supabaseAdmin
+      .from('store_invitations')
+      .select('id, name, email')
+      .eq('id', invitationId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    if (!invitation) {
+      res.status(404).json({ error: '招待が見つかりません' });
+      return;
+    }
+
+    const redirectTo = await getInvitationRedirectUrl({
+      storeId,
+      email: invitation.email,
+      name: invitation.name || invitation.email,
+      origin: req.headers.origin,
+    });
+
+    const { error: mailErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(invitation.email, {
+      redirectTo,
+      data: { full_name: invitation.name || invitation.email },
+    });
+
+    if (mailErr) {
+      res.status(500).json({ error: mailErr.message || '招待メール送信に失敗しました' });
+      return;
+    }
+
+    res.json({ ok: true, message: '招待メールを再送しました' });
+  } catch (e: any) {
+    console.error('[stores POST /:storeId/invitations/:invitationId/resend] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// スタッフ情報更新（時給など）
+router.put('/:storeId/staff/:staffId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const staffId = req.params.staffId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const hourlyWage = req.body?.hourlyWage;
+    const newRole = req.body?.role;
+
+    const updates: Record<string, any> = {};
+    if (hourlyWage !== undefined) updates.hourly_wage = hourlyWage;
+    if (newRole !== undefined) {
+      if (!VALID_STAFF_ROLES.includes(newRole) || newRole === 'owner') {
+        res.status(400).json({ error: '不正なロールです' });
+        return;
+      }
+      // オーナーのみロール変更可
+      if (membership.role !== 'owner') {
+        res.status(403).json({ error: 'ロール変更はオーナーのみ可能です' });
+        return;
+      }
+      updates.role = newRole;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: '更新するフィールドがありません' });
+      return;
+    }
+
+    const { error } = await supabaseAdmin
+      .from('store_staff')
+      .update(updates)
+      .eq('id', staffId)
+      .eq('store_id', storeId);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error('[stores PUT /:storeId/staff/:staffId] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// スタッフ退職（削除）
+router.delete('/:storeId/staff/:staffId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const staffId = req.params.staffId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    // 対象スタッフを取得
+    const { data: target, error: findErr } = await supabaseAdmin
+      .from('store_staff')
+      .select('id, role, user:profiles(name)')
+      .eq('id', staffId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (findErr || !target) {
+      res.status(404).json({ error: 'スタッフが見つかりません' });
+      return;
+    }
+
+    // オーナーは退職させられない
+    if (target.role === 'owner') {
+      res.status(400).json({ error: 'オーナーを退職させることはできません' });
+      return;
+    }
+
+    // 削除実行
+    const { error: delErr } = await supabaseAdmin
+      .from('store_staff')
+      .delete()
+      .eq('id', staffId);
+
+    if (delErr) {
+      res.status(500).json({ error: delErr.message });
+      return;
+    }
+
+    res.json({ ok: true, message: `${(target as any).user?.name || 'スタッフ'} さんを退職処理しました` });
+  } catch (e: any) {
+    console.error('[stores DELETE /:storeId/staff/:staffId] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 店舗のスタッフ一覧
+router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const supabase = supabaseAdmin;
+
+    const { data, error } = await supabase
+      .from('store_staff')
+      .select('id, role, hourly_wage, joined_at, user:profiles(id, name, email, picture)')
+      .eq('store_id', storeId);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    // auth.usersから最終ログイン時間を取得
+    const userIds = (data || []).map((staff: any) => staff.user?.id).filter(Boolean);
+    const lastSignInMap = new Map<string, string | null>();
+
+    if (userIds.length > 0) {
+      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+      for (const user of users) {
+        if (userIds.includes(user.id)) {
+          lastSignInMap.set(user.id, user.last_sign_in_at || null);
+        }
+      }
+    }
+
+    const staff = (data || []).map((staff: any) => ({
+      id: staff.id,
+      role: staff.role,
+      hourlyWage: staff.hourly_wage,
+      joinedAt: staff.joined_at,
+      userId: staff.user.id,
+      userName: staff.user.name,
+      email: staff.user.email,
+      picture: staff.user.picture,
+      lastSignInAt: lastSignInMap.get(staff.user.id) || null,
+    }));
+
+    res.json({ staff });
+  } catch (e: any) {
+    console.error('[stores GET /:storeId/staff] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 再入職（退職済みスタッフを再追加 + パスワードリセット）
+router.post('/:storeId/staff/rehire', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const role = req.body?.role || 'part_time';
+    const hourlyWage = req.body?.hourlyWage ?? 0;
+
+    if (!email) {
+      res.status(400).json({ error: 'メールアドレスは必須です' });
+      return;
+    }
+
+    if (!VALID_STAFF_ROLES.includes(role)) {
+      res.status(400).json({ error: '無効なロールです' });
+      return;
+    }
+
+    // 既にこの店舗に所属していないか確認
+    const { data: existing } = await supabaseAdmin
+      .from('store_staff')
+      .select('id, user:profiles(email)')
+      .eq('store_id', storeId);
+
+    const alreadyMember = (existing || []).find((staff: any) => staff.user?.email === email);
+    if (alreadyMember) {
+      res.status(409).json({ error: 'このスタッフは既に所属しています' });
+      return;
+    }
+
+    // auth.usersからユーザーを探す
+    const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
+    if (listErr) {
+      res.status(500).json({ error: listErr.message });
+      return;
+    }
+
+    const authUser = users.find(user => user.email === email);
+    if (!authUser) {
+      res.status(404).json({ error: 'このメールアドレスのアカウントが見つかりません。新規招待してください。' });
+      return;
+    }
+
+    // パスワードを店舗の初期パスワードにリセット
+    const { data: pwSetting } = await supabaseAdmin
+      .from('store_settings')
+      .select('value')
+      .eq('store_id', storeId)
+      .eq('key', 'initial_password')
+      .maybeSingle();
+
+    const initialPassword = pwSetting?.value || 'itamin1234';
+
+    const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+      password: initialPassword,
+      user_metadata: {
+        ...authUser.user_metadata,
+        password_changed: false,
+      },
+    });
+
+    if (updateErr) {
+      console.error('[stores POST /:storeId/staff/rehire] password reset failed:', updateErr);
+      res.status(500).json({ error: 'パスワードリセットに失敗しました' });
+      return;
+    }
+
+    // store_staffに再追加
+    const { data: staff, error: insertErr } = await supabaseAdmin
+      .from('store_staff')
+      .insert({
+        store_id: storeId,
+        user_id: authUser.id,
+        role,
+        hourly_wage: hourlyWage,
+      })
+      .select()
+      .single();
+
+    if (insertErr) {
+      console.error('[stores POST /:storeId/staff/rehire] insert failed:', insertErr);
+      res.status(500).json({ error: insertErr.message });
+      return;
+    }
+
+    res.status(201).json({
+      ok: true,
+      message: `${email} さんを再入職しました（パスワードは初期パスワードにリセット済み）`,
+      staff,
+    });
+  } catch (e: any) {
+    console.error('[stores POST /:storeId/staff/rehire] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+export const storesRouter = router;

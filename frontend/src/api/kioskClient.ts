@@ -61,16 +61,27 @@ export const kioskApi = {
       }>;
     }>(`/kiosk/${storeId}/staff`),
 
-  getShiftsToday: (storeId: string) =>
+  getShifts: (storeId: string, date?: string) =>
     kioskRequest<{
-      shifts: Array<{ id: string; startTime: string; endTime: string; staffName: string }>;
+      shifts: Array<{ id: string; staffId: string; startTime: string; endTime: string; staffName: string }>;
       date: string;
-    }>(`/kiosk/${storeId}/shifts-today`),
+    }>(`/kiosk/${storeId}/shifts${date ? `?date=${date}` : ''}`),
+
+  createShift: (storeId: string, data: { staffId: string; date: string; startTime: string; endTime: string; breakMinutes?: number }) =>
+    kioskRequest<{ ok: boolean }>(
+      `/kiosk/${storeId}/shifts`,
+      { method: 'POST', body: JSON.stringify(data) }
+    ),
+
+  deleteShift: (storeId: string, shiftId: string) =>
+    kioskRequest<{ ok: boolean }>(
+      `/kiosk/${storeId}/shifts/${shiftId}`,
+      { method: 'DELETE' }
+    ),
 
   punch: (storeId: string, staffId: string, action: 'clock-in' | 'clock-out') =>
     kioskRequest<{ ok: boolean; action: string; clockIn?: string; clockOut?: string }>(
       `/kiosk/${storeId}/punch`,
       { method: 'POST', body: JSON.stringify({ staffId, action }) }
     ),
-
 };

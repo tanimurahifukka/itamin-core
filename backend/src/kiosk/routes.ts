@@ -144,9 +144,9 @@ router.get('/:storeId/staff', requireKiosk, async (req: Request, res: Response) 
 });
 
 // ============================================================
-// 今日のシフト（キオスク認証）
+// シフト一覧（キオスク認証）?date=YYYY-MM-DD
 // ============================================================
-router.get('/:storeId/shifts-today', requireKiosk, async (req: Request, res: Response) => {
+router.get('/:storeId/shifts', requireKiosk, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
     const kioskStoreId = (req as any).kioskStoreId as string;
@@ -155,13 +155,15 @@ router.get('/:storeId/shifts-today', requireKiosk, async (req: Request, res: Res
       return;
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const date = typeof req.query.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
+      ? req.query.date
+      : new Date().toISOString().split('T')[0];
 
     const { data, error } = await supabaseAdmin
       .from('shifts')
-      .select('id, start_time, end_time, staff:store_staff(id, user:profiles(name))')
+      .select('id, start_time, end_time, staff_id, staff:store_staff(id, user:profiles(name))')
       .eq('store_id', storeId)
-      .eq('date', today)
+      .eq('date', date)
       .order('start_time');
 
     if (error) {
@@ -171,12 +173,111 @@ router.get('/:storeId/shifts-today', requireKiosk, async (req: Request, res: Res
 
     const shifts = (data || []).map((s: any) => ({
       id: s.id,
+      staffId: s.staff_id,
       startTime: s.start_time,
       endTime: s.end_time,
       staffName: s.staff?.user?.name || '',
     }));
 
-    res.json({ shifts, date: today });
+    res.json({ shifts, date });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+
+// ============================================================
+// シフト作成（キオスク認証）
+// ============================================================
+router.post('/:storeId/shifts', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const kioskStoreId = (req as any).kioskStoreId as string;
+    if (storeId !== kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' });
+      return;
+    }
+
+    const { staffId, date, startTime, endTime, breakMinutes = 0 } = req.body || {};
+
+    if (!staffId || !date || !startTime || !endTime) {
+      res.status(400).json({ error: 'staffId, date, startTime, endTime は必須です' });
+      return;
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      res.status(400).json({ error: '日付は YYYY-MM-DD 形式で指定してください' });
+      return;
+    }
+
+    if (startTime >= endTime) {
+      res.status(400).json({ error: '終了時刻は開始時刻より後にしてください' });
+      return;
+    }
+
+    const { data: staffCheck } = await supabaseAdmin
+      .from('store_staff')
+      .select('id')
+      .eq('id', staffId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (!staffCheck) {
+      res.status(400).json({ error: 'このスタッフはこの店舗に所属していません' });
+      return;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('shifts')
+      .upsert({
+        store_id: storeId,
+        staff_id: staffId,
+        date,
+        start_time: startTime,
+        end_time: endTime,
+        break_minutes: breakMinutes,
+        status: 'draft',
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'store_id,staff_id,date' })
+      .select()
+      .single();
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.status(201).json({ ok: true, shift: data });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// シフト削除（キオスク認証）
+// ============================================================
+router.delete('/:storeId/shifts/:shiftId', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const shiftId = req.params.shiftId as string;
+    const kioskStoreId = (req as any).kioskStoreId as string;
+    if (storeId !== kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' });
+      return;
+    }
+
+    const { error } = await supabaseAdmin
+      .from('shifts')
+      .delete()
+      .eq('id', shiftId)
+      .eq('store_id', storeId);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json({ ok: true });
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
