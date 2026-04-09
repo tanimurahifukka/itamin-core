@@ -22,6 +22,7 @@ interface Template {
 
 interface Submission {
   id: string;
+  templateId: string;
   templateName: string;
   timing: string;
   submittedAt: string;
@@ -75,7 +76,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
         kioskApi.getHaccpTemplates(storeId, timing),
         kioskApi.getHaccpSubmissions(storeId, today),
       ]);
-      setTemplates(tplRes.templates);
+      setTemplates(tplRes.templates as Template[]);
       setSubmissions(subRes.submissions);
     } finally {
       setLoading(false);
