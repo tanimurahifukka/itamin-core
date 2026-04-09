@@ -458,5 +458,192 @@ router.post('/:storeId/punch', requireKiosk, async (req: Request, res: Response)
   }
 });
 
+// ============================================================
+// 有効プラグイン一覧（キオスク認証）
+// ============================================================
+router.get('/:storeId/enabled-plugins', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    if (storeId !== (req as any).kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' });
+      return;
+    }
+    const { data } = await supabaseAdmin
+      .from('store_plugins')
+      .select('plugin_name, enabled')
+      .eq('store_id', storeId)
+      .eq('enabled', true);
+
+    res.json({ plugins: (data || []).map((p: any) => p.plugin_name) });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// HACCP: アクティブテンプレート取得（キオスク認証）
+// ============================================================
+router.get('/:storeId/haccp/templates', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    if (storeId !== (req as any).kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    const timing = typeof req.query.timing === 'string' ? req.query.timing : null;
+
+    let query = supabaseAdmin
+      .from('checklist_templates')
+      .select('id, name, timing, scope, description')
+      .eq('store_id', storeId)
+      .eq('scope', 'store')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+
+    if (timing) query = query.eq('timing', timing);
+
+    const { data: templates, error } = await query;
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    // 各テンプレートのアイテムを取得
+    const ids = (templates || []).map((t: any) => t.id);
+    const { data: items } = ids.length > 0
+      ? await supabaseAdmin
+          .from('checklist_template_items')
+          .select('id, template_id, label, item_type, required, min_value, max_value, unit, sort_order, options')
+          .in('template_id', ids)
+          .order('sort_order', { ascending: true })
+      : { data: [] };
+
+    const itemsByTemplate = ((items || []) as any[]).reduce((acc: any, item: any) => {
+      if (!acc[item.template_id]) acc[item.template_id] = [];
+      acc[item.template_id].push(item);
+      return acc;
+    }, {});
+
+    const result = (templates || []).map((t: any) => ({
+      ...t,
+      items: itemsByTemplate[t.id] || [],
+    }));
+
+    res.json({ templates: result });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// HACCP: チェックリスト提出（キオスク認証）
+// ============================================================
+router.post('/:storeId/haccp/submissions', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    if (storeId !== (req as any).kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    const { template_id, membership_id, timing, items } = req.body ?? {};
+
+    if (!template_id || !membership_id || !timing || !Array.isArray(items)) {
+      res.status(400).json({ error: 'template_id, membership_id, timing, items は必須です' }); return;
+    }
+
+    // テンプレート確認
+    const { data: tpl } = await supabaseAdmin
+      .from('checklist_templates')
+      .select('id, name, version')
+      .eq('id', template_id)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (!tpl) { res.status(404).json({ error: 'テンプレートが見つかりません' }); return; }
+
+    // サブミッション挿入
+    const { data: submission, error: subErr } = await supabaseAdmin
+      .from('checklist_submissions')
+      .insert({
+        store_id: storeId,
+        template_id,
+        template_version: tpl.version ?? 1,
+        scope: 'store',
+        timing,
+        membership_id,
+        submitted_at: new Date().toISOString(),
+        submitted_by: membership_id,
+      })
+      .select('id')
+      .single();
+
+    if (subErr) { res.status(500).json({ error: subErr.message }); return; }
+
+    // アイテム挿入
+    const rows = items.map((item: any) => ({
+      submission_id: submission.id,
+      template_item_id: item.template_item_id,
+      bool_value: item.bool_value ?? null,
+      numeric_value: item.numeric_value ?? null,
+      text_value: item.text_value ?? null,
+      select_value: item.select_value ?? null,
+      checked_by: membership_id,
+    }));
+
+    if (rows.length > 0) {
+      const { error: itemErr } = await supabaseAdmin
+        .from('checklist_submission_items')
+        .insert(rows);
+      if (itemErr) { res.status(500).json({ error: itemErr.message }); return; }
+    }
+
+    res.status(201).json({ ok: true, submissionId: submission.id });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// HACCP: 提出履歴（キオスク認証）?date=YYYY-MM-DD
+// ============================================================
+router.get('/:storeId/haccp/submissions', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    if (storeId !== (req as any).kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    const date = typeof req.query.date === 'string' ? req.query.date : new Date().toISOString().split('T')[0];
+
+    const { data, error } = await supabaseAdmin
+      .from('checklist_submissions')
+      .select('id, template_id, timing, submitted_at, member:store_staff(user:profiles(name))')
+      .eq('store_id', storeId)
+      .eq('scope', 'store')
+      .gte('submitted_at', `${date}T00:00:00`)
+      .lte('submitted_at', `${date}T23:59:59`)
+      .order('submitted_at', { ascending: false });
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    // テンプレート名を一括取得
+    const tplIds = [...new Set((data || []).map((s: any) => s.template_id))];
+    const { data: tpls } = tplIds.length > 0
+      ? await supabaseAdmin.from('checklist_templates').select('id, name').in('id', tplIds)
+      : { data: [] };
+    const tplMap = new Map(((tpls || []) as any[]).map((t: any) => [t.id, t.name]));
+
+    const submissions = (data || []).map((s: any) => ({
+      id: s.id,
+      templateId: s.template_id,
+      templateName: tplMap.get(s.template_id) || '不明',
+      timing: s.timing,
+      submittedAt: s.submitted_at,
+      submittedBy: s.member?.user?.name || '–',
+    }));
+
+    res.json({ submissions, date });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
 export const kioskRouter = router;
 // kiosk deploy trigger 2026年 4月 9日 木曜日 06時19分21秒 JST

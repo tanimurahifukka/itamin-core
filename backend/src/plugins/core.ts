@@ -43,6 +43,18 @@ export const staffPlugin: Plugin = {
   initialize: (_app: Express) => {},
 };
 
+// HACCP管理（キオスク向け）
+export const haccpKioskPlugin: Plugin = {
+  name: 'haccp_kiosk',
+  version: '1.0.0',
+  description: 'キオスク端末からHACCPチェックリストを記録・提出',
+  label: 'HACCP',
+  icon: '🌡️',
+  core: false,
+  defaultRoles: ['owner', 'manager', 'leader', 'full_time', 'part_time'],
+  initialize: (_app: Express) => {},
+};
+
 // キオスクモード（店舗共用端末へのリンク）
 export const kioskPlugin: Plugin = {
   name: 'kiosk',

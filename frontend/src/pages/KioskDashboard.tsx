@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { kioskApi, clearKioskSession } from '../api/kioskClient';
 import KioskShiftManager from './KioskShiftManager';
+import KioskHaccp from './KioskHaccp';
 
 interface Staff {
   id: string;
@@ -68,7 +69,8 @@ const EMPTY_FORM = { staffId: '', startTime: '09:00', endTime: '17:00', breakMin
 export default function KioskDashboard({ storeId, storeName, onLogout }: Props) {
   const today = toDateStr(new Date());
 
-  const [tab, setTab] = useState<'punch' | 'shift'>('punch');
+  const [tab, setTab] = useState<'punch' | 'shift' | 'haccp'>('punch');
+  const [enabledPlugins, setEnabledPlugins] = useState<string[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [shiftDate, setShiftDate] = useState(today);
@@ -84,12 +86,14 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
 
   const load = useCallback(async (date?: string) => {
     try {
-      const [staffRes, shiftRes] = await Promise.all([
+      const [staffRes, shiftRes, pluginsRes] = await Promise.all([
         kioskApi.getStaff(storeId),
         kioskApi.getShifts(storeId, date || shiftDate),
+        kioskApi.getEnabledPlugins(storeId),
       ]);
       setStaff(staffRes.staff);
       setShifts(shiftRes.shifts);
+      setEnabledPlugins(pluginsRes.plugins);
     } catch (e: any) {
       if (e.status === 401) { clearKioskSession(); onLogout(); }
     } finally {
@@ -180,6 +184,9 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
         <div style={s.headerTabs}>
           <button style={{ ...s.tab, ...(tab === 'punch' ? s.tabActive : {}) }} onClick={() => setTab('punch')}>打刻</button>
           <button style={{ ...s.tab, ...(tab === 'shift' ? s.tabActive : {}) }} onClick={() => setTab('shift')}>シフト管理</button>
+          {enabledPlugins.includes('haccp_kiosk') && (
+            <button style={{ ...s.tab, ...(tab === 'haccp' ? s.tabActive : {}) }} onClick={() => setTab('haccp')}>HACCP</button>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={s.headerStore}>{storeName}</div>
@@ -197,6 +204,13 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
       {tab === 'shift' && (
         <div style={{ ...s.body, maxWidth: '100%', padding: '16px 20px' }}>
           <KioskShiftManager storeId={storeId} staff={staff.map(st => ({ id: st.id, name: st.name }))} />
+        </div>
+      )}
+
+      {/* HACCPタブ */}
+      {tab === 'haccp' && (
+        <div style={{ ...s.body, maxWidth: '100%', padding: '16px 20px' }}>
+          <KioskHaccp storeId={storeId} staff={staff.map(st => ({ id: st.id, name: st.name }))} />
         </div>
       )}
 

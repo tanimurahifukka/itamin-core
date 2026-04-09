@@ -90,6 +90,26 @@ export const kioskApi = {
       { method: 'DELETE' }
     ),
 
+  getEnabledPlugins: (storeId: string) =>
+    kioskRequest<{ plugins: string[] }>(`/kiosk/${storeId}/enabled-plugins`),
+
+  getHaccpTemplates: (storeId: string, timing?: string) =>
+    kioskRequest<{ templates: Array<{
+      id: string; name: string; timing: string; description?: string;
+      items: Array<{ id: string; label: string; item_type: string; required: boolean; min_value?: number; max_value?: number; unit?: string; options?: string[] }>;
+    }> }>(`/kiosk/${storeId}/haccp/templates${timing ? `?timing=${timing}` : ''}`),
+
+  submitHaccp: (storeId: string, data: { template_id: string; membership_id: string; timing: string; items: any[] }) =>
+    kioskRequest<{ ok: boolean; submissionId: string }>(
+      `/kiosk/${storeId}/haccp/submissions`,
+      { method: 'POST', body: JSON.stringify(data) }
+    ),
+
+  getHaccpSubmissions: (storeId: string, date?: string) =>
+    kioskRequest<{ submissions: Array<{ id: string; templateId: string; templateName: string; timing: string; submittedAt: string; submittedBy: string }> }>(
+      `/kiosk/${storeId}/haccp/submissions${date ? `?date=${date}` : ''}`
+    ),
+
   punch: (storeId: string, staffId: string, action: 'clock-in' | 'clock-out') =>
     kioskRequest<{ ok: boolean; action: string; clockIn?: string; clockOut?: string }>(
       `/kiosk/${storeId}/punch`,
