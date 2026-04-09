@@ -26,6 +26,7 @@ import { menuPlugin } from './plugins/menu';
 import { punchPlugin, attendancePlugin, staffPlugin, kioskPlugin, haccpKioskPlugin, switchbotPlugin, settingsPlugin } from './plugins/core';
 import { salesCapturePlugin } from './plugins/sales_capture';
 import { switchbotRouter } from './services/switchbot/routes';
+import { collectSwitchBotReadings } from './services/switchbot/cron';
 import { lineAttendancePlugin, attendanceAdminPlugin } from './plugins/line_attendance';
 
 const app = express();
@@ -81,6 +82,27 @@ pluginRegistry.register(settingsPlugin);
 
 app.use('/api/plugin-settings', pluginSettingsRouter);
 app.use('/api/switchbot', switchbotRouter);
+
+// Vercel Cron: SwitchBot 定期収集（30分ごと）
+app.post('/api/cron/switchbot-readings', async (req, res) => {
+  // Vercel Cron は Authorization: Bearer <CRON_SECRET> ヘッダーを付与する
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const auth = req.headers.authorization;
+    if (auth !== `Bearer ${cronSecret}`) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+  }
+  try {
+    const result = await collectSwitchBotReadings();
+    console.log('[cron] switchbot-readings:', result);
+    res.json({ ok: true, ...result });
+  } catch (e: any) {
+    console.error('[cron] switchbot-readings error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
 app.get('/api/plugins', (_req, res) => {
   const plugins = pluginRegistry.list().map(p => ({
     name: p.name,

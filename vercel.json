@@ -59,5 +59,11 @@
       ]
     }
   ],
-  "framework": "vite"
+  "framework": "vite",
+  "crons": [
+    {
+      "path": "/api/cron/switchbot-readings",
+      "schedule": "*/30 * * * *"
+    }
+  ]
 }

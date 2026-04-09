@@ -110,7 +110,32 @@ router.get('/:storeId/devices/:deviceId/status', requireAuth, async (req: Reques
   }
 });
 
-// GET /:storeId/devices/:deviceId/status (キオスク用 - kiosk JWT)
-// キオスクから直接呼べるよう別途 kiosk/routes.ts に追加するため、ここでは管理用のみ
+// GET /:storeId/readings - 温湿度ログ一覧（最新N件）
+router.get('/:storeId/readings', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const limit = Math.min(Number(req.query.limit) || 200, 1000);
+    const deviceId = req.query.deviceId as string | undefined;
+
+    let query = supabaseAdmin
+      .from('switchbot_readings')
+      .select('id, device_id, device_name, temperature, humidity, battery, recorded_at')
+      .eq('store_id', storeId)
+      .order('recorded_at', { ascending: false })
+      .limit(limit);
+
+    if (deviceId) query = query.eq('device_id', deviceId);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    res.json({ readings: data || [] });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
 
 export const switchbotRouter = router;
