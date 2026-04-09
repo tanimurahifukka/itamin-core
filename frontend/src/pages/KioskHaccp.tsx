@@ -177,11 +177,59 @@ export default function KioskHaccp({ storeId, staff }: Props) {
   const todaySubmissions = submissions.filter(s => s.submittedAt.startsWith(today));
   const timingSubmissions = todaySubmissions.filter(s => s.timing === timing);
 
+  // SwitchBotデバイスの現在値を全台取得
+  const [deviceStatus, setDeviceStatus] = useState<Record<string, { temperature: number | null; humidity: number | null; loading: boolean }>>({});
+
+  const refreshAllDevices = async () => {
+    if (switchbotDevices.length === 0) return;
+    const init: typeof deviceStatus = {};
+    for (const d of switchbotDevices) init[d.deviceId] = { temperature: null, humidity: null, loading: true };
+    setDeviceStatus(init);
+    await Promise.all(switchbotDevices.map(async d => {
+      try {
+        const res = await kioskApi.getSwitchBotStatus(storeId, d.deviceId);
+        setDeviceStatus(prev => ({ ...prev, [d.deviceId]: { temperature: res.temperature, humidity: res.humidity, loading: false } }));
+      } catch {
+        setDeviceStatus(prev => ({ ...prev, [d.deviceId]: { temperature: null, humidity: null, loading: false } }));
+      }
+    }));
+  };
+
+  useEffect(() => { if (switchbotDevices.length > 0) refreshAllDevices(); }, [switchbotDevices]);
+
   return (
     <div style={s.root}>
       {msg && (
         <div style={{ ...s.msg, background: msg.ok ? '#e6f4ea' : '#fff0f0', color: msg.ok ? '#2e7d32' : '#c62828' }}>
           {msg.text}
+        </div>
+      )}
+
+      {/* SwitchBot温度パネル */}
+      {switchbotDevices.length > 0 && (
+        <div style={s.switchbotPanel}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#92400e' }}>🌡️ SwitchBot 現在温度</div>
+            <button style={s.refreshBtn} onClick={refreshAllDevices}>更新</button>
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {switchbotDevices.map(d => {
+              const st = deviceStatus[d.deviceId];
+              return (
+                <div key={d.deviceId} style={s.deviceCard}>
+                  <div style={s.deviceName}>{d.deviceName}</div>
+                  {st?.loading ? (
+                    <div style={s.deviceTemp}>...</div>
+                  ) : (
+                    <>
+                      <div style={s.deviceTemp}>{st?.temperature != null ? `${st.temperature}°C` : '–'}</div>
+                      <div style={s.deviceHumid}>{st?.humidity != null ? `湿度 ${st.humidity}%` : ''}</div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -417,4 +465,10 @@ const s: Record<string, React.CSSProperties> = {
   numInput: { width: 100, padding: '7px 10px', border: '1px solid #d0d7e2', borderRadius: 6, fontSize: 16, textAlign: 'right' as const, fontFamily: 'sans-serif' },
   textInput: { width: 200, padding: '7px 10px', border: '1px solid #d0d7e2', borderRadius: 6, fontSize: 14, fontFamily: 'sans-serif' },
   submitBtn: { width: '100%', padding: '14px', background: '#4caf50', color: '#fff', border: 'none', borderRadius: 8, fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'sans-serif' },
+  switchbotPanel: { background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '12px 16px' },
+  refreshBtn: { background: '#fff', border: '1px solid #fcd34d', borderRadius: 6, padding: '4px 12px', fontSize: 12, cursor: 'pointer', color: '#92400e', fontFamily: 'sans-serif' },
+  deviceCard: { background: '#fff', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px', minWidth: 100, textAlign: 'center' as const },
+  deviceName: { fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 4 },
+  deviceTemp: { fontSize: 18, fontWeight: 700, color: '#1e40af' },
+  deviceHumid: { fontSize: 11, color: '#64748b', marginTop: 2 },
 };
