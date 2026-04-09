@@ -67,6 +67,22 @@ export const kioskPlugin: Plugin = {
   initialize: (_app: Express) => {},
 };
 
+// SwitchBot連携
+export const switchbotPlugin: Plugin = {
+  name: 'switchbot',
+  version: '1.0.0',
+  description: 'SwitchBot温度計からHACCPチェックリストに自動入力',
+  label: 'SwitchBot',
+  icon: '🌡️',
+  core: false,
+  defaultRoles: ['owner', 'manager'],
+  settingsSchema: [
+    { key: 'token', label: 'APIトークン', type: 'text', description: 'SwitchBotアプリ → プロフィール → 開発者向けオプション' },
+    { key: 'secret', label: 'シークレットキー', type: 'text', description: 'SwitchBotアプリ v6.14以降で取得' },
+  ],
+  initialize: (_app: Express) => {},
+};
+
 // プラグイン設定（オーナーのみ）
 export const settingsPlugin: Plugin = {
   name: 'settings',

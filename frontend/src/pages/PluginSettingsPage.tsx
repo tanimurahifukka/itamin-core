@@ -97,6 +97,8 @@ export default function PluginSettingsPage() {
   const [kioskPinDraft, setKioskPinDraft] = useState('');
   const [editingKioskPin, setEditingKioskPin] = useState(false);
   const [savingKioskPin, setSavingKioskPin] = useState(false);
+  const [switchbotDevices, setSwitchbotDevices] = useState<any[]>([]);
+  const [loadingDevices, setLoadingDevices] = useState(false);
 
   const loadSettings = async () => {
     if (!selectedStore) return;
@@ -190,6 +192,20 @@ export default function PluginSettingsPage() {
       setConfigMsg(prev => ({ ...prev, [pluginName]: `エラー: ${e.message}` }));
     } finally {
       setSavingConfig(null);
+    }
+  };
+
+  const fetchSwitchBotDevices = async () => {
+    if (!selectedStore || loadingDevices) return;
+    setLoadingDevices(true);
+    try {
+      const res = await api.getSwitchBotDevices(selectedStore.id);
+      setSwitchbotDevices(res.devices || []);
+      showToast(`${res.devices?.length || 0}台のデバイスを取得しました`, 'success');
+    } catch (e: any) {
+      showToast(e.message || 'デバイス取得に失敗しました', 'error');
+    } finally {
+      setLoadingDevices(false);
     }
   };
 
@@ -634,6 +650,36 @@ export default function PluginSettingsPage() {
                       })}
                     </div>
                   </div>
+
+                  {plugin.name === 'switchbot' && (
+                    <div style={{ marginBottom: 16, padding: '14px', background: '#fff7ed', borderRadius: 8, border: '1px solid #fed7aa' }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 8, color: '#92400e' }}>デバイス確認</div>
+                      <div style={{ fontSize: '0.8rem', color: '#78350f', marginBottom: 10 }}>
+                        APIトークン・シークレットを保存後、デバイス一覧を取得できます。
+                      </div>
+                      <button
+                        style={{ ...primaryButtonStyle, background: '#ea580c' }}
+                        onClick={fetchSwitchBotDevices}
+                        disabled={loadingDevices}
+                      >
+                        {loadingDevices ? '取得中...' : '🌡️ デバイス一覧を取得'}
+                      </button>
+                      {switchbotDevices.length > 0 && (
+                        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {switchbotDevices.map((d: any) => (
+                            <div key={d.deviceId} style={{ background: '#fff', border: '1px solid #fed7aa', borderRadius: 6, padding: '8px 12px', fontSize: '0.82rem' }}>
+                              <span style={{ fontWeight: 600 }}>{d.deviceName || d.deviceId}</span>
+                              <span style={{ color: '#888', marginLeft: 8 }}>{d.deviceType}</span>
+                              <code style={{ marginLeft: 8, fontSize: '0.75rem', color: '#555' }}>{d.deviceId}</code>
+                            </div>
+                          ))}
+                          <div style={{ fontSize: '0.78rem', color: '#78350f', marginTop: 4 }}>
+                            デバイスIDをコピーしてHACCP項目に割り当てるには、キオスクの設定でマッピングを行ってください。
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {plugin.name === 'kiosk' && (
                     <div style={{ marginBottom: 16, padding: '14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>

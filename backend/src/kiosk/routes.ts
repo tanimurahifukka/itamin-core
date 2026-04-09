@@ -1,10 +1,20 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import * as crypto from 'crypto';
 import { supabaseAdmin } from '../config/supabase';
 import { config } from '../config';
 import { requireAuth } from '../middleware/auth';
 import { requireKiosk } from '../middleware/kiosk';
 import { requireManagedStore } from '../auth/authorization';
+
+const SWITCHBOT_BASE = 'https://api.switch-bot.com/v1.1';
+
+function makeSwitchBotHeaders(token: string, secret: string) {
+  const t = Date.now();
+  const nonce = crypto.randomUUID();
+  const sign = crypto.createHmac('sha256', secret).update(token + t + nonce).digest('base64');
+  return { Authorization: token, t: String(t), nonce, sign, 'Content-Type': 'application/json' };
+}
 
 const router = Router();
 
@@ -645,5 +655,43 @@ router.get('/:storeId/haccp/submissions', requireKiosk, async (req: Request, res
   }
 });
 
+// ============================================================
+// SwitchBot: デバイスステータス取得（キオスク認証）
+// ============================================================
+router.get('/:storeId/switchbot/:deviceId', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const deviceId = req.params.deviceId as string;
+    if (storeId !== (req as any).kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    const { data } = await supabaseAdmin
+      .from('store_plugins')
+      .select('config')
+      .eq('store_id', storeId)
+      .eq('plugin_name', 'switchbot')
+      .maybeSingle();
+
+    const token = data?.config?.token;
+    const secret = data?.config?.secret;
+    if (!token || !secret) {
+      res.status(400).json({ error: 'SwitchBot APIトークンが設定されていません' }); return;
+    }
+
+    const r = await fetch(`${SWITCHBOT_BASE}/devices/${deviceId}/status`, {
+      headers: makeSwitchBotHeaders(token, secret),
+    });
+    const json: any = await r.json();
+    if (!r.ok || json.statusCode !== 100) {
+      res.status(502).json({ error: `SwitchBot API error: ${json.message || r.status}` }); return;
+    }
+
+    const body = json.body || {};
+    res.json({ temperature: body.temperature ?? null, humidity: body.humidity ?? null, battery: body.battery ?? null });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
 export const kioskRouter = router;
-// kiosk deploy trigger 2026年 4月 9日 木曜日 06時19分21秒 JST

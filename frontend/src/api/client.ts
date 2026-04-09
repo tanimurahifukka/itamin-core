@@ -338,6 +338,12 @@ export const api = {
   setKioskPin: (storeId: string, pin: string) =>
     request<any>(`/kiosk/${storeId}/pin`, { method: 'PUT', body: JSON.stringify({ pin }) }),
 
+  // SwitchBot
+  getSwitchBotDevices: (storeId: string) =>
+    request<any>(`/switchbot/${storeId}/devices`),
+  getSwitchBotDeviceStatus: (storeId: string, deviceId: string) =>
+    request<any>(`/switchbot/${storeId}/devices/${deviceId}/status`),
+
   // HACCP テンプレート管理
   getHaccpTemplates: (storeId: string) =>
     request<any>(`/haccp/${storeId}/templates`),

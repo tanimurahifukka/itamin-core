@@ -66,18 +66,26 @@ export default function KioskHaccp({ storeId, staff }: Props) {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  // SwitchBot: { deviceId: itemId[] } のマッピング（enabled-pluginsと一緒に取得）
+  const [switchbotMappings, setSwitchbotMappings] = useState<Record<string, string[]>>({});
+  const [fetchingTemp, setFetchingTemp] = useState<string | null>(null); // deviceId
 
   const today = toDateStr(new Date());
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [tplRes, subRes] = await Promise.all([
+      const [tplRes, subRes, pluginsRes] = await Promise.all([
         kioskApi.getHaccpTemplates(storeId, timing),
         kioskApi.getHaccpSubmissions(storeId, today),
+        kioskApi.getEnabledPlugins(storeId),
       ]);
       setTemplates(tplRes.templates);
       setSubmissions(subRes.submissions);
+      // SwitchBotマッピングをpluginsResから取得（enabled-pluginsにconfig情報はないので別途対応）
+      // mappingsはlocalStorageにキャッシュされたものを使う
+      const cached = localStorage.getItem(`switchbot_mappings_${storeId}`);
+      if (cached) setSwitchbotMappings(JSON.parse(cached));
     } finally {
       setLoading(false);
     }
@@ -88,6 +96,39 @@ export default function KioskHaccp({ storeId, staff }: Props) {
   const showMsg = (text: string, ok: boolean) => {
     setMsg({ text, ok });
     setTimeout(() => setMsg(null), 3000);
+  };
+
+  // SwitchBotから温度取得してanswersに自動入力
+  const fetchSwitchBot = async (deviceId: string, itemIds: string[]) => {
+    if (fetchingTemp) return;
+    setFetchingTemp(deviceId);
+    try {
+      const res = await kioskApi.getSwitchBotStatus(storeId, deviceId);
+      const newAnswers: Record<string, any> = {};
+      for (const itemId of itemIds) {
+        const item = selected?.items.find(i => i.id === itemId);
+        if (!item) continue;
+        if (item.unit === '%' && res.humidity != null) newAnswers[itemId] = String(res.humidity);
+        else if (res.temperature != null) newAnswers[itemId] = String(res.temperature);
+      }
+      setAnswers(a => ({ ...a, ...newAnswers }));
+      showMsg(`${res.temperature != null ? `${res.temperature}°C` : ''}${res.humidity != null ? ` 湿度${res.humidity}%` : ''} を取得しました`, true);
+    } catch (e: any) {
+      showMsg(e.message || 'SwitchBot取得失敗', false);
+    } finally {
+      setFetchingTemp(null);
+    }
+  };
+
+  // このテンプレートのアイテムにマッチするSwitchBotデバイス一覧を返す
+  const getMatchedDevices = (): { deviceId: string; itemIds: string[] }[] => {
+    if (!selected || Object.keys(switchbotMappings).length === 0) return [];
+    return Object.entries(switchbotMappings)
+      .map(([deviceId, itemIds]) => ({
+        deviceId,
+        itemIds: itemIds.filter(id => selected.items.some(i => i.id === id)),
+      }))
+      .filter(d => d.itemIds.length > 0);
   };
 
   const openTemplate = (tpl: Template) => {
@@ -226,7 +267,20 @@ export default function KioskHaccp({ storeId, staff }: Props) {
           <div style={s.right}>
             <div style={s.formHeader}>
               <div style={s.formTitle}>{selected.name}</div>
-              <button style={s.closeBtn} onClick={() => setSelected(null)}>✕</button>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {getMatchedDevices().map(({ deviceId, itemIds }) => (
+                  <button
+                    key={deviceId}
+                    style={s.switchbotBtn}
+                    onClick={() => fetchSwitchBot(deviceId, itemIds)}
+                    disabled={fetchingTemp === deviceId}
+                    title={`SwitchBot (${deviceId.slice(0, 8)}...) から温度・湿度を取得`}
+                  >
+                    {fetchingTemp === deviceId ? '取得中...' : '🌡️ SwitchBotから取得'}
+                  </button>
+                ))}
+                <button style={s.closeBtn} onClick={() => setSelected(null)}>✕</button>
+              </div>
             </div>
 
             {/* 担当者 */}
@@ -350,6 +404,7 @@ const s: Record<string, React.CSSProperties> = {
   formHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   formTitle: { fontSize: 16, fontWeight: 700, color: '#1a56db' },
   closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' },
+  switchbotBtn: { background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c', borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'sans-serif' },
   fieldRow: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 },
   fieldLabel: { fontSize: 13, fontWeight: 600, color: '#555', minWidth: 56 },
   select: { padding: '7px 10px', border: '1px solid #d0d7e2', borderRadius: 6, fontSize: 14, fontFamily: 'sans-serif', flex: 1 },

@@ -110,6 +110,11 @@ export const kioskApi = {
       `/kiosk/${storeId}/haccp/submissions${date ? `?date=${date}` : ''}`
     ),
 
+  getSwitchBotStatus: (storeId: string, deviceId: string) =>
+    kioskRequest<{ temperature: number | null; humidity: number | null; battery: number | null }>(
+      `/kiosk/${storeId}/switchbot/${deviceId}`
+    ),
+
   punch: (storeId: string, staffId: string, action: 'clock-in' | 'clock-out') =>
     kioskRequest<{ ok: boolean; action: string; clockIn?: string; clockOut?: string }>(
       `/kiosk/${storeId}/punch`,

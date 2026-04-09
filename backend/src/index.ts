@@ -23,8 +23,9 @@ import { paidLeavePlugin } from './plugins/paid_leave';
 import { expensePlugin } from './plugins/expense';
 import { feedbackPlugin } from './plugins/feedback';
 import { menuPlugin } from './plugins/menu';
-import { punchPlugin, attendancePlugin, staffPlugin, kioskPlugin, haccpKioskPlugin, settingsPlugin } from './plugins/core';
+import { punchPlugin, attendancePlugin, staffPlugin, kioskPlugin, haccpKioskPlugin, switchbotPlugin, settingsPlugin } from './plugins/core';
 import { salesCapturePlugin } from './plugins/sales_capture';
+import { switchbotRouter } from './services/switchbot/routes';
 import { lineAttendancePlugin, attendanceAdminPlugin } from './plugins/line_attendance';
 
 const app = express();
@@ -73,11 +74,13 @@ pluginRegistry.register(attendanceAdminPlugin);
 
 pluginRegistry.register(kioskPlugin);
 pluginRegistry.register(haccpKioskPlugin);
+pluginRegistry.register(switchbotPlugin);
 
 // 設定は常に最後
 pluginRegistry.register(settingsPlugin);
 
 app.use('/api/plugin-settings', pluginSettingsRouter);
+app.use('/api/switchbot', switchbotRouter);
 app.get('/api/plugins', (_req, res) => {
   const plugins = pluginRegistry.list().map(p => ({
     name: p.name,
