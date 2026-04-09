@@ -4,7 +4,7 @@ import { kioskApi } from '../api/kioskClient';
 interface TemplateItem {
   id: string;
   label: string;
-  item_type: 'checkbox' | 'numeric' | 'text' | 'select' | 'photo';
+  item_type: string;
   required: boolean;
   min_value?: number;
   max_value?: number;
@@ -76,7 +76,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
         kioskApi.getHaccpTemplates(storeId, timing),
         kioskApi.getHaccpSubmissions(storeId, today),
       ]);
-      setTemplates(tplRes.templates as Template[]);
+      setTemplates(tplRes.templates);
       setSubmissions(subRes.submissions);
     } finally {
       setLoading(false);
