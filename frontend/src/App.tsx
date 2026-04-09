@@ -13,6 +13,7 @@ import PunchClockPage from './pages/PunchClockPage';
 import DashboardPage from './pages/DashboardPage';
 import StaffPage from './pages/StaffPage';
 import ChecklistAdminPage from './pages/ChecklistAdminPage';
+import StoreChecklistPage from './pages/StoreChecklistPage';
 import PluginSettingsPage from './pages/PluginSettingsPage';
 import ShiftPage from './pages/ShiftPage';
 import ShiftRequestPage from './pages/ShiftRequestPage';
@@ -29,6 +30,7 @@ import SalesCapturePage from './pages/SalesCapturePage';
 import AttendanceStaffPage from './pages/AttendanceStaffPage';
 import AttendanceAdminPage from './pages/AttendanceAdminPage';
 import KioskLinkPage from './pages/KioskLinkPage';
+import HaccpAdminPage from './pages/HaccpAdminPage';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -67,6 +69,7 @@ const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   attendance: DashboardPage,
   staff: StaffPage,
   check: ChecklistAdminPage,
+  store_check: StoreChecklistPage,
   shift: ShiftPage,
   shift_request: ShiftRequestPage,
   inventory: InventoryPage,
@@ -82,6 +85,7 @@ const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   line_attendance: AttendanceStaffPage,
   attendance_admin: AttendanceAdminPage,
   kiosk: KioskLinkPage,
+  haccp_kiosk: HaccpAdminPage,
   settings: PluginSettingsPage,
 };
 

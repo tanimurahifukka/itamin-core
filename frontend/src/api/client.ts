@@ -337,4 +337,24 @@ export const api = {
   // Kiosk PIN管理（管理者用）
   setKioskPin: (storeId: string, pin: string) =>
     request<any>(`/kiosk/${storeId}/pin`, { method: 'PUT', body: JSON.stringify({ pin }) }),
+
+  // HACCP テンプレート管理
+  getHaccpTemplates: (storeId: string) =>
+    request<any>(`/haccp/${storeId}/templates`),
+  createHaccpTemplate: (storeId: string, data: { name: string; timing: string; description?: string }) =>
+    request<any>(`/haccp/${storeId}/templates`, { method: 'POST', body: JSON.stringify(data) }),
+  updateHaccpTemplate: (storeId: string, id: string, data: Record<string, any>) =>
+    request<any>(`/haccp/${storeId}/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteHaccpTemplate: (storeId: string, id: string) =>
+    request<any>(`/haccp/${storeId}/templates/${id}`, { method: 'DELETE' }),
+  addHaccpItem: (storeId: string, templateId: string, data: Record<string, any>) =>
+    request<any>(`/haccp/${storeId}/templates/${templateId}/items`, { method: 'POST', body: JSON.stringify(data) }),
+  updateHaccpItem: (storeId: string, templateId: string, itemId: string, data: Record<string, any>) =>
+    request<any>(`/haccp/${storeId}/templates/${templateId}/items/${itemId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteHaccpItem: (storeId: string, templateId: string, itemId: string) =>
+    request<any>(`/haccp/${storeId}/templates/${templateId}/items/${itemId}`, { method: 'DELETE' }),
+  getHaccpSystemTemplates: (storeId: string) =>
+    request<any>(`/haccp/${storeId}/system-templates`),
+  importHaccpSystemTemplate: (storeId: string, systemTemplateId: string) =>
+    request<any>(`/haccp/${storeId}/import/${systemTemplateId}`, { method: 'POST' }),
 };

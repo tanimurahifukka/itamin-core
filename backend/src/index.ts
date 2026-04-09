@@ -24,6 +24,7 @@ import { expensePlugin } from './plugins/expense';
 import { feedbackPlugin } from './plugins/feedback';
 import { menuPlugin } from './plugins/menu';
 import { punchPlugin, attendancePlugin, staffPlugin, kioskPlugin, haccpKioskPlugin, settingsPlugin } from './plugins/core';
+import { haccpAdminRouter } from './haccp/routes';
 import { salesCapturePlugin } from './plugins/sales_capture';
 import { lineAttendancePlugin, attendanceAdminPlugin } from './plugins/line_attendance';
 
@@ -78,6 +79,7 @@ pluginRegistry.register(haccpKioskPlugin);
 pluginRegistry.register(settingsPlugin);
 
 app.use('/api/plugin-settings', pluginSettingsRouter);
+app.use('/api/haccp', haccpAdminRouter);
 app.get('/api/plugins', (_req, res) => {
   const plugins = pluginRegistry.list().map(p => ({
     name: p.name,
