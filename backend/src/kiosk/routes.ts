@@ -656,6 +656,40 @@ router.get('/:storeId/haccp/submissions', requireKiosk, async (req: Request, res
 });
 
 // ============================================================
+// SwitchBot: デバイス一覧（キオスク認証）
+// ============================================================
+router.get('/:storeId/switchbot', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    if (storeId !== (req as any).kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+    const { data } = await supabaseAdmin
+      .from('store_plugins')
+      .select('config')
+      .eq('store_id', storeId)
+      .eq('plugin_name', 'switchbot')
+      .maybeSingle();
+    const token = data?.config?.token;
+    const secret = data?.config?.secret;
+    if (!token || !secret) { res.json({ devices: [] }); return; }
+
+    const r = await fetch(`${SWITCHBOT_BASE}/devices`, {
+      headers: makeSwitchBotHeaders(token, secret),
+    });
+    const json: any = await r.json();
+    if (!r.ok || json.statusCode !== 100) { res.json({ devices: [] }); return; }
+
+    const meters = (json.body?.deviceList || []).filter((d: any) =>
+      /meter/i.test(d.deviceType || '')
+    );
+    res.json({ devices: meters });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
 // SwitchBot: デバイスステータス取得（キオスク認証）
 // ============================================================
 router.get('/:storeId/switchbot/:deviceId', requireKiosk, async (req: Request, res: Response) => {

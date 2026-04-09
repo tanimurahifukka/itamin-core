@@ -66,30 +66,31 @@ export default function KioskHaccp({ storeId, staff }: Props) {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
-  // SwitchBot: { deviceId: itemId[] } のマッピング（enabled-pluginsと一緒に取得）
-  const [switchbotMappings, setSwitchbotMappings] = useState<Record<string, string[]>>({});
-  const [fetchingTemp, setFetchingTemp] = useState<string | null>(null); // deviceId
+  const [switchbotDevices, setSwitchbotDevices] = useState<Array<{ deviceId: string; deviceName: string; deviceType: string }>>([]);
+  const [fetchingDevice, setFetchingDevice] = useState<string | null>(null); // deviceId
 
   const today = toDateStr(new Date());
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [tplRes, subRes, pluginsRes] = await Promise.all([
+      const [tplRes, subRes] = await Promise.all([
         kioskApi.getHaccpTemplates(storeId, timing),
         kioskApi.getHaccpSubmissions(storeId, today),
-        kioskApi.getEnabledPlugins(storeId),
       ]);
       setTemplates(tplRes.templates);
       setSubmissions(subRes.submissions);
-      // SwitchBotマッピングをpluginsResから取得（enabled-pluginsにconfig情報はないので別途対応）
-      // mappingsはlocalStorageにキャッシュされたものを使う
-      const cached = localStorage.getItem(`switchbot_mappings_${storeId}`);
-      if (cached) setSwitchbotMappings(JSON.parse(cached));
     } finally {
       setLoading(false);
     }
   }, [storeId, timing, today]);
+
+  // テンプレートを開いたときにSwitchBotデバイス一覧を取得
+  useEffect(() => {
+    kioskApi.getSwitchBotDevices(storeId)
+      .then(res => setSwitchbotDevices(res.devices || []))
+      .catch(() => setSwitchbotDevices([]));
+  }, [storeId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -98,37 +99,22 @@ export default function KioskHaccp({ storeId, staff }: Props) {
     setTimeout(() => setMsg(null), 3000);
   };
 
-  // SwitchBotから温度取得してanswersに自動入力
-  const fetchSwitchBot = async (deviceId: string, itemIds: string[]) => {
-    if (fetchingTemp) return;
-    setFetchingTemp(deviceId);
+  // SwitchBotデバイスから温度/湿度を取得して指定項目に入力
+  const fetchSwitchBot = async (deviceId: string, itemId: string, unit: string) => {
+    if (fetchingDevice) return;
+    setFetchingDevice(deviceId);
     try {
       const res = await kioskApi.getSwitchBotStatus(storeId, deviceId);
-      const newAnswers: Record<string, any> = {};
-      for (const itemId of itemIds) {
-        const item = selected?.items.find(i => i.id === itemId);
-        if (!item) continue;
-        if (item.unit === '%' && res.humidity != null) newAnswers[itemId] = String(res.humidity);
-        else if (res.temperature != null) newAnswers[itemId] = String(res.temperature);
-      }
-      setAnswers(a => ({ ...a, ...newAnswers }));
-      showMsg(`${res.temperature != null ? `${res.temperature}°C` : ''}${res.humidity != null ? ` 湿度${res.humidity}%` : ''} を取得しました`, true);
+      const value = unit === '%' ? res.humidity : res.temperature;
+      if (value == null) { showMsg('値を取得できませんでした', false); return; }
+      setAnswers(a => ({ ...a, [itemId]: String(value) }));
+      const device = switchbotDevices.find(d => d.deviceId === deviceId);
+      showMsg(`${device?.deviceName || deviceId}: ${value}${unit} を入力しました`, true);
     } catch (e: any) {
       showMsg(e.message || 'SwitchBot取得失敗', false);
     } finally {
-      setFetchingTemp(null);
+      setFetchingDevice(null);
     }
-  };
-
-  // このテンプレートのアイテムにマッチするSwitchBotデバイス一覧を返す
-  const getMatchedDevices = (): { deviceId: string; itemIds: string[] }[] => {
-    if (!selected || Object.keys(switchbotMappings).length === 0) return [];
-    return Object.entries(switchbotMappings)
-      .map(([deviceId, itemIds]) => ({
-        deviceId,
-        itemIds: itemIds.filter(id => selected.items.some(i => i.id === id)),
-      }))
-      .filter(d => d.itemIds.length > 0);
   };
 
   const openTemplate = (tpl: Template) => {
@@ -267,20 +253,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
           <div style={s.right}>
             <div style={s.formHeader}>
               <div style={s.formTitle}>{selected.name}</div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {getMatchedDevices().map(({ deviceId, itemIds }) => (
-                  <button
-                    key={deviceId}
-                    style={s.switchbotBtn}
-                    onClick={() => fetchSwitchBot(deviceId, itemIds)}
-                    disabled={fetchingTemp === deviceId}
-                    title={`SwitchBot (${deviceId.slice(0, 8)}...) から温度・湿度を取得`}
-                  >
-                    {fetchingTemp === deviceId ? '取得中...' : '🌡️ SwitchBotから取得'}
-                  </button>
-                ))}
-                <button style={s.closeBtn} onClick={() => setSelected(null)}>✕</button>
-              </div>
+              <button style={s.closeBtn} onClick={() => setSelected(null)}>✕</button>
             </div>
 
             {/* 担当者 */}
@@ -324,16 +297,41 @@ export default function KioskHaccp({ storeId, staff }: Props) {
                       </label>
                     )}
                     {item.item_type === 'numeric' && (
-                      <input
-                        type="number"
-                        value={answers[item.id]}
-                        min={item.min_value}
-                        max={item.max_value}
-                        step="0.1"
-                        onChange={e => setAnswers(a => ({ ...a, [item.id]: e.target.value }))}
-                        style={s.numInput}
-                        data-testid={`haccp-item-${item.id}`}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input
+                          type="number"
+                          value={answers[item.id]}
+                          min={item.min_value}
+                          max={item.max_value}
+                          step="0.1"
+                          onChange={e => setAnswers(a => ({ ...a, [item.id]: e.target.value }))}
+                          style={s.numInput}
+                          data-testid={`haccp-item-${item.id}`}
+                        />
+                        {switchbotDevices.length > 0 && (item.unit === '°C' || item.unit === '%') && (
+                          switchbotDevices.length === 1 ? (
+                            <button
+                              style={s.switchbotBtn}
+                              onClick={() => fetchSwitchBot(switchbotDevices[0].deviceId, item.id, item.unit || '°C')}
+                              disabled={fetchingDevice === switchbotDevices[0].deviceId}
+                              title={switchbotDevices[0].deviceName}
+                            >
+                              {fetchingDevice === switchbotDevices[0].deviceId ? '...' : '🌡️'}
+                            </button>
+                          ) : (
+                            <select
+                              style={{ ...s.numInput, width: 'auto', fontSize: 12 }}
+                              onChange={e => e.target.value && fetchSwitchBot(e.target.value, item.id, item.unit || '°C')}
+                              value=""
+                            >
+                              <option value="">🌡️</option>
+                              {switchbotDevices.map(d => (
+                                <option key={d.deviceId} value={d.deviceId}>{d.deviceName}</option>
+                              ))}
+                            </select>
+                          )
+                        )}
+                      </div>
                     )}
                     {item.item_type === 'text' && (
                       <input
