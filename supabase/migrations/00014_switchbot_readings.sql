@@ -25,8 +25,8 @@ CREATE POLICY "store members can read switchbot_readings"
   ON switchbot_readings FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM store_memberships
-      WHERE store_memberships.store_id = switchbot_readings.store_id
-        AND store_memberships.user_id = auth.uid()
+      SELECT 1 FROM store_staff
+      WHERE store_staff.store_id = switchbot_readings.store_id
+        AND store_staff.user_id = auth.uid()
     )
   );
