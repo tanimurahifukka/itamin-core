@@ -114,6 +114,18 @@ export const api = {
       body: JSON.stringify({ roles }),
     }),
 
+  // SwitchBot
+  getSwitchBotReadings: (storeId: string, deviceId?: string, limit?: number) => {
+    const params = new URLSearchParams();
+    if (deviceId) params.set('deviceId', deviceId);
+    if (limit) params.set('limit', String(limit));
+    return request<{ readings: Array<{ id: string; device_id: string; device_name: string; temperature: number | null; humidity: number | null; battery: number | null; recorded_at: string }> }>(
+      `/switchbot/${storeId}/readings?${params}`
+    );
+  },
+  getSwitchBotAdminDevices: (storeId: string) =>
+    request<{ devices: Array<{ deviceId: string; deviceName: string; deviceType: string }> }>(`/switchbot/${storeId}/devices`),
+
   // Shift
   getWeeklyShifts: (storeId: string, date: string, days?: number) =>
     request<any>(`/shift/${storeId}/weekly?date=${date}${days ? `&days=${days}` : ''}`),
