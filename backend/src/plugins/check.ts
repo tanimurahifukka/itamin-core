@@ -1,3 +1,11 @@
+/**
+ * check プラグイン v2 — HACCP 準拠チェックリスト管理
+ *
+ * timing TEXT + CHECK: clock_in / clock_out / store_opening / store_closing / store_daily / ad_hoc
+ * scope : store / personal
+ * audit_level (store_plugins.config): simple / shift / item / approval
+ */
+
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
@@ -6,284 +14,377 @@ import type { Plugin } from '../types';
 import { requireStoreMembership, requireManagedStore } from '../auth/authorization';
 
 const router = Router();
-const VALID_TIMINGS = ['clock_in', 'clock_out'] as const;
-const VALID_LAYERS = ['base', 'shift'] as const;
 
-type ChecklistTiming = typeof VALID_TIMINGS[number];
-type ChecklistLayer = typeof VALID_LAYERS[number];
+const VALID_TIMINGS = ['clock_in', 'clock_out', 'store_opening', 'store_closing', 'store_daily', 'ad_hoc'] as const;
+const VALID_SCOPES  = ['store', 'personal'] as const;
+const VALID_LAYERS  = ['base', 'shift'] as const;
+const VALID_ITEM_TYPES    = ['checkbox', 'numeric', 'text', 'photo', 'select'] as const;
+const VALID_TRACKING_MODES = ['submission_only', 'measurement_only', 'both'] as const;
+const VALID_AUDIT_LEVELS  = ['simple', 'shift', 'item', 'approval'] as const;
+const VALID_SEVERITIES    = ['info', 'warning', 'ccp'] as const;
 
-interface ChecklistTemplateItem {
-  label: string;
-  category?: string;
+type CheckTiming = typeof VALID_TIMINGS[number];
+type CheckScope  = typeof VALID_SCOPES[number];
+
+function isValidTiming(v: string): v is CheckTiming {
+  return VALID_TIMINGS.includes(v as CheckTiming);
+}
+function isValidScope(v: string): v is CheckScope {
+  return VALID_SCOPES.includes(v as CheckScope);
 }
 
-function isValidTiming(value: string): value is ChecklistTiming {
-  return VALID_TIMINGS.includes(value as ChecklistTiming);
-}
+// ── ヘルパー ─────────────────────────────────────────────────────────────────
 
-function isValidLayer(value: string): value is ChecklistLayer {
-  return VALID_LAYERS.includes(value as ChecklistLayer);
-}
-
-function isValidTemplateItem(item: unknown): item is ChecklistTemplateItem {
-  if (!item || typeof item !== 'object') {
-    return false;
-  }
-
-  const candidate = item as Record<string, unknown>;
-  return typeof candidate.label === 'string'
-    && candidate.label.trim().length > 0
-    && (candidate.category === undefined || typeof candidate.category === 'string');
-}
-
-function normalizeTemplate(template: any) {
-  return {
-    id: template.id,
-    store_id: template.store_id,
-    name: template.name,
-    layer: template.layer,
-    timing: template.timing,
-    items: Array.isArray(template.items) ? template.items : [],
-    sort_order: template.sort_order ?? 0,
-    created_at: template.created_at,
-  };
-}
-
-function mergeChecklistItems(templates: any[]) {
-  return templates.flatMap((template) => (
-    Array.isArray(template.items)
-      ? template.items.map((item: any) => ({
-        ...item,
-        template_id: template.id,
-        template_name: template.name,
-        layer: template.layer,
-        timing: template.timing,
-        sort_order: template.sort_order ?? 0,
-      }))
-      : []
-  ));
-}
-
-// チェックリスト取得（store_id + timing）
-router.get('/checklists/:storeId/:timing', requireAuth, async (req: Request, res: Response) => {
-  try {
-    const storeId = String(req.params.storeId);
-    const timing = String(req.params.timing);
-    const membership = await requireStoreMembership(req, res, storeId);
-    if (!membership) return;
-
-    if (!isValidTiming(timing)) {
-      res.status(400).json({ error: 'timing は clock_in または clock_out を指定してください' });
-      return;
+function calcPassed(
+  item: { item_type: string; min_value: number | null; max_value: number | null },
+  values: { bool_value?: boolean | null; numeric_value?: number | null; text_value?: string | null; select_value?: string | null; file_path?: string | null },
+): boolean | null {
+  switch (item.item_type) {
+    case 'checkbox':
+      return values.bool_value === true;
+    case 'numeric': {
+      const v = values.numeric_value;
+      if (v == null) return null;
+      if (item.min_value != null && v < item.min_value) return false;
+      if (item.max_value != null && v > item.max_value) return false;
+      return true;
     }
+    case 'text':
+      return (values.text_value ?? '').trim().length > 0;
+    case 'select':
+      return (values.select_value ?? '').length > 0;
+    case 'photo':
+      return (values.file_path ?? '').length > 0;
+    default:
+      return null;
+  }
+}
 
-    const { data, error } = await supabaseAdmin
-      .from('checklists')
+async function getAuditLevel(storeId: string): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from('store_plugins')
+    .select('config')
+    .eq('store_id', storeId)
+    .eq('plugin_name', 'check')
+    .maybeSingle();
+  return data?.config?.audit_level ?? 'simple';
+}
+
+// ── システムテンプレート ──────────────────────────────────────────────────────
+
+// GET /api/check/system-templates?business_type=cafe
+router.get('/system-templates', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const businessType = String(req.query.business_type || 'cafe');
+
+    const { data: templates, error: tplErr } = await supabaseAdmin
+      .from('checklist_system_templates')
       .select('*')
-      .eq('store_id', storeId)
-      .eq('timing', timing)
-      .maybeSingle();
+      .eq('business_type', businessType)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
 
-    if (error) {
-      res.status(500).json({ error: error.message });
+    if (tplErr) {
+      res.status(500).json({ error: tplErr.message });
       return;
     }
 
-    // チェックリストが未登録の場合は空のリストを返す
-    const checklist = data || {
-      id: null,
-      store_id: storeId,
-      timing,
-      items: [],
-    };
+    if (!templates || templates.length === 0) {
+      res.json({ system_templates: [] });
+      return;
+    }
 
-    res.json({ checklist });
+    const tplIds = templates.map((t: any) => t.id);
+    const { data: items, error: itemErr } = await supabaseAdmin
+      .from('checklist_system_template_items')
+      .select('*')
+      .in('system_template_id', tplIds)
+      .order('sort_order', { ascending: true });
+
+    if (itemErr) {
+      res.status(500).json({ error: itemErr.message });
+      return;
+    }
+
+    const itemsByTemplate = (items || []).reduce((acc: any, item: any) => {
+      if (!acc[item.system_template_id]) acc[item.system_template_id] = [];
+      acc[item.system_template_id].push(item);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    const result = templates.map((t: any) => ({
+      ...t,
+      items: itemsByTemplate[t.id] || [],
+    }));
+
+    res.json({ system_templates: result });
   } catch (e: any) {
-    console.error('[check GET /checklists/:storeId/:timing] error:', e);
+    console.error('[check GET /system-templates] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
 
-// チェックリスト更新（upsert）— manager以上のみ
-router.put('/checklists/:storeId/:timing', requireAuth, async (req: Request, res: Response) => {
-  try {
-    const storeId = String(req.params.storeId);
-    const timing = String(req.params.timing);
-    const membership = await requireManagedStore(req, res, storeId);
-    if (!membership) return;
+// ── 店舗テンプレート ──────────────────────────────────────────────────────────
 
-    const items = req.body?.items;
-
-    if (!isValidTiming(timing)) {
-      res.status(400).json({ error: 'timing は clock_in または clock_out を指定してください' });
-      return;
-    }
-
-    if (!Array.isArray(items)) {
-      res.status(400).json({ error: 'items は配列で指定してください' });
-      return;
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('checklists')
-      .upsert({
-        store_id: storeId,
-        timing,
-        items,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'store_id,timing' })
-      .select()
-      .single();
-
-    if (error) {
-      res.status(500).json({ error: error.message });
-      return;
-    }
-
-    res.json({ checklist: data });
-  } catch (e: any) {
-    console.error('[check PUT /checklists/:storeId/:timing] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
-  }
-});
-
-// テンプレート一覧
-router.get('/templates/:storeId', requireAuth, async (req: Request, res: Response) => {
+// GET /api/check/:storeId/templates?scope=&timing=&layer=
+router.get('/:storeId/templates', requireAuth, async (req: Request, res: Response) => {
   try {
     const storeId = String(req.params.storeId);
     const membership = await requireStoreMembership(req, res, storeId);
     if (!membership) return;
 
-    const { data, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('checklist_templates')
       .select('*')
       .eq('store_id', storeId)
+      .eq('is_active', true)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
 
+    if (req.query.scope && isValidScope(String(req.query.scope))) {
+      query = query.eq('scope', String(req.query.scope));
+    }
+    if (req.query.timing && isValidTiming(String(req.query.timing))) {
+      query = query.eq('timing', String(req.query.timing));
+    }
+    if (req.query.layer && VALID_LAYERS.includes(String(req.query.layer) as any)) {
+      query = query.eq('layer', String(req.query.layer));
+    }
+
+    const { data, error } = await query;
     if (error) {
       res.status(500).json({ error: error.message });
       return;
     }
 
-    res.json({ templates: (data || []).map(normalizeTemplate) });
+    res.json({ templates: data || [] });
   } catch (e: any) {
-    console.error('[check GET /templates/:storeId] error:', e);
+    console.error('[check GET /:storeId/templates] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
 
-// テンプレート作成
-router.post('/templates/:storeId', requireAuth, async (req: Request, res: Response) => {
+// POST /api/check/:storeId/templates/from-system — システムテンプレートからコピー
+router.post('/:storeId/templates/from-system', requireAuth, async (req: Request, res: Response) => {
   try {
     const storeId = String(req.params.storeId);
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
-    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
-    const layer = String(req.body?.layer ?? '');
-    const timing = String(req.body?.timing ?? '');
-    const sortOrder = Number.isInteger(req.body?.sort_order) ? req.body.sort_order : 0;
-    const items = req.body?.items;
-
-    if (!name) {
-      res.status(400).json({ error: 'name は必須です' });
+    const systemTemplateId = String(req.body?.system_template_id || '');
+    if (!systemTemplateId) {
+      res.status(400).json({ error: 'system_template_id は必須です' });
       return;
     }
 
-    if (!isValidLayer(layer)) {
-      res.status(400).json({ error: 'layer は base または shift を指定してください' });
+    const { data: sys, error: sysErr } = await supabaseAdmin
+      .from('checklist_system_templates')
+      .select('*')
+      .eq('id', systemTemplateId)
+      .maybeSingle();
+
+    if (sysErr || !sys) {
+      res.status(404).json({ error: 'システムテンプレートが見つかりません' });
       return;
     }
 
-    if (!isValidTiming(timing)) {
-      res.status(400).json({ error: 'timing は clock_in または clock_out を指定してください' });
+    const { data: sysItems, error: siErr } = await supabaseAdmin
+      .from('checklist_system_template_items')
+      .select('*')
+      .eq('system_template_id', systemTemplateId)
+      .order('sort_order', { ascending: true });
+
+    if (siErr) {
+      res.status(500).json({ error: siErr.message });
       return;
     }
 
-    if (!Array.isArray(items) || !items.every(isValidTemplateItem)) {
-      res.status(400).json({ error: 'items は { label: string, category?: string } の配列で指定してください' });
+    // テンプレート作成
+    const { data: tpl, error: tplErr } = await supabaseAdmin
+      .from('checklist_templates')
+      .insert({
+        store_id: storeId,
+        system_template_id: systemTemplateId,
+        name: sys.name,
+        timing: sys.timing,
+        scope: sys.scope,
+        layer: sys.layer,
+        description: sys.description,
+        version: 1,
+        created_by: req.user!.id,
+        updated_by: req.user!.id,
+      })
+      .select('*')
+      .single();
+
+    if (tplErr || !tpl) {
+      res.status(500).json({ error: tplErr?.message || 'テンプレート作成に失敗しました' });
       return;
     }
+
+    // 項目コピー
+    if (sysItems && sysItems.length > 0) {
+      const itemsToInsert = sysItems.map((si: any) => ({
+        store_id: storeId,
+        template_id: tpl.id,
+        item_key: si.item_key,
+        label: si.label,
+        item_type: si.item_type,
+        required: si.required,
+        min_value: si.min_value,
+        max_value: si.max_value,
+        unit: si.unit,
+        options: si.options,
+        is_ccp: si.is_ccp,
+        tracking_mode: si.tracking_mode,
+        frequency_per_day: si.frequency_per_day,
+        frequency_interval_minutes: si.frequency_interval_minutes,
+        deviation_action: si.deviation_action,
+        sort_order: si.sort_order,
+      }));
+
+      const { error: itemErr } = await supabaseAdmin
+        .from('checklist_template_items')
+        .insert(itemsToInsert);
+
+      if (itemErr) {
+        res.status(500).json({ error: itemErr.message });
+        return;
+      }
+    }
+
+    // 項目付きで返す
+    const { data: createdItems } = await supabaseAdmin
+      .from('checklist_template_items')
+      .select('*')
+      .eq('template_id', tpl.id)
+      .order('sort_order', { ascending: true });
+
+    res.status(201).json({ template: { ...tpl, items: createdItems || [] } });
+  } catch (e: any) {
+    console.error('[check POST /:storeId/templates/from-system] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// POST /api/check/:storeId/templates — カスタムテンプレート作成
+router.post('/:storeId/templates', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const name    = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const timing  = String(req.body?.timing ?? '');
+    const scope   = String(req.body?.scope ?? 'personal');
+    const layer   = String(req.body?.layer ?? 'base');
+
+    if (!name) { res.status(400).json({ error: 'name は必須です' }); return; }
+    if (!isValidTiming(timing)) { res.status(400).json({ error: 'timing が不正です' }); return; }
+    if (!isValidScope(scope))   { res.status(400).json({ error: 'scope は store または personal を指定してください' }); return; }
+    if (!VALID_LAYERS.includes(layer as any)) { res.status(400).json({ error: 'layer は base または shift を指定してください' }); return; }
 
     const { data, error } = await supabaseAdmin
       .from('checklist_templates')
       .insert({
         store_id: storeId,
         name,
-        layer,
         timing,
-        items,
-        sort_order: sortOrder,
+        scope,
+        layer,
+        description: req.body?.description ?? null,
+        sort_order: Number.isInteger(req.body?.sort_order) ? req.body.sort_order : 0,
+        created_by: req.user!.id,
+        updated_by: req.user!.id,
       })
       .select('*')
       .single();
 
-    if (error) {
-      res.status(500).json({ error: error.message });
-      return;
-    }
+    if (error) { res.status(500).json({ error: error.message }); return; }
 
-    res.status(201).json({ template: normalizeTemplate(data) });
+    res.status(201).json({ template: { ...data, items: [] } });
   } catch (e: any) {
-    console.error('[check POST /templates/:storeId] error:', e);
+    console.error('[check POST /:storeId/templates] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
 
-// テンプレート更新
-router.put('/templates/:storeId/:templateId', requireAuth, async (req: Request, res: Response) => {
+// GET /api/check/:storeId/templates/:templateId
+router.get('/:storeId/templates/:templateId', requireAuth, async (req: Request, res: Response) => {
   try {
-    const storeId = String(req.params.storeId);
+    const storeId    = String(req.params.storeId);
+    const templateId = String(req.params.templateId);
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    const { data: tpl, error } = await supabaseAdmin
+      .from('checklist_templates')
+      .select('*')
+      .eq('id', templateId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (!tpl)  { res.status(404).json({ error: 'テンプレートが見つかりません' }); return; }
+
+    const { data: items } = await supabaseAdmin
+      .from('checklist_template_items')
+      .select('*')
+      .eq('template_id', templateId)
+      .order('sort_order', { ascending: true });
+
+    res.json({ template: { ...tpl, items: items || [] } });
+  } catch (e: any) {
+    console.error('[check GET /:storeId/templates/:templateId] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// PUT /api/check/:storeId/templates/:templateId
+router.put('/:storeId/templates/:templateId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId    = String(req.params.storeId);
     const templateId = String(req.params.templateId);
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
-    const updates: Record<string, unknown> = {};
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString(), updated_by: req.user!.id };
 
     if (req.body?.name !== undefined) {
-      if (typeof req.body.name !== 'string' || !req.body.name.trim()) {
-        res.status(400).json({ error: 'name は空でない文字列で指定してください' });
-        return;
-      }
-      updates.name = req.body.name.trim();
+      const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+      if (!name) { res.status(400).json({ error: 'name は空でない文字列で指定してください' }); return; }
+      updates.name = name;
     }
-
-    if (req.body?.layer !== undefined) {
-      if (!isValidLayer(String(req.body.layer))) {
-        res.status(400).json({ error: 'layer は base または shift を指定してください' });
-        return;
-      }
-      updates.layer = req.body.layer;
-    }
-
     if (req.body?.timing !== undefined) {
-      if (!isValidTiming(String(req.body.timing))) {
-        res.status(400).json({ error: 'timing は clock_in または clock_out を指定してください' });
-        return;
-      }
+      if (!isValidTiming(String(req.body.timing))) { res.status(400).json({ error: 'timing が不正です' }); return; }
       updates.timing = req.body.timing;
     }
-
-    if (req.body?.sort_order !== undefined) {
-      if (!Number.isInteger(req.body.sort_order)) {
-        res.status(400).json({ error: 'sort_order は整数で指定してください' });
-        return;
-      }
-      updates.sort_order = req.body.sort_order;
+    if (req.body?.scope !== undefined) {
+      if (!isValidScope(String(req.body.scope))) { res.status(400).json({ error: 'scope が不正です' }); return; }
+      updates.scope = req.body.scope;
     }
-
-    if (req.body?.items !== undefined) {
-      if (!Array.isArray(req.body.items) || !req.body.items.every(isValidTemplateItem)) {
-        res.status(400).json({ error: 'items は { label: string, category?: string } の配列で指定してください' });
-        return;
-      }
-      updates.items = req.body.items;
+    if (req.body?.layer !== undefined) {
+      if (!VALID_LAYERS.includes(String(req.body.layer) as any)) { res.status(400).json({ error: 'layer が不正です' }); return; }
+      updates.layer = req.body.layer;
     }
+    if (req.body?.description !== undefined) updates.description = req.body.description;
+    if (req.body?.is_active !== undefined)   updates.is_active   = Boolean(req.body.is_active);
 
-    if (Object.keys(updates).length === 0) {
-      res.status(400).json({ error: '更新対象の項目がありません' });
-      return;
+    // version インクリメント（名前・タイミング変更時）
+    const { data: cur, error: curErr } = await supabaseAdmin
+      .from('checklist_templates')
+      .select('version')
+      .eq('id', templateId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (curErr || !cur) { res.status(404).json({ error: 'テンプレートが見つかりません' }); return; }
+
+    // 名前や timing の変更はバージョンを上げる
+    if (updates.name || updates.timing || updates.scope) {
+      updates.version = (cur.version ?? 1) + 1;
+    } else {
+      delete updates.version;
     }
 
     const { data, error } = await supabaseAdmin
@@ -294,187 +395,222 @@ router.put('/templates/:storeId/:templateId', requireAuth, async (req: Request, 
       .select('*')
       .maybeSingle();
 
-    if (error) {
-      res.status(500).json({ error: error.message });
-      return;
-    }
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (!data)  { res.status(404).json({ error: 'テンプレートが見つかりません' }); return; }
 
-    if (!data) {
-      res.status(404).json({ error: 'template が見つかりません' });
-      return;
-    }
-
-    res.json({ template: normalizeTemplate(data) });
+    res.json({ template: data });
   } catch (e: any) {
-    console.error('[check PUT /templates/:storeId/:templateId] error:', e);
+    console.error('[check PUT /:storeId/templates/:templateId] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
 
-// テンプレート削除
-router.delete('/templates/:storeId/:templateId', requireAuth, async (req: Request, res: Response) => {
+// DELETE /api/check/:storeId/templates/:templateId — 論理削除
+router.delete('/:storeId/templates/:templateId', requireAuth, async (req: Request, res: Response) => {
   try {
-    const storeId = String(req.params.storeId);
+    const storeId    = String(req.params.storeId);
     const templateId = String(req.params.templateId);
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
     const { error } = await supabaseAdmin
       .from('checklist_templates')
-      .delete()
+      .update({ is_active: false, updated_at: new Date().toISOString() })
       .eq('id', templateId)
       .eq('store_id', storeId);
 
-    if (error) {
-      res.status(500).json({ error: error.message });
-      return;
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error('[check DELETE /:storeId/templates/:templateId] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ── テンプレート項目 ──────────────────────────────────────────────────────────
+
+// POST /api/check/:storeId/templates/:templateId/items
+router.post('/:storeId/templates/:templateId/items', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId    = String(req.params.storeId);
+    const templateId = String(req.params.templateId);
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const label    = typeof req.body?.label === 'string' ? req.body.label.trim() : '';
+    const itemKey  = typeof req.body?.item_key === 'string' ? req.body.item_key.trim() : '';
+    const itemType = String(req.body?.item_type ?? 'checkbox');
+
+    if (!label)   { res.status(400).json({ error: 'label は必須です' }); return; }
+    if (!VALID_ITEM_TYPES.includes(itemType as any)) { res.status(400).json({ error: 'item_type が不正です' }); return; }
+
+    // テンプレートの所有確認
+    const { data: tpl } = await supabaseAdmin
+      .from('checklist_templates')
+      .select('id, version')
+      .eq('id', templateId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+    if (!tpl) { res.status(404).json({ error: 'テンプレートが見つかりません' }); return; }
+
+    const { data: item, error } = await supabaseAdmin
+      .from('checklist_template_items')
+      .insert({
+        store_id: storeId,
+        template_id: templateId,
+        item_key: itemKey || `item_${Date.now()}`,
+        label,
+        item_type: itemType,
+        required: req.body?.required !== false,
+        min_value: req.body?.min_value ?? null,
+        max_value: req.body?.max_value ?? null,
+        unit: req.body?.unit ?? null,
+        options: req.body?.options ?? {},
+        is_ccp: Boolean(req.body?.is_ccp),
+        tracking_mode: VALID_TRACKING_MODES.includes(req.body?.tracking_mode) ? req.body.tracking_mode : 'submission_only',
+        frequency_per_day: req.body?.frequency_per_day ?? null,
+        frequency_interval_minutes: req.body?.frequency_interval_minutes ?? null,
+        deviation_action: req.body?.deviation_action ?? null,
+        sort_order: Number.isInteger(req.body?.sort_order) ? req.body.sort_order : 0,
+      })
+      .select('*')
+      .single();
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    // 項目変更時はバージョンをインクリメント
+    await supabaseAdmin
+      .from('checklist_templates')
+      .update({ version: (tpl.version ?? 1) + 1, updated_at: new Date().toISOString() })
+      .eq('id', templateId);
+
+    res.status(201).json({ item });
+  } catch (e: any) {
+    console.error('[check POST /:storeId/templates/:templateId/items] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// PUT /api/check/:storeId/template-items/:itemId
+router.put('/:storeId/template-items/:itemId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const itemId  = String(req.params.itemId);
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+    const fields = ['label', 'item_key', 'item_type', 'required', 'min_value', 'max_value',
+      'unit', 'options', 'is_ccp', 'tracking_mode', 'frequency_per_day',
+      'frequency_interval_minutes', 'deviation_action', 'sort_order'];
+
+    for (const f of fields) {
+      if (req.body?.[f] !== undefined) updates[f] = req.body[f];
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('checklist_template_items')
+      .update(updates)
+      .eq('id', itemId)
+      .eq('store_id', storeId)
+      .select('*')
+      .maybeSingle();
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (!data)  { res.status(404).json({ error: '項目が見つかりません' }); return; }
+
+    // テンプレートのバージョンをインクリメント
+    const { data: tpl } = await supabaseAdmin
+      .from('checklist_templates')
+      .select('id, version')
+      .eq('id', data.template_id)
+      .maybeSingle();
+    if (tpl) {
+      await supabaseAdmin
+        .from('checklist_templates')
+        .update({ version: (tpl.version ?? 1) + 1, updated_at: new Date().toISOString() })
+        .eq('id', tpl.id);
+    }
+
+    res.json({ item: data });
+  } catch (e: any) {
+    console.error('[check PUT /:storeId/template-items/:itemId] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// DELETE /api/check/:storeId/template-items/:itemId
+router.delete('/:storeId/template-items/:itemId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const itemId  = String(req.params.itemId);
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const { data: item } = await supabaseAdmin
+      .from('checklist_template_items')
+      .select('template_id')
+      .eq('id', itemId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    const { error } = await supabaseAdmin
+      .from('checklist_template_items')
+      .delete()
+      .eq('id', itemId)
+      .eq('store_id', storeId);
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    if (item?.template_id) {
+      const { data: tpl } = await supabaseAdmin
+        .from('checklist_templates')
+        .select('version')
+        .eq('id', item.template_id)
+        .maybeSingle();
+      if (tpl) {
+        await supabaseAdmin
+          .from('checklist_templates')
+          .update({ version: (tpl.version ?? 1) + 1, updated_at: new Date().toISOString() })
+          .eq('id', item.template_id);
+      }
     }
 
     res.json({ ok: true });
   } catch (e: any) {
-    console.error('[check DELETE /templates/:storeId/:templateId] error:', e);
+    console.error('[check DELETE /:storeId/template-items/:itemId] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
 
-// シフト用結合チェックリスト取得
-router.get('/templates/:storeId/for-shift/:shiftType/:timing', requireAuth, async (req: Request, res: Response) => {
-  try {
-    const storeId = String(req.params.storeId);
-    const shiftType = String(req.params.shiftType);
-    const timing = String(req.params.timing);
-    const membership = await requireStoreMembership(req, res, storeId);
-    if (!membership) return;
+// ── 割当（Assignments）────────────────────────────────────────────────────────
 
-    if (!isValidTiming(timing)) {
-      res.status(400).json({ error: 'timing は clock_in または clock_out を指定してください' });
-      return;
-    }
-
-    // シフト紐付けを確認
-    // シフト紐付けを確認（joinなし）
-    const { data: shiftMaps, error: mapError } = await supabaseAdmin
-      .from('shift_checklist_map')
-      .select('id, shift_type, template_id')
-      .eq('store_id', storeId)
-      .eq('shift_type', shiftType);
-
-    if (mapError) {
-      console.error('[check for-shift] map error:', mapError);
-      res.status(500).json({ error: mapError.message });
-      return;
-    }
-
-    const hasShiftMapping = (shiftMaps || []).length > 0;
-
-    let allTemplates: any[];
-
-    if (hasShiftMapping) {
-      // シフト紐付けあり: base + 紐付けされたshiftテンプレート
-      const shiftTemplateIds = (shiftMaps || []).map((m: any) => m.template_id);
-
-      const { data: allData, error: allError } = await supabaseAdmin
-        .from('checklist_templates')
-        .select('*')
-        .eq('store_id', storeId)
-        .eq('timing', timing)
-        .or(`layer.eq.base,id.in.(${shiftTemplateIds.join(',')})`)
-        .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: true });
-
-      if (allError) {
-        res.status(500).json({ error: allError.message });
-        return;
-      }
-      allTemplates = allData || [];
-    } else {
-      // シフト紐付けなし: baseテンプレートのみ
-      const { data: baseOnly, error: baseOnlyError } = await supabaseAdmin
-        .from('checklist_templates')
-        .select('*')
-        .eq('store_id', storeId)
-        .eq('layer', 'base')
-        .eq('timing', timing)
-        .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: true });
-
-      if (baseOnlyError) {
-        res.status(500).json({ error: baseOnlyError.message });
-        return;
-      }
-      allTemplates = baseOnly || [];
-    }
-
-    const templates = allTemplates
-      .sort((a, b) => {
-        const sortDiff = (a.sort_order ?? 0) - (b.sort_order ?? 0);
-        if (sortDiff !== 0) {
-          return sortDiff;
-        }
-        return String(a.created_at ?? '').localeCompare(String(b.created_at ?? ''));
-      })
-      .map(normalizeTemplate);
-
-    res.json({
-      store_id: storeId,
-      shift_type: shiftType,
-      timing,
-      templates,
-      items: mergeChecklistItems(templates),
-    });
-  } catch (e: any) {
-    console.error('[check GET /templates/:storeId/for-shift/:shiftType/:timing] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
-  }
-});
-
-// シフト×テンプレート紐付け一覧
-router.get('/shift-map/:storeId', requireAuth, async (req: Request, res: Response) => {
+// GET /api/check/:storeId/assignments
+router.get('/:storeId/assignments', requireAuth, async (req: Request, res: Response) => {
   try {
     const storeId = String(req.params.storeId);
     const membership = await requireStoreMembership(req, res, storeId);
     if (!membership) return;
 
-    const { data: mapData, error: mapError } = await supabaseAdmin
-      .from('shift_checklist_map')
-      .select('id, store_id, shift_type, template_id')
+    const { data, error } = await supabaseAdmin
+      .from('checklist_assignments')
+      .select('*')
       .eq('store_id', storeId)
-      .order('shift_type', { ascending: true });
+      .order('timing', { ascending: true });
 
-    if (mapError) {
-      console.error('[check GET /shift-map] error:', mapError);
-      res.status(500).json({ error: mapError.message });
-      return;
-    }
+    if (error) { res.status(500).json({ error: error.message }); return; }
 
-    // テンプレート情報を別クエリで取得
-    const templateIds = [...new Set((mapData || []).map((m: any) => m.template_id))];
-    let templateMap = new Map<string, any>();
-    if (templateIds.length > 0) {
-      const { data: tplData } = await supabaseAdmin
-        .from('checklist_templates')
-        .select('*')
-        .in('id', templateIds);
-      (tplData || []).forEach((t: any) => templateMap.set(t.id, normalizeTemplate(t)));
-    }
-
-    const maps = (mapData || []).map((entry: any) => ({
-      id: entry.id,
-      store_id: entry.store_id,
-      shift_type: entry.shift_type,
-      template_id: entry.template_id,
-      template: templateMap.get(entry.template_id) || null,
-    }));
-
-    res.json({ mappings: maps });
+    res.json({ assignments: data || [] });
   } catch (e: any) {
-    console.error('[check GET /shift-map/:storeId] error:', e);
+    console.error('[check GET /:storeId/assignments] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
 
-// シフト×テンプレート紐付け更新（全置換）
-router.put('/shift-map/:storeId', requireAuth, async (req: Request, res: Response) => {
+// PUT /api/check/:storeId/assignments — 全置換
+router.put('/:storeId/assignments', requireAuth, async (req: Request, res: Response) => {
   try {
     const storeId = String(req.params.storeId);
     const membership = await requireManagedStore(req, res, storeId);
@@ -486,182 +622,663 @@ router.put('/shift-map/:storeId', requireAuth, async (req: Request, res: Respons
       return;
     }
 
-    const normalizedMappings = mappings.map((mapping: any) => ({
-      shift_type: typeof mapping?.shift_type === 'string' ? mapping.shift_type.trim() : '',
-      template_id: typeof mapping?.template_id === 'string' ? mapping.template_id.trim() : '',
-    }));
-
-    const hasInvalid = normalizedMappings.some((mapping) => !mapping.shift_type || !mapping.template_id);
-    if (hasInvalid) {
-      res.status(400).json({ error: 'mappings は { shift_type: string, template_id: string } の配列で指定してください' });
-      return;
-    }
-
-    const templateIds = Array.from(new Set(normalizedMappings.map((mapping) => mapping.template_id)));
-    if (templateIds.length > 0) {
-      const { data: templates, error: templateError } = await supabaseAdmin
-        .from('checklist_templates')
-        .select('id')
-        .eq('store_id', storeId)
-        .in('id', templateIds);
-
-      if (templateError) {
-        res.status(500).json({ error: templateError.message });
+    // バリデーション
+    for (const m of mappings) {
+      if (!isValidTiming(String(m?.timing ?? ''))) {
+        res.status(400).json({ error: `timing が不正です: ${m?.timing}` });
         return;
       }
-
-      const foundIds = new Set((templates || []).map((template: any) => template.id));
-      const missingId = templateIds.find((id) => !foundIds.has(id));
-      if (missingId) {
-        res.status(400).json({ error: `template_id が不正です: ${missingId}` });
+      if (!isValidScope(String(m?.scope ?? ''))) {
+        res.status(400).json({ error: `scope が不正です: ${m?.scope}` });
+        return;
+      }
+      if (!m?.template_id) {
+        res.status(400).json({ error: 'template_id は必須です' });
         return;
       }
     }
 
-    const { error: deleteError } = await supabaseAdmin
-      .from('shift_checklist_map')
+    const { error: delErr } = await supabaseAdmin
+      .from('checklist_assignments')
       .delete()
       .eq('store_id', storeId);
 
-    if (deleteError) {
-      res.status(500).json({ error: deleteError.message });
+    if (delErr) { res.status(500).json({ error: delErr.message }); return; }
+
+    if (mappings.length === 0) {
+      res.json({ assignments: [] });
       return;
     }
 
-    if (normalizedMappings.length === 0) {
-      res.json({ mappings: [] });
-      return;
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('shift_checklist_map')
-      .insert(normalizedMappings.map((mapping) => ({
-        store_id: storeId,
-        shift_type: mapping.shift_type,
-        template_id: mapping.template_id,
-      })))
-      .select('id, store_id, shift_type, template_id');
-
-    if (error) {
-      res.status(500).json({ error: error.message });
-      return;
-    }
-
-    // テンプレート情報を別クエリで取得
-    const tplIds = [...new Set((data || []).map((m: any) => m.template_id))];
-    let tplMap = new Map<string, any>();
-    if (tplIds.length > 0) {
-      const { data: tplData } = await supabaseAdmin
-        .from('checklist_templates')
-        .select('*')
-        .in('id', tplIds);
-      (tplData || []).forEach((t: any) => tplMap.set(t.id, normalizeTemplate(t)));
-    }
-
-    const result = (data || []).map((entry: any) => ({
-      id: entry.id,
-      store_id: entry.store_id,
-      shift_type: entry.shift_type,
-      template_id: entry.template_id,
-      template: tplMap.get(entry.template_id) || null,
+    const toInsert = mappings.map((m: any) => ({
+      store_id: storeId,
+      timing: m.timing,
+      scope: m.scope,
+      shift_type: m.shift_type ?? null,
+      template_id: m.template_id,
     }));
 
-    res.json({ mappings: result });
+    const { data, error } = await supabaseAdmin
+      .from('checklist_assignments')
+      .insert(toInsert)
+      .select('*');
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    res.json({ assignments: data || [] });
   } catch (e: any) {
-    console.error('[check PUT /shift-map/:storeId] error:', e);
+    console.error('[check PUT /:storeId/assignments] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
 
-// チェック記録保存
-router.post('/records', requireAuth, async (req: Request, res: Response) => {
+// ── 実行時アクティブチェックリスト ───────────────────────────────────────────
+
+// GET /api/check/:storeId/active?scope=personal&timing=clock_in&shift_type=morning
+router.get('/:storeId/active', requireAuth, async (req: Request, res: Response) => {
   try {
-    const store_id = req.body?.store_id;
-    const staff_id = req.body?.staff_id;
-    const timing = req.body?.timing;
-    const results = req.body?.results;
+    const storeId   = String(req.params.storeId);
+    const timing    = String(req.query.timing ?? 'clock_in');
+    const scope     = String(req.query.scope ?? 'personal');
+    const shiftType = req.query.shift_type ? String(req.query.shift_type) : null;
 
-    if (!store_id || !staff_id || !timing || !Array.isArray(results)) {
-      res.status(400).json({ error: 'store_id, staff_id, timing, results は必須です' });
-      return;
-    }
-
-    const membership = await requireStoreMembership(req, res, store_id);
+    const membership = await requireStoreMembership(req, res, storeId);
     if (!membership) return;
 
-    const all_checked = results.every((r: any) => r.checked);
+    if (!isValidTiming(timing)) { res.status(400).json({ error: 'timing が不正です' }); return; }
+    if (!isValidScope(scope))   { res.status(400).json({ error: 'scope が不正です' }); return; }
 
-    const userId = req.user!.id;
+    // 割当を取得
+    let assignQuery = supabaseAdmin
+      .from('checklist_assignments')
+      .select('template_id')
+      .eq('store_id', storeId)
+      .eq('timing', timing)
+      .eq('scope', scope);
 
-    const { data, error } = await supabaseAdmin
-      .from('check_records')
-      .insert({
-        store_id,
-        staff_id,
-        user_id: userId,
-        timing,
-        results,
-        all_checked,
-        checked_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
+    if (shiftType) {
+      assignQuery = assignQuery.or(`shift_type.is.null,shift_type.eq.${shiftType}`);
+    } else {
+      assignQuery = assignQuery.is('shift_type', null);
+    }
 
-    if (error) {
-      res.status(500).json({ error: error.message });
+    const { data: assignments, error: assignErr } = await assignQuery;
+    if (assignErr) { res.status(500).json({ error: assignErr.message }); return; }
+
+    let templateIds: string[] = (assignments || []).map((a: any) => a.template_id);
+
+    // 割当が無い場合はフォールバック: is_active な base テンプレートを返す
+    if (templateIds.length === 0) {
+      const { data: fallbackTemplates, error: fbErr } = await supabaseAdmin
+        .from('checklist_templates')
+        .select('id')
+        .eq('store_id', storeId)
+        .eq('timing', timing)
+        .eq('scope', scope)
+        .eq('layer', 'base')
+        .eq('is_active', true);
+
+      if (fbErr) { res.status(500).json({ error: fbErr.message }); return; }
+      templateIds = (fallbackTemplates || []).map((t: any) => t.id);
+    }
+
+    if (templateIds.length === 0) {
+      res.json({ templates: [], merged_items: [] });
       return;
     }
 
-    res.status(201).json({ record: data });
+    // テンプレート取得
+    const { data: templates, error: tplErr } = await supabaseAdmin
+      .from('checklist_templates')
+      .select('*')
+      .in('id', templateIds)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+
+    if (tplErr) { res.status(500).json({ error: tplErr.message }); return; }
+
+    // 項目取得
+    const { data: items, error: itemErr } = await supabaseAdmin
+      .from('checklist_template_items')
+      .select('*')
+      .in('template_id', templateIds)
+      .order('sort_order', { ascending: true });
+
+    if (itemErr) { res.status(500).json({ error: itemErr.message }); return; }
+
+    const itemsByTemplate = (items || []).reduce((acc: any, item: any) => {
+      if (!acc[item.template_id]) acc[item.template_id] = [];
+      acc[item.template_id].push(item);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    const enrichedTemplates = (templates || []).map((t: any) => ({
+      ...t,
+      items: itemsByTemplate[t.id] || [],
+    }));
+
+    // base → shift の順にマージ
+    const sorted = [...enrichedTemplates].sort((a, b) => {
+      const layerOrder = { base: 0, shift: 1 };
+      return (layerOrder[a.layer as 'base' | 'shift'] ?? 0) - (layerOrder[b.layer as 'base' | 'shift'] ?? 0);
+    });
+
+    const mergedItems = sorted.flatMap((t: any) =>
+      (t.items || []).map((item: any) => ({
+        ...item,
+        template_id: t.id,
+        template_name: t.name,
+        template_layer: t.layer,
+      }))
+    );
+
+    res.json({ templates: enrichedTemplates, merged_items: mergedItems });
   } catch (e: any) {
-    console.error('[check POST /records] error:', e);
+    console.error('[check GET /:storeId/active] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
 
-// チェック記録取得（日付フィルター対応）
-router.get('/records/:storeId', requireAuth, async (req: Request, res: Response) => {
+// ── チェックリスト提出 ────────────────────────────────────────────────────────
+
+// POST /api/check/:storeId/submissions
+router.post('/:storeId/submissions', requireAuth, async (req: Request, res: Response) => {
   try {
     const storeId = String(req.params.storeId);
     const membership = await requireStoreMembership(req, res, storeId);
     if (!membership) return;
 
-    const { start_date, end_date, staff_id } = req.query;
+    const {
+      scope, timing, template_id, membership_id, session_id, shift_slot_id,
+      responsible_membership_id, items,
+    } = req.body ?? {};
 
-    let query = supabaseAdmin
-      .from('check_records')
-      .select('*')
-      .eq('store_id', storeId)
-      .order('checked_at', { ascending: false });
-
-    if (start_date) {
-      query = query.gte('checked_at', `${start_date}T00:00:00`);
+    if (!isValidTiming(String(timing ?? ''))) {
+      res.status(400).json({ error: 'timing が不正です' });
+      return;
     }
-    if (end_date) {
-      query = query.lte('checked_at', `${end_date}T23:59:59`);
+    if (!isValidScope(String(scope ?? ''))) {
+      res.status(400).json({ error: 'scope が不正です' });
+      return;
     }
-    if (staff_id) {
-      query = query.eq('staff_id', staff_id as string);
+    if (!template_id) {
+      res.status(400).json({ error: 'template_id は必須です' });
+      return;
     }
-
-    const { data, error } = await query;
-
-    if (error) {
-      res.status(500).json({ error: error.message });
+    if (!membership_id) {
+      res.status(400).json({ error: 'membership_id は必須です' });
+      return;
+    }
+    if (!Array.isArray(items)) {
+      res.status(400).json({ error: 'items は配列で指定してください' });
       return;
     }
 
-    res.json({ records: data || [] });
+    const auditLevel = await getAuditLevel(storeId);
+
+    // audit_level 検証
+    if (auditLevel === 'shift' && !responsible_membership_id) {
+      res.status(400).json({ error: 'audit_level=shift では responsible_membership_id が必須です' });
+      return;
+    }
+    if (auditLevel === 'item' || auditLevel === 'approval') {
+      const allHaveCheckedBy = items.every((item: any) => item.checked_by);
+      if (!allHaveCheckedBy) {
+        res.status(400).json({ error: 'audit_level=item 以上では各項目に checked_by が必須です' });
+        return;
+      }
+    }
+
+    // テンプレート取得（バージョン + スナップショット用）
+    const { data: tpl, error: tplErr } = await supabaseAdmin
+      .from('checklist_templates')
+      .select('*')
+      .eq('id', template_id)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (tplErr || !tpl) {
+      res.status(404).json({ error: 'テンプレートが見つかりません' });
+      return;
+    }
+
+    const { data: tplItems } = await supabaseAdmin
+      .from('checklist_template_items')
+      .select('*')
+      .eq('template_id', template_id)
+      .order('sort_order', { ascending: true });
+
+    const itemMap = new Map((tplItems || []).map((i: any) => [i.id, i]));
+
+    // 各 item の passed 計算 + 逸脱フラグ
+    const processedItems: any[] = [];
+    let allPassed = true;
+    let hasDeviation = false;
+
+    for (const item of items) {
+      const tplItem = itemMap.get(item.template_item_id);
+      const passed = tplItem ? calcPassed(tplItem, item) : null;
+
+      if (passed === false && tplItem?.required) {
+        allPassed = false;
+        if (tplItem?.is_ccp) hasDeviation = true;
+        else if (passed === false) hasDeviation = true;
+      }
+
+      processedItems.push({
+        item_key: item.item_key ?? tplItem?.item_key ?? 'unknown',
+        template_item_id: item.template_item_id ?? null,
+        bool_value: item.bool_value ?? null,
+        numeric_value: item.numeric_value ?? null,
+        text_value: item.text_value ?? null,
+        select_value: item.select_value ?? null,
+        file_path: item.file_path ?? null,
+        checked_by: item.checked_by ?? null,
+        checked_at: item.checked_at ?? null,
+        passed,
+        tplItem,
+      });
+    }
+
+    // approval レベルの場合、提出時点では all_passed = false (承認後に true になる)
+    const finalAllPassed = auditLevel === 'approval' ? false : allPassed;
+
+    // スナップショット作成
+    const snapshot = {
+      template: { id: tpl.id, name: tpl.name, version: tpl.version, timing: tpl.timing, scope: tpl.scope },
+      items: (tplItems || []).map((i: any) => ({
+        id: i.id, item_key: i.item_key, label: i.label, item_type: i.item_type,
+        required: i.required, min_value: i.min_value, max_value: i.max_value,
+        unit: i.unit, is_ccp: i.is_ccp,
+      })),
+    };
+
+    // submission 挿入
+    const { data: submission, error: subErr } = await supabaseAdmin
+      .from('checklist_submissions')
+      .insert({
+        store_id: storeId,
+        membership_id,
+        session_id: session_id ?? null,
+        shift_slot_id: shift_slot_id ?? null,
+        timing,
+        scope,
+        template_id,
+        template_version: tpl.version,
+        all_passed: finalAllPassed,
+        has_deviation: hasDeviation,
+        responsible_membership_id: responsible_membership_id ?? null,
+        submitted_at: new Date().toISOString(),
+        submitted_by: req.user!.id,
+        snapshot,
+      })
+      .select('*')
+      .single();
+
+    if (subErr || !submission) {
+      res.status(500).json({ error: subErr?.message || '提出に失敗しました' });
+      return;
+    }
+
+    // submission_items 挿入 + measurement 同時挿入
+    const deviationsToInsert: any[] = [];
+
+    for (const pi of processedItems) {
+      let measurementId: string | null = null;
+
+      if (pi.tplItem && (pi.tplItem.tracking_mode === 'both' || pi.tplItem.tracking_mode === 'measurement_only')) {
+        const { data: meas, error: measErr } = await supabaseAdmin
+          .from('checklist_measurements')
+          .insert({
+            store_id: storeId,
+            template_item_id: pi.template_item_id ?? null,
+            item_key: pi.item_key,
+            bool_value: pi.bool_value,
+            numeric_value: pi.numeric_value,
+            text_value: pi.text_value,
+            passed: pi.passed,
+            measured_at: new Date().toISOString(),
+            source: 'manual',
+            context: { submission_id: submission.id },
+          })
+          .select('id')
+          .single();
+
+        if (!measErr && meas) measurementId = meas.id;
+      }
+
+      await supabaseAdmin.from('checklist_submission_items').insert({
+        store_id: storeId,
+        submission_id: submission.id,
+        template_item_id: pi.template_item_id ?? null,
+        item_key: pi.item_key,
+        bool_value: pi.bool_value,
+        numeric_value: pi.numeric_value,
+        text_value: pi.text_value,
+        select_value: pi.select_value,
+        file_path: pi.file_path,
+        passed: pi.passed,
+        measurement_id: measurementId,
+        checked_by: pi.checked_by ?? null,
+        checked_at: pi.checked_at ?? null,
+      });
+
+      // 逸脱登録
+      if (pi.passed === false && pi.tplItem) {
+        const severity = pi.tplItem.is_ccp ? 'ccp' : 'warning';
+        const detectedValue = pi.numeric_value != null ? String(pi.numeric_value)
+          : pi.bool_value != null ? String(pi.bool_value)
+          : (pi.text_value ?? '');
+        deviationsToInsert.push({
+          store_id: storeId,
+          submission_id: submission.id,
+          template_item_id: pi.template_item_id ?? null,
+          item_key: pi.item_key,
+          severity,
+          status: 'open',
+          detected_value: detectedValue,
+          description: pi.tplItem.deviation_action ?? null,
+          measurement_id: measurementId,
+        });
+      }
+    }
+
+    if (deviationsToInsert.length > 0) {
+      await supabaseAdmin.from('checklist_deviations').insert(deviationsToInsert);
+    }
+
+    res.status(201).json({ submission });
   } catch (e: any) {
-    console.error('[check GET /records/:storeId] error:', e);
+    console.error('[check POST /:storeId/submissions] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
 
+// GET /api/check/:storeId/submissions?from=&to=&scope=&membership_id=
+router.get('/:storeId/submissions', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    let query = supabaseAdmin
+      .from('checklist_submissions')
+      .select('*')
+      .eq('store_id', storeId)
+      .order('submitted_at', { ascending: false });
+
+    if (req.query.from) query = query.gte('submitted_at', `${req.query.from}T00:00:00`);
+    if (req.query.to)   query = query.lte('submitted_at', `${req.query.to}T23:59:59`);
+    if (req.query.scope && isValidScope(String(req.query.scope))) {
+      query = query.eq('scope', String(req.query.scope));
+    }
+    if (req.query.membership_id) query = query.eq('membership_id', String(req.query.membership_id));
+    if (req.query.timing && isValidTiming(String(req.query.timing))) {
+      query = query.eq('timing', String(req.query.timing));
+    }
+
+    const { data, error } = await query;
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    res.json({ submissions: data || [] });
+  } catch (e: any) {
+    console.error('[check GET /:storeId/submissions] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ── 測定層（時系列）─────────────────────────────────────────────────────────
+
+// GET /api/check/:storeId/measurements/daily-summary?date=&item_key=
+router.get('/:storeId/measurements/daily-summary', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    const date    = String(req.query.date ?? new Date().toISOString().slice(0, 10));
+    const itemKey = req.query.item_key ? String(req.query.item_key) : null;
+
+    let query = supabaseAdmin
+      .from('checklist_measurements')
+      .select('numeric_value, passed, item_key')
+      .eq('store_id', storeId)
+      .gte('measured_at', `${date}T00:00:00`)
+      .lte('measured_at', `${date}T23:59:59`);
+
+    if (itemKey) query = query.eq('item_key', itemKey);
+
+    const { data, error } = await query;
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    const rows = data || [];
+    const numericRows = rows.filter((r: any) => r.numeric_value != null);
+    const numericValues = numericRows.map((r: any) => Number(r.numeric_value));
+
+    const summary = {
+      date,
+      item_key: itemKey,
+      count: rows.length,
+      numeric_count: numericRows.length,
+      min: numericValues.length ? Math.min(...numericValues) : null,
+      max: numericValues.length ? Math.max(...numericValues) : null,
+      avg: numericValues.length ? numericValues.reduce((a, b) => a + b, 0) / numericValues.length : null,
+      deviation_count: rows.filter((r: any) => r.passed === false).length,
+    };
+
+    res.json({ summary });
+  } catch (e: any) {
+    console.error('[check GET /:storeId/measurements/daily-summary] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// GET /api/check/:storeId/measurements?item_key=&from=&to=
+router.get('/:storeId/measurements', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    let query = supabaseAdmin
+      .from('checklist_measurements')
+      .select('*')
+      .eq('store_id', storeId)
+      .order('measured_at', { ascending: false });
+
+    if (req.query.item_key) query = query.eq('item_key', String(req.query.item_key));
+    if (req.query.from)     query = query.gte('measured_at', `${req.query.from}T00:00:00`);
+    if (req.query.to)       query = query.lte('measured_at', `${req.query.to}T23:59:59`);
+
+    const { data, error } = await query;
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    res.json({ measurements: data || [] });
+  } catch (e: any) {
+    console.error('[check GET /:storeId/measurements] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// POST /api/check/:storeId/measurements — 単発測定記録
+router.post('/:storeId/measurements', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    const { item_key, numeric_value, bool_value, text_value, measured_at, source, context, template_item_id } = req.body ?? {};
+
+    if (!item_key) {
+      res.status(400).json({ error: 'item_key は必須です' });
+      return;
+    }
+
+    // passed の自動判定（template_item の min/max から）
+    let passed: boolean | null = null;
+    if (template_item_id) {
+      const { data: tplItem } = await supabaseAdmin
+        .from('checklist_template_items')
+        .select('item_type, min_value, max_value')
+        .eq('id', template_item_id)
+        .maybeSingle();
+      if (tplItem) {
+        passed = calcPassed(tplItem, { bool_value, numeric_value, text_value });
+      }
+    } else if (numeric_value != null) {
+      // item_key から判定は省略（min/max が不明）
+      passed = null;
+    } else if (bool_value != null) {
+      passed = bool_value === true;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('checklist_measurements')
+      .insert({
+        store_id: storeId,
+        template_item_id: template_item_id ?? null,
+        item_key,
+        numeric_value: numeric_value ?? null,
+        bool_value: bool_value ?? null,
+        text_value: text_value ?? null,
+        passed,
+        measured_at: measured_at ?? new Date().toISOString(),
+        source: source && ['manual','sensor','import'].includes(source) ? source : 'manual',
+        context: context ?? {},
+      })
+      .select('*')
+      .single();
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    res.status(201).json({ measurement: data });
+  } catch (e: any) {
+    console.error('[check POST /:storeId/measurements] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ── 逸脱 ─────────────────────────────────────────────────────────────────────
+
+// GET /api/check/:storeId/deviations?status=open
+router.get('/:storeId/deviations', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    let query = supabaseAdmin
+      .from('checklist_deviations')
+      .select('*')
+      .eq('store_id', storeId)
+      .order('created_at', { ascending: false });
+
+    if (req.query.status) query = query.eq('status', String(req.query.status));
+    if (req.query.severity) query = query.eq('severity', String(req.query.severity));
+
+    const { data, error } = await query;
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    res.json({ deviations: data || [] });
+  } catch (e: any) {
+    console.error('[check GET /:storeId/deviations] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// POST /api/check/:storeId/deviations — 手動逸脱報告
+router.post('/:storeId/deviations', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    const { item_key, severity, description, detected_value, submission_id, template_item_id } = req.body ?? {};
+
+    if (!item_key) {
+      res.status(400).json({ error: 'item_key は必須です' });
+      return;
+    }
+    const sev = String(severity ?? 'warning');
+    if (!VALID_SEVERITIES.includes(sev as any)) {
+      res.status(400).json({ error: 'severity は info / warning / ccp を指定してください' });
+      return;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('checklist_deviations')
+      .insert({
+        store_id: storeId,
+        submission_id: submission_id ?? null,
+        template_item_id: template_item_id ?? null,
+        item_key,
+        severity: sev,
+        status: 'open',
+        detected_value: detected_value ?? null,
+        description: description ?? null,
+      })
+      .select('*')
+      .single();
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    res.status(201).json({ deviation: data });
+  } catch (e: any) {
+    console.error('[check POST /:storeId/deviations] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// PUT /api/check/:storeId/deviations/:deviationId — 是正措置・承認・クローズ
+router.put('/:storeId/deviations/:deviationId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId     = String(req.params.storeId);
+    const deviationId = String(req.params.deviationId);
+    const membership  = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+    if (req.body?.corrective_action !== undefined) {
+      updates.corrective_action = req.body.corrective_action;
+      updates.corrected_by      = req.user!.id;
+      updates.corrected_at      = new Date().toISOString();
+      if (req.body?.status !== 'approved' && req.body?.status !== 'closed') {
+        updates.status = 'corrected';
+      }
+    }
+    if (req.body?.status !== undefined) {
+      updates.status = req.body.status;
+      if (req.body.status === 'approved') {
+        updates.approved_by  = req.user!.id;
+        updates.approved_at  = new Date().toISOString();
+      }
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('checklist_deviations')
+      .update(updates)
+      .eq('id', deviationId)
+      .eq('store_id', storeId)
+      .select('*')
+      .maybeSingle();
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (!data)  { res.status(404).json({ error: '逸脱記録が見つかりません' }); return; }
+
+    res.json({ deviation: data });
+  } catch (e: any) {
+    console.error('[check PUT /:storeId/deviations/:deviationId] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ── プラグイン登録 ────────────────────────────────────────────────────────────
+
 export const checkPlugin: Plugin = {
   name: 'check',
-  version: '0.1.0',
-  description: 'HACCP準拠チェックリスト・記録管理',
+  version: '2.0.0',
+  description: 'HACCP 準拠チェックリスト・測定・逸脱管理（v2）',
   label: 'チェックリスト',
   icon: '✅',
   defaultRoles: ['owner', 'manager', 'leader'],

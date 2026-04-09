@@ -30,7 +30,6 @@ import SalesCapturePage from './pages/SalesCapturePage';
 import AttendanceStaffPage from './pages/AttendanceStaffPage';
 import AttendanceAdminPage from './pages/AttendanceAdminPage';
 import KioskLinkPage from './pages/KioskLinkPage';
-import HaccpAdminPage from './pages/HaccpAdminPage';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -85,7 +84,7 @@ const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   line_attendance: AttendanceStaffPage,
   attendance_admin: AttendanceAdminPage,
   kiosk: KioskLinkPage,
-  haccp_kiosk: HaccpAdminPage,
+  haccp_kiosk: ChecklistAdminPage,
   settings: PluginSettingsPage,
 };
 

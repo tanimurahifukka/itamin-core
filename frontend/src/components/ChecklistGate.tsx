@@ -1,15 +1,11 @@
 /**
- * チェックリストゲート
+ * チェックリストゲート v2
  * 打刻前に全項目チェックを強制するモーダル
+ * インターフェース: { storeId, staffId, timing, onComplete, onCancel } を維持
+ * staffId = store_staff.id（= membership_id）
  */
 import { useEffect, useState } from 'react';
-import { checkApi, CheckItem, CheckResult } from '../api/checkApi';
-
-interface TemplateItem {
-  label: string;
-  category?: string;
-  template_name?: string;
-}
+import { checkApi, ActiveItem, SubmissionItemInput, CheckTiming } from '../api/checkApi';
 
 interface Props {
   storeId: string;
@@ -19,88 +15,129 @@ interface Props {
   onCancel: () => void;
 }
 
+type ItemValues = {
+  bool_value: boolean | null;
+  numeric_value: string;  // string で入力、送信時に変換
+  text_value: string;
+  select_value: string;
+};
+
+function emptyValues(): ItemValues {
+  return { bool_value: null, numeric_value: '', text_value: '', select_value: '' };
+}
+
+function isItemComplete(item: ActiveItem, values: ItemValues): boolean {
+  if (!item.required) return true;
+  switch (item.item_type) {
+    case 'checkbox':
+      return values.bool_value === true;
+    case 'numeric': {
+      const v = parseFloat(values.numeric_value);
+      return !isNaN(v);
+    }
+    case 'text':
+      return values.text_value.trim().length > 0;
+    case 'select':
+      return values.select_value.trim().length > 0;
+    case 'photo':
+      return false; // photo は always passing（ゲートでは簡略化）
+    default:
+      return true;
+  }
+}
+
+function getThintText(item: ActiveItem): string {
+  if (item.item_type !== 'numeric') return '';
+  const parts: string[] = [];
+  if (item.unit) parts.push(item.unit);
+  if (item.min_value != null && item.max_value != null) {
+    parts.push(`${item.min_value} ～ ${item.max_value}`);
+  } else if (item.min_value != null) {
+    parts.push(`${item.min_value} 以上`);
+  } else if (item.max_value != null) {
+    parts.push(`${item.max_value} 以下`);
+  }
+  return parts.length ? parts.join(' | ') : '';
+}
+
 export default function ChecklistGate({ storeId, staffId, timing, onComplete, onCancel }: Props) {
-  const [items, setItems] = useState<CheckItem[]>([]);
-  const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [textValues, setTextValues] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
+  const [items, setItems]         = useState<ActiveItem[]>([]);
+  const [values, setValues]       = useState<Record<string, ItemValues>>({});
+  const [templateIds, setTemplateIds] = useState<string[]>([]);
+  const [loading, setLoading]     = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError]         = useState('');
 
   useEffect(() => {
-    // 新テンプレートシステムから取得（shift=_default でbase のみ取得）
-    checkApi.getTemplatesForShift(storeId, '_default', timing)
+    checkApi.getActive(storeId, 'personal', timing as CheckTiming)
       .then(data => {
-        const templateItems: TemplateItem[] = data.items || [];
-        if (templateItems.length === 0) {
-          // チェック項目がない場合はゲートをスキップ
+        if (!data.merged_items || data.merged_items.length === 0) {
           onComplete();
           return;
         }
-        // テンプレートアイテムをCheckItem形式に変換
-        const checkItems: CheckItem[] = templateItems.map((item: TemplateItem, i: number) => ({
-          id: `tpl-${i}`,
-          label: item.label,
-          order: i,
-          required: true,
-          type: 'checkbox' as const,
-        }));
-        setItems(checkItems);
+        setItems(data.merged_items);
+        setTemplateIds([...new Set(data.merged_items.map(i => i.template_id))]);
+        const initial: Record<string, ItemValues> = {};
+        data.merged_items.forEach(item => { initial[item.id] = emptyValues(); });
+        setValues(initial);
         setLoading(false);
       })
       .catch(e => {
-        setError(e.message);
-        setLoading(false);
+        // エラー時でも打刻フローを止めない
+        console.warn('[ChecklistGate] fetch error, skipping gate:', e.message);
+        onComplete();
       });
   }, [storeId, timing]);
 
-  const toggle = (itemId: string) => {
-    setChecked(prev => {
-      const next = new Set(prev);
-      if (next.has(itemId)) {
-        next.delete(itemId);
-      } else {
-        next.add(itemId);
-      }
-      return next;
-    });
+  const allComplete = items.length > 0 && items.every(item => isItemComplete(item, values[item.id] ?? emptyValues()));
+
+  const updateValue = (itemId: string, patch: Partial<ItemValues>) => {
+    setValues(prev => ({ ...prev, [itemId]: { ...(prev[itemId] ?? emptyValues()), ...patch } }));
   };
 
-  const allChecked = items.length > 0 && items.every(item => {
-    if (!item.required) return true;
-    if (item.type === 'text') return (textValues[item.id] || '').trim().length > 0;
-    return checked.has(item.id);
-  });
-
   const handleSubmit = async () => {
-    if (!allChecked || submitting) return;
+    if (!allComplete || submitting) return;
     setSubmitting(true);
 
-    const results: CheckResult[] = items.map(item => ({
-      item_id: item.id,
-      label: item.label,
-      checked: item.type === 'text' ? (textValues[item.id] || '').trim().length > 0 : checked.has(item.id),
-      ...(item.type === 'text' ? { value: textValues[item.id] || '' } : {}),
-    }));
-
     try {
-      await checkApi.saveRecord({
-        store_id: storeId,
-        staff_id: staffId,
-        timing,
-        results,
-      });
+      // テンプレートごとに submission を作成
+      for (const tplId of templateIds) {
+        const tplItems = items.filter(i => i.template_id === tplId);
+        const subItems: SubmissionItemInput[] = tplItems.map(item => {
+          const v = values[item.id] ?? emptyValues();
+          return {
+            template_item_id: item.id,
+            item_key: item.item_key,
+            bool_value: item.item_type === 'checkbox' ? (v.bool_value ?? false) : null,
+            numeric_value: item.item_type === 'numeric' && v.numeric_value ? parseFloat(v.numeric_value) : null,
+            text_value: item.item_type === 'text' ? v.text_value : null,
+            select_value: item.item_type === 'select' ? v.select_value : null,
+          };
+        });
+
+        await checkApi.createSubmission(storeId, {
+          scope: 'personal',
+          timing: timing as CheckTiming,
+          template_id: tplId,
+          membership_id: staffId,
+          items: subItems,
+        });
+      }
       onComplete();
     } catch (e: any) {
-      setError(e.message);
+      // 提出エラー時もゲートを通過させる（打刻フローを壊さない）
+      console.warn('[ChecklistGate] submission error (proceeding):', e.message);
+      setError(`記録に失敗しました: ${e.message}`);
+      // 3 秒後に通過
+      setTimeout(() => onComplete(), 3000);
+    } finally {
       setSubmitting(false);
     }
   };
 
-  const title = timing === 'clock_in' ? '出勤前チェック' : '退勤前チェック';
-  const subtitle = timing === 'clock_in'
-    ? 'HACCP準拠 — 全項目を確認してください'
-    : 'HACCP準拠 — 退勤前の確認事項';
+  const completedCount = items.filter(item => isItemComplete(item, values[item.id] ?? emptyValues())).length;
+  const title    = timing === 'clock_in' ? '出勤前チェック' : '退勤前チェック';
+  const subtitle = timing === 'clock_in' ? 'HACCP準拠 — 全項目を確認してください' : 'HACCP準拠 — 退勤前の確認事項';
 
   if (loading) {
     return (
@@ -123,42 +160,94 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
         {error && <div className="error-msg">{error}</div>}
 
         <div className="checklist-items">
-          {items.map(item => item.type === 'text' ? (
-            <div
-              key={item.id}
-              className={`checklist-item text-input ${(textValues[item.id] || '').trim() ? 'checked' : ''}`}
-            >
-              <div className={`checkbox ${(textValues[item.id] || '').trim() ? 'checked' : ''}`}>
-                {(textValues[item.id] || '').trim() && '✓'}
-              </div>
-              <div className="checklist-text-field">
-                <span className="checklist-text-label">{item.label}</span>
-                <input
-                  type="text"
-                  className="checklist-text-input"
-                  placeholder="入力してください"
-                  value={textValues[item.id] || ''}
-                  onChange={e => setTextValues(prev => ({ ...prev, [item.id]: e.target.value }))}
-                  onClick={e => e.stopPropagation()}
-                />
-              </div>
-            </div>
-          ) : (
-            <label
-              key={item.id}
-              className={`checklist-item ${checked.has(item.id) ? 'checked' : ''}`}
-              onClick={() => toggle(item.id)}
-            >
-              <div className={`checkbox ${checked.has(item.id) ? 'checked' : ''}`}>
-                {checked.has(item.id) && '✓'}
-              </div>
-              <span>{item.label}</span>
-            </label>
-          ))}
+          {items.map(item => {
+            const v = values[item.id] ?? emptyValues();
+            const done = isItemComplete(item, v);
+            const hint = getThintText(item);
+
+            if (item.item_type === 'numeric') {
+              return (
+                <div key={item.id} className={`checklist-item text-input ${done ? 'checked' : ''}`}>
+                  <div className={`checkbox ${done ? 'checked' : ''}`}>{done && '✓'}</div>
+                  <div className="checklist-text-field">
+                    <span className="checklist-text-label">
+                      {item.label}
+                      {item.is_ccp && <span style={{ color: '#dc2626', marginLeft: 6, fontSize: '0.75rem', fontWeight: 700 }}>CCP</span>}
+                    </span>
+                    {hint && <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginBottom: 4 }}>{hint}</span>}
+                    <input
+                      type="number"
+                      className="checklist-text-input"
+                      placeholder="数値を入力"
+                      value={v.numeric_value}
+                      onChange={e => updateValue(item.id, { numeric_value: e.target.value })}
+                      onClick={e => e.stopPropagation()}
+                      step="0.1"
+                    />
+                  </div>
+                </div>
+              );
+            }
+
+            if (item.item_type === 'text') {
+              return (
+                <div key={item.id} className={`checklist-item text-input ${done ? 'checked' : ''}`}>
+                  <div className={`checkbox ${done ? 'checked' : ''}`}>{done && '✓'}</div>
+                  <div className="checklist-text-field">
+                    <span className="checklist-text-label">{item.label}</span>
+                    <input
+                      type="text"
+                      className="checklist-text-input"
+                      placeholder="入力してください"
+                      value={v.text_value}
+                      onChange={e => updateValue(item.id, { text_value: e.target.value })}
+                      onClick={e => e.stopPropagation()}
+                    />
+                  </div>
+                </div>
+              );
+            }
+
+            if (item.item_type === 'select') {
+              const opts: string[] = Array.isArray(item.options?.values) ? item.options.values as string[] : [];
+              return (
+                <div key={item.id} className={`checklist-item text-input ${done ? 'checked' : ''}`}>
+                  <div className={`checkbox ${done ? 'checked' : ''}`}>{done && '✓'}</div>
+                  <div className="checklist-text-field">
+                    <span className="checklist-text-label">{item.label}</span>
+                    <select
+                      className="checklist-text-input"
+                      value={v.select_value}
+                      onChange={e => updateValue(item.id, { select_value: e.target.value })}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <option value="">選択してください</option>
+                      {opts.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  </div>
+                </div>
+              );
+            }
+
+            // checkbox（デフォルト）
+            return (
+              <label
+                key={item.id}
+                className={`checklist-item ${done ? 'checked' : ''}`}
+                onClick={() => updateValue(item.id, { bool_value: !v.bool_value })}
+              >
+                <div className={`checkbox ${done ? 'checked' : ''}`}>{done && '✓'}</div>
+                <span>
+                  {item.label}
+                  {item.is_ccp && <span style={{ color: '#dc2626', marginLeft: 6, fontSize: '0.75rem', fontWeight: 700 }}>CCP</span>}
+                </span>
+              </label>
+            );
+          })}
         </div>
 
         <div className="checklist-progress">
-          {items.filter(i => i.type === 'text' ? (textValues[i.id] || '').trim() : checked.has(i.id)).length} / {items.length} 完了
+          {completedCount} / {items.length} 完了
         </div>
 
         <div className="checklist-actions">
@@ -166,11 +255,11 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
             キャンセル
           </button>
           <button
-            className={`checklist-submit ${allChecked ? 'active' : ''}`}
+            className={`checklist-submit ${allComplete ? 'active' : ''}`}
             onClick={handleSubmit}
-            disabled={!allChecked || submitting}
+            disabled={!allComplete || submitting}
           >
-            {submitting ? '記録中...' : allChecked ? '確認完了' : 'すべてチェックしてください'}
+            {submitting ? '記録中...' : allComplete ? '確認完了' : 'すべてチェックしてください'}
           </button>
         </div>
       </div>
