@@ -75,9 +75,9 @@ export default function HaccpAdminPage() {
   const [deletingItem, setDeletingItem] = useState<string | null>(null);
   const [importing, setImporting] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (showLoading = false) => {
     if (!selectedStore) return;
-    setLoading(true);
+    if (showLoading) setLoading(true);
     try {
       const [tplRes, sysRes] = await Promise.all([
         api.getHaccpTemplates(selectedStore.id),
@@ -85,16 +85,15 @@ export default function HaccpAdminPage() {
       ]);
       setTemplates(tplRes.templates || []);
       setSystemTemplates(sysRes.templates || []);
-      // selectedを最新データで更新
       setSelected(prev => prev ? (tplRes.templates || []).find((t: Template) => t.id === prev.id) || null : null);
     } catch (e: any) {
       showToast(e.message || '読み込みに失敗しました', 'error');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [selectedStore]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(true); }, [load]);
 
   const filteredTemplates = templates.filter(t => t.timing === timingFilter);
 
