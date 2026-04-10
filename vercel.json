@@ -63,7 +63,7 @@
   "crons": [
     {
       "path": "/api/cron/switchbot-readings",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
