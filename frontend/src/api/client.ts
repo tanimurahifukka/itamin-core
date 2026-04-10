@@ -119,18 +119,18 @@ export const api = {
     params.set('limit', String(limit));
     return request<{ entries: AuditLogEntry[] }>(`/stores/${storeId}/audit-log?${params}`);
   },
-  // NFC cleaning: PIN management
-  listCleaningPins: (storeId: string) =>
+  // スタッフ PIN (NFC 清掃 / NFC 打刻で共用)
+  listStaffPins: (storeId: string) =>
     request<{ pins: { membershipId: string; pin: string; updatedAt: string; staffName: string }[] }>(
-      `/stores/${storeId}/cleaning-pins`
+      `/stores/${storeId}/staff-pins`
     ),
-  regenerateCleaningPin: (storeId: string, staffId: string) =>
+  regenerateStaffPin: (storeId: string, staffId: string) =>
     request<{ ok: boolean; pin: string; staffName: string | null }>(
-      `/stores/${storeId}/cleaning-pins/${staffId}/regenerate`,
+      `/stores/${storeId}/staff-pins/${staffId}/regenerate`,
       { method: 'POST' }
     ),
-  deleteCleaningPin: (storeId: string, staffId: string) =>
-    request<OkResponse>(`/stores/${storeId}/cleaning-pins/${staffId}`, { method: 'DELETE' }),
+  deleteStaffPin: (storeId: string, staffId: string) =>
+    request<OkResponse>(`/stores/${storeId}/staff-pins/${staffId}`, { method: 'DELETE' }),
   // NFC cleaning: locations
   listNfcLocations: (storeId: string) =>
     request<{

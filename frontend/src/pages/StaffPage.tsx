@@ -284,23 +284,23 @@ export default function StaffPage() {
     });
   };
 
-  // 清掃 PIN (NFC)
-  const [cleaningPinResult, setCleaningPinResult] = useState<{ staffName: string; pin: string } | null>(null);
+  // スタッフ PIN (NFC 清掃 / NFC 打刻で共用)
+  const [pinResult, setPinResult] = useState<{ staffName: string; pin: string } | null>(null);
 
-  const handleRegenerateCleaningPin = async (staff: StaffMember) => {
+  const handleRegenerateStaffPin = async (staff: StaffMember) => {
     if (!selectedStore) return;
-    if (!confirm(`${staff.userName} さんの清掃 PIN を発行/再発行します。既存 PIN は無効化されます。よろしいですか？`)) return;
+    if (!confirm(`${staff.userName} さんの PIN を再発行します。既存 PIN は無効化されます。よろしいですか？`)) return;
     try {
-      const result = await api.regenerateCleaningPin(selectedStore.id, staff.id);
-      setCleaningPinResult({ staffName: result.staffName || staff.userName, pin: result.pin });
+      const result = await api.regenerateStaffPin(selectedStore.id, staff.id);
+      setPinResult({ staffName: result.staffName || staff.userName, pin: result.pin });
     } catch (e: unknown) {
       showToast(e instanceof Error ? e.message : 'PIN の発行に失敗しました', 'error');
     }
   };
 
-  const handleCopyCleaningPin = () => {
-    if (!cleaningPinResult) return;
-    navigator.clipboard.writeText(cleaningPinResult.pin).then(() => {
+  const handleCopyStaffPin = () => {
+    if (!pinResult) return;
+    navigator.clipboard.writeText(pinResult.pin).then(() => {
       showToast('PIN をコピーしました', 'info');
     });
   };
@@ -592,10 +592,10 @@ export default function StaffPage() {
                         🔑 パスワードを再設定
                       </button>
                       <button
-                        onClick={() => { setOpenMenuId(null); handleRegenerateCleaningPin(s); }}
+                        onClick={() => { setOpenMenuId(null); handleRegenerateStaffPin(s); }}
                         style={staffMenuItemStyle}
                       >
-                        🧹 清掃 PIN を発行
+                        🔢 PIN を再発行
                       </button>
                       <button
                         onClick={() => { setOpenMenuId(null); openRemoveModal(s); }}
@@ -866,19 +866,19 @@ export default function StaffPage() {
         </div>
       )}
 
-      {/* 清掃 PIN 発行結果モーダル */}
-      {cleaningPinResult && (
-        <div className="remove-modal-overlay" onClick={() => setCleaningPinResult(null)}>
+      {/* スタッフ PIN 発行結果モーダル */}
+      {pinResult && (
+        <div className="remove-modal-overlay" onClick={() => setPinResult(null)}>
           <div
             className="remove-modal"
             onClick={e => e.stopPropagation()}
             style={{ maxWidth: 420, width: '92%' }}
           >
-            <div className="remove-modal-icon">🧹</div>
-            <h3 className="remove-modal-title">清掃 PIN を発行しました</h3>
+            <div className="remove-modal-icon">🔢</div>
+            <h3 className="remove-modal-title">PIN を再発行しました</h3>
             <p className="remove-modal-desc">
-              <strong>{cleaningPinResult.staffName}</strong> さんの新しい清掃 PIN です。
-              NFC タグからの清掃記録入力時に使用します。
+              <strong>{pinResult.staffName}</strong> さんの新しい PIN です。
+              NFC 清掃チェックインと NFC 打刻の両方で使用します。
             </p>
             <div
               style={{
@@ -898,12 +898,12 @@ export default function StaffPage() {
                   color: '#0f172a',
                 }}
               >
-                {cleaningPinResult.pin}
+                {pinResult.pin}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
-                onClick={handleCopyCleaningPin}
+                onClick={handleCopyStaffPin}
                 style={{
                   flex: 1,
                   padding: '12px',
@@ -918,7 +918,7 @@ export default function StaffPage() {
                 PIN をコピー
               </button>
               <button
-                onClick={() => setCleaningPinResult(null)}
+                onClick={() => setPinResult(null)}
                 style={{
                   flex: 1,
                   padding: '12px',

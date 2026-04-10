@@ -23,6 +23,53 @@ function normalizeNullableText(value: string): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+// ============================================================
+// スタッフ PIN (NFC 清掃 / NFC 打刻で共用)
+// ============================================================
+
+// 店舗内で衝突しない 4 桁 PIN をランダム生成
+async function generateUniqueStaffPin(storeId: string, maxRetries = 100): Promise<string | null> {
+  for (let i = 0; i < maxRetries; i++) {
+    const pin = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    const { data } = await supabaseAdmin
+      .from('staff_cleaning_pins')
+      .select('membership_id')
+      .eq('store_id', storeId)
+      .eq('pin', pin)
+      .maybeSingle();
+    if (!data) return pin;
+  }
+  return null;
+}
+
+// スタッフに PIN が無ければ発行する (既存 PIN は上書きしない)
+// スタッフ追加系エンドポイントから呼ばれる。失敗してもスタッフ追加自体は成功扱い。
+async function ensureStaffPin(storeId: string, membershipId: string): Promise<void> {
+  try {
+    const { data: existing } = await supabaseAdmin
+      .from('staff_cleaning_pins')
+      .select('membership_id')
+      .eq('membership_id', membershipId)
+      .maybeSingle();
+    if (existing) return;
+
+    const pin = await generateUniqueStaffPin(storeId);
+    if (!pin) {
+      console.warn('[ensureStaffPin] could not generate unique pin', { storeId, membershipId });
+      return;
+    }
+
+    const { error } = await supabaseAdmin
+      .from('staff_cleaning_pins')
+      .insert({ membership_id: membershipId, store_id: storeId, pin });
+    if (error) {
+      console.warn('[ensureStaffPin] insert failed', { storeId, membershipId, error: error.message });
+    }
+  } catch (e) {
+    console.warn('[ensureStaffPin] unexpected error', e);
+  }
+}
+
 async function getInvitationRedirectUrl(params: {
   storeId: string;
   email: string;
@@ -113,17 +160,23 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
     }
 
     // store_staff に追加（デフォルト: part_time）
-    const { error: staffErr } = await supabaseAdmin
+    const { data: newMembership, error: staffErr } = await supabaseAdmin
       .from('store_staff')
       .insert({
         store_id: storeId,
         user_id: authUser!.id,
         role: 'part_time',
-      });
+      })
+      .select('id')
+      .single();
 
     if (staffErr) {
       res.status(500).json({ error: staffErr.message });
       return;
+    }
+
+    if (newMembership?.id) {
+      await ensureStaffPin(storeId, newMembership.id);
     }
 
     res.status(201).json({
@@ -321,6 +374,8 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
+    await ensureStaffPin(store.id, staff.id);
+
     res.status(201).json({ store, staffId: staff.id });
   } catch (e: any) {
     console.error('[stores POST /] error:', e);
@@ -473,6 +528,8 @@ router.post('/:storeId/staff', requireAuth, async (req: Request, res: Response) 
         return;
       }
 
+      await ensureStaffPin(storeId, staff.id);
+
       res.status(201).json({ staff, invited: false });
     } else {
       // 未登録ユーザー → 初期パスワードでユーザー作成 + 即スタッフ追加
@@ -496,18 +553,24 @@ router.post('/:storeId/staff', requireAuth, async (req: Request, res: Response) 
       }
 
       // スタッフとして追加（profilesはauth triggerで自動作成される）
-      const { error: staffErr } = await supabaseAdmin
+      const { data: newStaff, error: staffErr } = await supabaseAdmin
         .from('store_staff')
         .insert({
           store_id: storeId,
           user_id: newUser.user.id,
           role,
           hourly_wage: hourlyWage,
-        });
+        })
+        .select('id')
+        .single();
 
       if (staffErr) {
         res.status(500).json({ error: staffErr.message });
         return;
+      }
+
+      if (newStaff?.id) {
+        await ensureStaffPin(storeId, newStaff.id);
       }
 
       res.status(201).json({
@@ -1032,6 +1095,8 @@ router.post('/:storeId/staff/rehire', requireAuth, async (req: Request, res: Res
       return;
     }
 
+    await ensureStaffPin(storeId, staff.id);
+
     res.status(201).json({
       ok: true,
       message: `${email} さんを再入職しました（パスワードは初期パスワードにリセット済み）`,
@@ -1044,26 +1109,14 @@ router.post('/:storeId/staff/rehire', requireAuth, async (req: Request, res: Res
 });
 
 // ============================================================
-// NFC cleaning: 清掃 PIN 管理
+// スタッフ PIN 管理 (NFC 清掃 / NFC 打刻で共用)
 // ============================================================
+// 注: テーブル名は歴史的経緯で staff_cleaning_pins のままだが、
+//     用途は清掃チェックインと打刻の両方。エンドポイントは
+//     /staff-pins/* に統一する。
 
-// ランダムな 4 桁 PIN を生成 (store 内で衝突しないように再試行)
-async function generateUniqueCleaningPin(storeId: string, maxRetries = 20): Promise<string | null> {
-  for (let i = 0; i < maxRetries; i++) {
-    const pin = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    const { data } = await supabaseAdmin
-      .from('staff_cleaning_pins')
-      .select('membership_id')
-      .eq('store_id', storeId)
-      .eq('pin', pin)
-      .maybeSingle();
-    if (!data) return pin;
-  }
-  return null;
-}
-
-// スタッフごとの清掃 PIN 一覧 (管理者のみ)
-router.get('/:storeId/cleaning-pins', requireAuth, async (req: Request, res: Response) => {
+// スタッフごとの PIN 一覧 (管理者のみ)
+router.get('/:storeId/staff-pins', requireAuth, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
     const membership = await requireManagedStore(req, res, storeId);
@@ -1088,13 +1141,13 @@ router.get('/:storeId/cleaning-pins', requireAuth, async (req: Request, res: Res
 
     res.json({ pins });
   } catch (e: any) {
-    console.error('[stores GET /:storeId/cleaning-pins] error:', e);
+    console.error('[stores GET /:storeId/staff-pins] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
 
 // スタッフ個別の PIN 発行/再発行
-router.post('/:storeId/cleaning-pins/:staffId/regenerate', requireAuth, async (req: Request, res: Response) => {
+router.post('/:storeId/staff-pins/:staffId/regenerate', requireAuth, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
     const staffId = req.params.staffId as string;
@@ -1115,7 +1168,7 @@ router.post('/:storeId/cleaning-pins/:staffId/regenerate', requireAuth, async (r
       return;
     }
 
-    const pin = await generateUniqueCleaningPin(storeId);
+    const pin = await generateUniqueStaffPin(storeId);
     if (!pin) {
       res.status(500).json({ error: 'PIN を生成できませんでした' });
       return;
@@ -1140,7 +1193,7 @@ router.post('/:storeId/cleaning-pins/:staffId/regenerate', requireAuth, async (r
       storeId,
       actorId: req.user!.id,
       actorRole: membership.role,
-      action: 'cleaning_pin.regenerate',
+      action: 'staff_pin.regenerate',
       targetType: 'staff',
       targetId: staffId,
       targetName: (target as any).user?.name || null,
@@ -1149,13 +1202,13 @@ router.post('/:storeId/cleaning-pins/:staffId/regenerate', requireAuth, async (r
 
     res.json({ ok: true, pin, staffName: (target as any).user?.name || null });
   } catch (e: any) {
-    console.error('[stores POST /:storeId/cleaning-pins/:staffId/regenerate] error:', e);
+    console.error('[stores POST /:storeId/staff-pins/:staffId/regenerate] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
 
 // スタッフ個別の PIN 削除
-router.delete('/:storeId/cleaning-pins/:staffId', requireAuth, async (req: Request, res: Response) => {
+router.delete('/:storeId/staff-pins/:staffId', requireAuth, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
     const staffId = req.params.staffId as string;
@@ -1178,7 +1231,7 @@ router.delete('/:storeId/cleaning-pins/:staffId', requireAuth, async (req: Reque
       storeId,
       actorId: req.user!.id,
       actorRole: membership.role,
-      action: 'cleaning_pin.delete',
+      action: 'staff_pin.delete',
       targetType: 'staff',
       targetId: staffId,
       metadata: {},
@@ -1186,7 +1239,7 @@ router.delete('/:storeId/cleaning-pins/:staffId', requireAuth, async (req: Reque
 
     res.json({ ok: true });
   } catch (e: any) {
-    console.error('[stores DELETE /:storeId/cleaning-pins/:staffId] error:', e);
+    console.error('[stores DELETE /:storeId/staff-pins/:staffId] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
