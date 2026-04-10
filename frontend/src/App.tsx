@@ -34,6 +34,7 @@ import SwitchBotReadingsPage from './pages/SwitchBotReadingsPage';
 import CustomersPage from './pages/CustomersPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import PlatformDashboard from './pages/PlatformDashboard';
+import NfcCleanPage from './pages/NfcCleanPage';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -400,6 +401,11 @@ export default function App() {
   // キオスクモード判定（フック呼び出し後に行う）
   if (window.location.pathname === '/kiosk') {
     return <KioskApp />;
+  }
+
+  // NFC 清掃チェック（認証不要の公開ページ）
+  if (window.location.pathname === '/nfc/clean') {
+    return <NfcCleanPage />;
   }
 
   // 組織管理・プラットフォーム管理ルート
