@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
-import { requireManagedStore, VALID_STAFF_ROLES } from './authorization';
+import { requireManagedStore, requireStoreMembership, canResetStaffPassword, VALID_STAFF_ROLES } from './authorization';
 
 const router = Router();
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -727,6 +727,103 @@ router.delete('/:storeId/staff/:staffId', requireAuth, async (req: Request, res:
     res.json({ ok: true, message: `${(target as any).user?.name || 'スタッフ'} さんを退職処理しました` });
   } catch (e: any) {
     console.error('[stores DELETE /:storeId/staff/:staffId] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// スタッフのパスワードリセット
+// 権限は staff プラグインの password_reset_roles 設定で制御（デフォルト: owner, manager）
+router.post('/:storeId/staff/:staffId/reset-password', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const staffId = req.params.staffId as string;
+
+    // 基本の所属チェック
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    // 設定に基づく権限チェック
+    const allowed = await canResetStaffPassword(storeId, membership.role);
+    if (!allowed) {
+      res.status(403).json({ error: 'パスワードリセットの権限がありません' });
+      return;
+    }
+
+    // 対象スタッフを取得（同じ店舗内のみ）
+    const { data: target, error: findErr } = await supabaseAdmin
+      .from('store_staff')
+      .select('id, user_id, role, user:profiles(name, email)')
+      .eq('id', staffId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (findErr || !target) {
+      res.status(404).json({ error: 'スタッフが見つかりません' });
+      return;
+    }
+
+    // 自分以上の権限のスタッフのパスワードはリセットできない
+    // 例: manager は owner のパスワードをリセットできない
+    const roleHierarchy: Record<string, number> = {
+      owner: 4, manager: 3, leader: 2, full_time: 1, part_time: 0,
+    };
+    const myRank = roleHierarchy[membership.role] ?? 0;
+    const targetRank = roleHierarchy[(target as any).role] ?? 0;
+    if (targetRank >= myRank) {
+      res.status(403).json({ error: '自分と同等以上のロールのスタッフのパスワードはリセットできません' });
+      return;
+    }
+
+    // リクエストボディに password があればそれを使う、なければ店舗の初期パスワード
+    const customPassword = typeof req.body?.password === 'string' ? req.body.password.trim() : '';
+
+    let newPassword = customPassword;
+    if (!newPassword) {
+      const { data: storeData } = await supabaseAdmin
+        .from('stores')
+        .select('settings')
+        .eq('id', storeId)
+        .maybeSingle();
+      newPassword = (storeData as any)?.settings?.initial_password || 'itamin1234';
+    }
+
+    if (newPassword.length < 6) {
+      res.status(400).json({ error: 'パスワードは6文字以上にしてください' });
+      return;
+    }
+
+    // 対象ユーザーの現在の user_metadata を取得
+    const { data: { user: authUser }, error: getErr } = await supabaseAdmin.auth.admin.getUserById((target as any).user_id);
+    if (getErr || !authUser) {
+      res.status(404).json({ error: '認証アカウントが見つかりません' });
+      return;
+    }
+
+    // Supabase Auth のパスワードを更新
+    const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+      password: newPassword,
+      user_metadata: {
+        ...authUser.user_metadata,
+        password_changed: false,
+      },
+    });
+
+    if (updateErr) {
+      console.error('[stores POST reset-password] update failed:', updateErr);
+      res.status(500).json({ error: 'パスワードリセットに失敗しました' });
+      return;
+    }
+
+    console.log(`[stores] password reset: store=${storeId} staff=${staffId} by=${req.user!.id} role=${membership.role}`);
+
+    res.json({
+      ok: true,
+      message: `${(target as any).user?.name || 'スタッフ'} さんのパスワードをリセットしました`,
+      password: newPassword,
+      forceChange: true,
+    });
+  } catch (e: any) {
+    console.error('[stores POST /:storeId/staff/:staffId/reset-password] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });

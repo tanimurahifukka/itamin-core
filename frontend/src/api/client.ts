@@ -107,6 +107,11 @@ export const api = {
     request<OkResponse>(`/stores/${storeId}/staff/${staffId}`, { method: 'PUT', body: JSON.stringify(updates) }),
   removeStaff: (storeId: string, staffId: string) =>
     request<OkResponse>(`/stores/${storeId}/staff/${staffId}`, { method: 'DELETE' }),
+  resetStaffPassword: (storeId: string, staffId: string, password?: string) =>
+    request<{ ok: boolean; message: string; password: string; forceChange: boolean }>(
+      `/stores/${storeId}/staff/${staffId}/reset-password`,
+      { method: 'POST', body: JSON.stringify(password ? { password } : {}) }
+    ),
   getStoreInvitations: (storeId: string) => request<{ invitations: Invitation[] }>(`/stores/${storeId}/invitations`),
   resendInvitation: (storeId: string, invitationId: string) =>
     request<OkResponse>(`/stores/${storeId}/invitations/${invitationId}/resend`, {

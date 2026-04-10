@@ -175,3 +175,34 @@ export async function isShiftRequestEnabled(storeId: string): Promise<boolean> {
 
   return data.config?.allow_staff_request ?? true;
 }
+
+/**
+ * 現在のユーザーがこの店舗で従業員のパスワードをリセットできるかを判定する。
+ * staff プラグインの settings.password_reset_roles 設定を読み、
+ * 設定値以上のロールを持つスタッフのみ許可する。
+ * - 'owner'   → owner のみ
+ * - 'manager' → owner + manager  （デフォルト）
+ * - 'leader'  → owner + manager + leader
+ */
+export async function canResetStaffPassword(
+  storeId: string,
+  userRole: StaffRole
+): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from('store_plugins')
+    .select('config')
+    .eq('store_id', storeId)
+    .eq('plugin_name', 'staff')
+    .maybeSingle();
+
+  const threshold: string = data?.config?.password_reset_roles || 'manager';
+
+  const allowedByThreshold: Record<string, StaffRole[]> = {
+    owner: ['owner'],
+    manager: ['owner', 'manager'],
+    leader: ['owner', 'manager', 'leader'],
+  };
+
+  const allowed = allowedByThreshold[threshold] || allowedByThreshold.manager;
+  return allowed.includes(userRole);
+}

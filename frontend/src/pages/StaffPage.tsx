@@ -55,6 +55,12 @@ export default function StaffPage() {
   const [confirmInput, setConfirmInput] = useState('');
   const [removing, setRemoving] = useState(false);
 
+  // パスワードリセットモーダル
+  const [resetTarget, setResetTarget] = useState<StaffMember | null>(null);
+  const [resetPasswordInput, setResetPasswordInput] = useState('');
+  const [resetting, setResetting] = useState(false);
+  const [resetResult, setResetResult] = useState<{ password: string; message: string } | null>(null);
+
   const isOwner = selectedStore?.role === 'owner';
 
   const loadStaff = useCallback(() => {
@@ -205,6 +211,43 @@ export default function StaffPage() {
     } finally {
       setRemoving(false);
     }
+  };
+
+  const openResetModal = (staff: StaffMember) => {
+    setResetTarget(staff);
+    setResetPasswordInput('');
+    setResetResult(null);
+    setResetting(false);
+  };
+
+  const handleResetPassword = async () => {
+    if (!selectedStore || !resetTarget || resetting) return;
+    const custom = resetPasswordInput.trim();
+    if (custom && custom.length < 6) {
+      showToast('パスワードは6文字以上にしてください', 'error');
+      return;
+    }
+    setResetting(true);
+    try {
+      const result = await api.resetStaffPassword(
+        selectedStore.id,
+        resetTarget.id,
+        custom || undefined
+      );
+      setResetResult({ password: result.password, message: result.message });
+      showToast(result.message, 'success');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'パスワードリセットに失敗しました', 'error');
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const handleCopyResetPassword = () => {
+    if (!resetResult) return;
+    navigator.clipboard.writeText(resetResult.password).then(() => {
+      showToast('パスワードをコピーしました', 'info');
+    });
   };
 
   // 再入職
@@ -418,6 +461,16 @@ export default function StaffPage() {
               {s.role !== 'owner' && (
                 <button
                   className="remove-staff-btn"
+                  onClick={() => openResetModal(s)}
+                  title="パスワードリセット"
+                  style={{ background: '#f59e0b' }}
+                >
+                  PW再設定
+                </button>
+              )}
+              {s.role !== 'owner' && (
+                <button
+                  className="remove-staff-btn"
                   onClick={() => openRemoveModal(s)}
                   title="退職処理"
                 >
@@ -539,6 +592,89 @@ export default function StaffPage() {
           </div>
         </div>
       </div>
+
+      {/* パスワードリセットモーダル */}
+      {resetTarget && (
+        <div className="remove-modal-overlay" onClick={() => !resetting && setResetTarget(null)}>
+          <div className="remove-modal" onClick={e => e.stopPropagation()}>
+            <div className="remove-modal-icon">🔑</div>
+            <h3 className="remove-modal-title">パスワードリセット</h3>
+            {!resetResult ? (
+              <>
+                <p className="remove-modal-desc">
+                  <strong>{resetTarget.userName}</strong> さんのログインパスワードをリセットします。
+                  空欄の場合は事業所の初期パスワードが使用されます。
+                </p>
+                <div className="remove-modal-confirm">
+                  <label className="remove-modal-label">
+                    新しいパスワード（任意・6文字以上）
+                  </label>
+                  <input
+                    type="text"
+                    className="remove-modal-input"
+                    value={resetPasswordInput}
+                    onChange={e => setResetPasswordInput(e.target.value)}
+                    placeholder="空欄で初期パスワードを使用"
+                    autoFocus
+                  />
+                </div>
+                <div className="remove-modal-actions">
+                  <button
+                    className="remove-modal-cancel"
+                    onClick={() => setResetTarget(null)}
+                    disabled={resetting}
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    className="remove-modal-submit active"
+                    onClick={handleResetPassword}
+                    disabled={resetting}
+                    style={{ background: '#f59e0b' }}
+                  >
+                    {resetting ? '処理中...' : 'リセットする'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="remove-modal-desc" style={{ color: '#22c55e' }}>
+                  ✓ {resetResult.message}
+                </p>
+                <div className="remove-modal-confirm">
+                  <label className="remove-modal-label">新しいパスワード</label>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      className="remove-modal-input"
+                      value={resetResult.password}
+                      readOnly
+                      style={{ flex: 1, fontFamily: 'monospace', fontSize: '1.05rem' }}
+                    />
+                    <button
+                      onClick={handleCopyResetPassword}
+                      style={{ padding: '10px 14px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      コピー
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: '#999', marginTop: 8 }}>
+                    このパスワードを本人に伝えてください。次回ログイン時に変更が求められます。
+                  </p>
+                </div>
+                <div className="remove-modal-actions">
+                  <button
+                    className="remove-modal-submit active"
+                    onClick={() => setResetTarget(null)}
+                  >
+                    閉じる
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 退職確認モーダル */}
       {removeTarget && (
