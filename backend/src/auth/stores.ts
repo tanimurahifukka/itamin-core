@@ -1115,6 +1115,54 @@ router.post('/:storeId/staff/rehire', requireAuth, async (req: Request, res: Res
 //     用途は清掃チェックインと打刻の両方。エンドポイントは
 //     /staff-pins/* に統一する。
 
+// 自分の PIN を取得 (スタッフ本人が閲覧用、管理者権限不要)
+// 未発行の場合はその場で発行する
+router.get('/:storeId/staff-pins/me', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    const { data: staff, error: staffErr } = await supabaseAdmin
+      .from('store_staff')
+      .select('id')
+      .eq('store_id', storeId)
+      .eq('user_id', req.user!.id)
+      .maybeSingle();
+
+    if (staffErr || !staff) {
+      res.status(404).json({ error: 'この店舗のスタッフ情報が見つかりません' });
+      return;
+    }
+
+    // 既存 PIN を取得
+    const { data: existing } = await supabaseAdmin
+      .from('staff_cleaning_pins')
+      .select('pin')
+      .eq('membership_id', staff.id)
+      .maybeSingle();
+
+    if (existing?.pin) {
+      res.json({ pin: existing.pin });
+      return;
+    }
+
+    // 未発行ならその場で発行してから返す
+    await ensureStaffPin(storeId, staff.id);
+
+    const { data: fresh } = await supabaseAdmin
+      .from('staff_cleaning_pins')
+      .select('pin')
+      .eq('membership_id', staff.id)
+      .maybeSingle();
+
+    res.json({ pin: fresh?.pin || null });
+  } catch (e: any) {
+    console.error('[stores GET /:storeId/staff-pins/me] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
 // スタッフごとの PIN 一覧 (管理者のみ)
 router.get('/:storeId/staff-pins', requireAuth, async (req: Request, res: Response) => {
   try {

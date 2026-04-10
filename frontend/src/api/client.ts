@@ -120,6 +120,8 @@ export const api = {
     return request<{ entries: AuditLogEntry[] }>(`/stores/${storeId}/audit-log?${params}`);
   },
   // スタッフ PIN (NFC 清掃 / NFC 打刻で共用)
+  getMyStaffPin: (storeId: string) =>
+    request<{ pin: string | null }>(`/stores/${storeId}/staff-pins/me`),
   listStaffPins: (storeId: string) =>
     request<{ pins: { membershipId: string; pin: string; updatedAt: string; staffName: string }[] }>(
       `/stores/${storeId}/staff-pins`

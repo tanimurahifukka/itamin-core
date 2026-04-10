@@ -16,10 +16,15 @@ interface UserProfile {
 }
 
 export default function AccountPage() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, selectedStore } = useAuth();
   const [lineInfo, setLineInfo] = useState<LineInfo | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pin, setPin] = useState<string | null>(null);
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinError, setPinError] = useState('');
+  const [pinVisible, setPinVisible] = useState(false);
+  const [pinCopied, setPinCopied] = useState(false);
 
   useEffect(() => {
     api.getLineMe()
@@ -30,6 +35,24 @@ export default function AccountPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!selectedStore?.id) return;
+    setPinLoading(true);
+    setPinError('');
+    api.getMyStaffPin(selectedStore.id)
+      .then(res => setPin(res.pin))
+      .catch((e: unknown) => setPinError(e instanceof Error ? e.message : 'PIN の取得に失敗しました'))
+      .finally(() => setPinLoading(false));
+  }, [selectedStore?.id]);
+
+  const handleCopyPin = () => {
+    if (!pin) return;
+    navigator.clipboard.writeText(pin).then(() => {
+      setPinCopied(true);
+      setTimeout(() => setPinCopied(false), 2000);
+    });
+  };
 
   if (loading) return <div className="loading">読み込み中...</div>;
 
@@ -47,6 +70,66 @@ export default function AccountPage() {
           <span className="attendance-account-label">メール</span>
           <span>{user?.email || '—'}</span>
         </div>
+      </div>
+
+      <div className="attendance-account-section">
+        <h3>NFC 打刻 / 清掃 PIN</h3>
+        <p style={{ fontSize: 13, color: '#64748b', marginTop: -4, marginBottom: 10 }}>
+          店舗入口の NFC タグをかざして打刻するとき、またはトイレ等の清掃チェックのときに使う 4 桁 PIN です。
+          他人に知られないように管理してください。
+        </p>
+        {pinLoading ? (
+          <div className="attendance-account-row">
+            <span>読み込み中...</span>
+          </div>
+        ) : pinError ? (
+          <div className="attendance-account-row" style={{ color: '#b91c1c' }}>
+            {pinError}
+          </div>
+        ) : pin ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '14px 16px',
+              background: '#f1f5f9',
+              borderRadius: 10,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: 'monospace',
+                fontSize: 28,
+                fontWeight: 700,
+                letterSpacing: '0.4em',
+                color: '#0f172a',
+                flex: 1,
+                textAlign: 'center',
+              }}
+            >
+              {pinVisible ? pin : '••••'}
+            </div>
+            <button
+              className="button"
+              onClick={() => setPinVisible(v => !v)}
+              style={{ padding: '8px 12px', fontSize: 13 }}
+            >
+              {pinVisible ? '隠す' : '表示'}
+            </button>
+            <button
+              className="button button-primary"
+              onClick={handleCopyPin}
+              style={{ padding: '8px 12px', fontSize: 13 }}
+            >
+              {pinCopied ? 'コピー済み' : 'コピー'}
+            </button>
+          </div>
+        ) : (
+          <div className="attendance-account-unlinked">
+            PIN が未発行です。管理者にお問い合わせください。
+          </div>
+        )}
       </div>
 
       <div className="attendance-account-section">
