@@ -567,3 +567,77 @@ export interface CustomerDuplicateCheck {
   exists: boolean;
   customer: Customer | null;
 }
+
+// ============================================================
+// Reservation
+// ============================================================
+export type ReservationType = 'table' | 'timeslot' | 'school' | 'event';
+export type ReservationStatus =
+  | 'pending' | 'confirmed' | 'seated' | 'completed' | 'no_show' | 'cancelled';
+export type ReservationSource = 'web' | 'line' | 'phone' | 'walkin' | 'admin';
+
+export interface ReservationRow {
+  id: string;
+  store_id: string;
+  customer_id: string | null;
+  reservation_type: ReservationType;
+  status: ReservationStatus;
+  starts_at: string;
+  ends_at: string;
+  party_size: number;
+  resource_ref: string | null;
+  source: ReservationSource;
+  confirmation_code: string;
+  customer_name: string;
+  customer_phone: string | null;
+  customer_email: string | null;
+  notes: string | null;
+  internal_notes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  cancelled_at: string | null;
+  cancelled_reason: string | null;
+}
+
+export interface ReservationTable {
+  id: string;
+  store_id: string;
+  name: string;
+  capacity: number;
+  min_party_size: number;
+  location: string | null;
+  sort_order: number;
+  active: boolean;
+  note: string | null;
+}
+
+export interface ReservationBusinessHour {
+  id?: string;
+  day_of_week: number;
+  open_time: string;
+  close_time: string;
+  last_order_min: number;
+  slot_minutes: number;
+}
+
+export interface PublicStoreInfo {
+  id: string;
+  slug: string;
+  name: string;
+  phone: string | null;
+  address: string | null;
+}
+
+export interface AvailabilitySlot {
+  starts_at: string;
+  available_table_count: number;
+}
+
+export interface PublicReservationSummary {
+  id: string;
+  confirmation_code: string;
+  starts_at: string;
+  ends_at: string;
+  party_size: number;
+}

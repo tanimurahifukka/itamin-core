@@ -40,6 +40,9 @@ import { organizationsRouter } from './services/organizations/routes';
 import { platformRouter } from './services/platform/routes';
 import { nfcRouter } from './nfc/routes';
 import { nfcPunchRouter } from './nfc/punch';
+import { reservationTablePlugin } from './plugins/reservation_table';
+import { publicReservationRouter } from './services/reservation/table_routes';
+import { dispatchPendingNotifications } from './services/reservation/email';
 
 const app = express();
 
@@ -67,6 +70,8 @@ app.use('/api/platform', platformRouter);
 // `/api/nfc/punch/*` を `/api/nfc/*` より先に登録して優先させる
 app.use('/api/nfc/punch', nfcPunchRouter);
 app.use('/api/nfc', nfcRouter);
+// 公開予約 API (認証なし、slug ベース)
+app.use('/api/public/r', publicReservationRouter);
 
 // Core plugins（無効化不可）
 pluginRegistry.register(punchPlugin);
@@ -95,6 +100,7 @@ pluginRegistry.register(haccpKioskPlugin);
 pluginRegistry.register(nfcCleaningPlugin);
 pluginRegistry.register(switchbotPlugin);
 pluginRegistry.register(customersPlugin);
+pluginRegistry.register(reservationTablePlugin);
 
 // 設定は常に最後
 pluginRegistry.register(settingsPlugin);
@@ -122,6 +128,26 @@ app.post('/api/cron/switchbot-readings', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+// Vercel Cron: 予約通知メール送出（5分ごと想定）
+app.post('/api/cron/reservation-notifications', async (req, res) => {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const auth = req.headers.authorization;
+    if (auth !== `Bearer ${cronSecret}`) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+  }
+  try {
+    const result = await dispatchPendingNotifications(50);
+    console.log('[cron] reservation-notifications:', result);
+    res.json({ ok: true, ...result });
+  } catch (e: any) {
+    console.error('[cron] reservation-notifications error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/plugins', (_req, res) => {
   const plugins = pluginRegistry.list().map(p => ({
     name: p.name,

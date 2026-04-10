@@ -43,6 +43,12 @@ import type {
   Customer,
   CustomerListResponse,
   CustomerDuplicateCheck,
+  ReservationRow,
+  ReservationTable,
+  ReservationBusinessHour,
+  PublicStoreInfo,
+  AvailabilitySlot,
+  PublicReservationSummary,
 } from '../types/api';
 
 const API_BASE = '/api';
@@ -550,4 +556,140 @@ export const api = {
     request<OkResponse>(`/customers/${storeId}/${customerId}`, { method: 'DELETE' }),
   checkCustomerDuplicate: (storeId: string, phone: string) =>
     request<CustomerDuplicateCheck>(`/customers/${storeId}/duplicate-check?phone=${encodeURIComponent(phone)}`),
+
+  // ============================================================
+  // Reservation — store slug (shared)
+  // ============================================================
+  getReservationSlug: (storeId: string) =>
+    request<{ slug: string | null }>(`/reservation/${storeId}/slug`),
+  setReservationSlug: (storeId: string, slug: string) =>
+    request<{ slug: string | null }>(`/reservation/${storeId}/slug`, {
+      method: 'PUT',
+      body: JSON.stringify({ slug }),
+    }),
+
+  // ============================================================
+  // Reservation — table (admin)
+  // ============================================================
+  listReservationTables: (storeId: string) =>
+    request<{ tables: ReservationTable[] }>(`/reservation/table/${storeId}/tables`),
+  createReservationTable: (
+    storeId: string,
+    data: Omit<ReservationTable, 'id' | 'store_id'>,
+  ) =>
+    request<{ table: ReservationTable }>(`/reservation/table/${storeId}/tables`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateReservationTable: (
+    storeId: string,
+    tableId: string,
+    patch: Partial<Omit<ReservationTable, 'id' | 'store_id'>>,
+  ) =>
+    request<{ table: ReservationTable }>(
+      `/reservation/table/${storeId}/tables/${tableId}`,
+      { method: 'PATCH', body: JSON.stringify(patch) },
+    ),
+  deleteReservationTable: (storeId: string, tableId: string) =>
+    request<OkResponse>(`/reservation/table/${storeId}/tables/${tableId}`, {
+      method: 'DELETE',
+    }),
+
+  getReservationBusinessHours: (storeId: string) =>
+    request<{ hours: ReservationBusinessHour[] }>(
+      `/reservation/table/${storeId}/business-hours`,
+    ),
+  setReservationBusinessHours: (storeId: string, hours: ReservationBusinessHour[]) =>
+    request<OkResponse>(`/reservation/table/${storeId}/business-hours`, {
+      method: 'PUT',
+      body: JSON.stringify({ hours }),
+    }),
+
+  listTableReservations: (
+    storeId: string,
+    params: { from?: string; to?: string; status?: string } = {},
+  ) => {
+    const qs = new URLSearchParams();
+    if (params.from) qs.set('from', params.from);
+    if (params.to) qs.set('to', params.to);
+    if (params.status) qs.set('status', params.status);
+    const q = qs.toString();
+    return request<{ reservations: ReservationRow[] }>(
+      `/reservation/table/${storeId}/reservations${q ? `?${q}` : ''}`,
+    );
+  },
+  createTableReservation: (
+    storeId: string,
+    data: {
+      starts_at: string;
+      ends_at: string;
+      party_size: number;
+      table_id?: string | null;
+      customer_name: string;
+      customer_phone?: string;
+      customer_email?: string;
+      notes?: string;
+    },
+  ) =>
+    request<{ reservation: ReservationRow }>(
+      `/reservation/table/${storeId}/reservations`,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
+  updateTableReservation: (
+    storeId: string,
+    reservationId: string,
+    patch: Record<string, unknown>,
+  ) =>
+    request<{ reservation: ReservationRow }>(
+      `/reservation/table/${storeId}/reservations/${reservationId}`,
+      { method: 'PATCH', body: JSON.stringify(patch) },
+    ),
+  cancelTableReservation: (storeId: string, reservationId: string, reason?: string) =>
+    request<{ reservation: ReservationRow }>(
+      `/reservation/table/${storeId}/reservations/${reservationId}/cancel`,
+      { method: 'POST', body: JSON.stringify({ reason }) },
+    ),
+
+  // ============================================================
+  // Reservation — public (slug based, no auth)
+  // ============================================================
+  getPublicStoreBySlug: (slug: string) =>
+    request<{ store: PublicStoreInfo; available: string[] }>(`/public/r/${slug}`),
+  getPublicTableAvailability: (slug: string, date: string, partySize: number) =>
+    request<{ slots: AvailabilitySlot[]; duration_minutes?: number; reason?: string }>(
+      `/public/r/${slug}/table/availability?date=${date}&party_size=${partySize}`,
+    ),
+  createPublicTableReservation: (
+    slug: string,
+    data: {
+      starts_at: string;
+      party_size: number;
+      customer_name: string;
+      customer_phone?: string;
+      customer_email: string;
+      notes?: string;
+    },
+  ) =>
+    request<{ reservation: PublicReservationSummary }>(
+      `/public/r/${slug}/table/reservations`,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
+  getPublicReservation: (slug: string, code: string) =>
+    request<{
+      reservation: {
+        id: string;
+        confirmation_code: string;
+        status: string;
+        starts_at: string;
+        ends_at: string;
+        party_size: number;
+        customer_name: string;
+        reservation_type: string;
+      };
+    }>(`/public/r/${slug}/reservations/${code}`),
+  cancelPublicReservation: (slug: string, code: string, email: string) =>
+    request<{ reservation: { id: string; status: string } }>(
+      `/public/r/${slug}/reservations/${code}/cancel`,
+      { method: 'POST', body: JSON.stringify({ email }) },
+    ),
 };

@@ -37,6 +37,8 @@ import PlatformDashboard from './pages/PlatformDashboard';
 import NfcCleanPage from './pages/NfcCleanPage';
 import NfcPunchPage from './pages/NfcPunchPage';
 import NfcLocationsPage from './pages/NfcLocationsPage';
+import ReservationTablePage from './pages/reservation/ReservationTablePage';
+import PublicTableBookingPage from './pages/reservation/PublicTableBookingPage';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -95,6 +97,7 @@ const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   nfc_cleaning: NfcLocationsPage,
   switchbot: SwitchBotReadingsPage,
   customers: CustomersPage,
+  reservation_table: ReservationTablePage,
   settings: PluginSettingsPage,
 };
 
@@ -414,6 +417,11 @@ export default function App() {
   // NFC 打刻（認証不要の公開ページ、PIN 認証）
   if (window.location.pathname === '/nfc/punch') {
     return <NfcPunchPage />;
+  }
+
+  // 公開テーブル予約（認証不要、slug ベース: /r/:slug/table）
+  if (/^\/r\/[^/]+\/table/.test(window.location.pathname)) {
+    return <PublicTableBookingPage />;
   }
 
   // 組織管理・プラットフォーム管理ルート
