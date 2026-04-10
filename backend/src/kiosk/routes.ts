@@ -728,4 +728,55 @@ router.get('/:storeId/switchbot/:deviceId', requireKiosk, async (req: Request, r
   }
 });
 
+// ============================================================
+// SwitchBot: 日次温湿度ログ（キオスク認証）?date=YYYY-MM-DD
+// ============================================================
+router.get('/:storeId/switchbot/readings', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    if (storeId !== (req as any).kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    // date パラメータ（デフォルト: 今日）
+    const dateParam = typeof req.query.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
+      ? req.query.date
+      : new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' }).split(' ')[0];
+
+    // JST 深夜0時〜翌深夜0時の UTC 範囲を計算（JST = UTC+9）
+    const startISO = `${dateParam}T00:00:00+09:00`;
+    const endISO = `${dateParam}T23:59:59+09:00`;
+
+    const { data, error } = await supabaseAdmin
+      .from('switchbot_readings')
+      .select('device_id, device_name, temperature, humidity, battery, recorded_at')
+      .eq('store_id', storeId)
+      .gte('recorded_at', startISO)
+      .lte('recorded_at', endISO)
+      .order('recorded_at', { ascending: true });
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    // device_id ごとにグループ化
+    const deviceMap = new Map<string, { deviceId: string; deviceName: string; readings: { temperature: number | null; humidity: number | null; battery: number | null; recordedAt: string }[] }>();
+    interface ReadingRow { device_id: string; device_name: string | null; temperature: number | null; humidity: number | null; battery: number | null; recorded_at: string; }
+    for (const row of (data || []) as ReadingRow[]) {
+      if (!deviceMap.has(row.device_id)) {
+        deviceMap.set(row.device_id, { deviceId: row.device_id, deviceName: row.device_name || '', readings: [] });
+      }
+      deviceMap.get(row.device_id)!.readings.push({
+        temperature: row.temperature ?? null,
+        humidity: row.humidity ?? null,
+        battery: row.battery ?? null,
+        recordedAt: row.recorded_at,
+      });
+    }
+
+    res.json({ devices: Array.from(deviceMap.values()), date: dateParam });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Internal Server Error';
+    res.status(500).json({ error: msg });
+  }
+});
+
 export const kioskRouter = router;

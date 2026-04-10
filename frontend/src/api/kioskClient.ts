@@ -119,6 +119,20 @@ export const kioskApi = {
       `/kiosk/${storeId}/switchbot/${deviceId}`
     ),
 
+  getSwitchBotReadings: (storeId: string, date: string) =>
+    kioskRequest<{
+      devices: Array<{
+        deviceId: string;
+        deviceName: string;
+        readings: Array<{
+          temperature: number | null;
+          humidity: number | null;
+          battery: number | null;
+          recordedAt: string;
+        }>;
+      }>;
+    }>(`/kiosk/${storeId}/switchbot/readings?date=${date}`),
+
   punch: (storeId: string, staffId: string, action: 'clock-in' | 'clock-out') =>
     kioskRequest<{ ok: boolean; action: string; clockIn?: string; clockOut?: string }>(
       `/kiosk/${storeId}/punch`,
