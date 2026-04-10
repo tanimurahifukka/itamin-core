@@ -28,6 +28,7 @@ import { attendancePlugin } from './plugins/attendance_plugin';
 import { staffPlugin } from './plugins/staff';
 import { kioskPlugin } from './plugins/kiosk';
 import { haccpKioskPlugin } from './plugins/haccp_kiosk';
+import { nfcCleaningPlugin } from './plugins/nfc_cleaning';
 import { switchbotPlugin } from './plugins/switchbot';
 import { settingsPlugin } from './plugins/settings_plugin';
 import { salesCapturePlugin } from './plugins/sales_capture';
@@ -88,6 +89,7 @@ pluginRegistry.register(attendanceAdminPlugin);
 
 pluginRegistry.register(kioskPlugin);
 pluginRegistry.register(haccpKioskPlugin);
+pluginRegistry.register(nfcCleaningPlugin);
 pluginRegistry.register(switchbotPlugin);
 pluginRegistry.register(customersPlugin);
 

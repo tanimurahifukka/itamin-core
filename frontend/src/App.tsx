@@ -35,6 +35,7 @@ import CustomersPage from './pages/CustomersPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import PlatformDashboard from './pages/PlatformDashboard';
 import NfcCleanPage from './pages/NfcCleanPage';
+import NfcLocationsPage from './pages/NfcLocationsPage';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -90,6 +91,7 @@ const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   attendance_admin: AttendanceAdminPage,
   kiosk: KioskLinkPage,
   haccp_kiosk: ChecklistAdminPage,
+  nfc_cleaning: NfcLocationsPage,
   switchbot: SwitchBotReadingsPage,
   customers: CustomersPage,
   settings: PluginSettingsPage,

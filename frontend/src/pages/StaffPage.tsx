@@ -284,6 +284,27 @@ export default function StaffPage() {
     });
   };
 
+  // 清掃 PIN (NFC)
+  const [cleaningPinResult, setCleaningPinResult] = useState<{ staffName: string; pin: string } | null>(null);
+
+  const handleRegenerateCleaningPin = async (staff: StaffMember) => {
+    if (!selectedStore) return;
+    if (!confirm(`${staff.userName} さんの清掃 PIN を発行/再発行します。既存 PIN は無効化されます。よろしいですか？`)) return;
+    try {
+      const result = await api.regenerateCleaningPin(selectedStore.id, staff.id);
+      setCleaningPinResult({ staffName: result.staffName || staff.userName, pin: result.pin });
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'PIN の発行に失敗しました', 'error');
+    }
+  };
+
+  const handleCopyCleaningPin = () => {
+    if (!cleaningPinResult) return;
+    navigator.clipboard.writeText(cleaningPinResult.pin).then(() => {
+      showToast('PIN をコピーしました', 'info');
+    });
+  };
+
   const openHistoryModal = async () => {
     if (!selectedStore) return;
     setHistoryOpen(true);
@@ -571,6 +592,12 @@ export default function StaffPage() {
                         🔑 パスワードを再設定
                       </button>
                       <button
+                        onClick={() => { setOpenMenuId(null); handleRegenerateCleaningPin(s); }}
+                        style={staffMenuItemStyle}
+                      >
+                        🧹 清掃 PIN を発行
+                      </button>
+                      <button
                         onClick={() => { setOpenMenuId(null); openRemoveModal(s); }}
                         style={{ ...staffMenuItemStyle, color: '#dc2626' }}
                       >
@@ -835,6 +862,80 @@ export default function StaffPage() {
                 閉じる
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 清掃 PIN 発行結果モーダル */}
+      {cleaningPinResult && (
+        <div className="remove-modal-overlay" onClick={() => setCleaningPinResult(null)}>
+          <div
+            className="remove-modal"
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: 420, width: '92%' }}
+          >
+            <div className="remove-modal-icon">🧹</div>
+            <h3 className="remove-modal-title">清掃 PIN を発行しました</h3>
+            <p className="remove-modal-desc">
+              <strong>{cleaningPinResult.staffName}</strong> さんの新しい清掃 PIN です。
+              NFC タグからの清掃記録入力時に使用します。
+            </p>
+            <div
+              style={{
+                margin: '16px 0',
+                padding: '20px',
+                background: '#f1f5f9',
+                borderRadius: 10,
+                textAlign: 'center',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'monospace',
+                  fontSize: '2rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.4em',
+                  color: '#0f172a',
+                }}
+              >
+                {cleaningPinResult.pin}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={handleCopyCleaningPin}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#2563eb',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                PIN をコピー
+              </button>
+              <button
+                onClick={() => setCleaningPinResult(null)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#e2e8f0',
+                  color: '#0f172a',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                閉じる
+              </button>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: '#999', marginTop: 12 }}>
+              この PIN を本人に伝えてください。再発行すると旧 PIN は無効になります。
+            </p>
           </div>
         </div>
       )}

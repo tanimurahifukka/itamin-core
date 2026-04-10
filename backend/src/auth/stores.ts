@@ -1043,4 +1043,388 @@ router.post('/:storeId/staff/rehire', requireAuth, async (req: Request, res: Res
   }
 });
 
+// ============================================================
+// NFC cleaning: 清掃 PIN 管理
+// ============================================================
+
+// ランダムな 4 桁 PIN を生成 (store 内で衝突しないように再試行)
+async function generateUniqueCleaningPin(storeId: string, maxRetries = 20): Promise<string | null> {
+  for (let i = 0; i < maxRetries; i++) {
+    const pin = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    const { data } = await supabaseAdmin
+      .from('staff_cleaning_pins')
+      .select('membership_id')
+      .eq('store_id', storeId)
+      .eq('pin', pin)
+      .maybeSingle();
+    if (!data) return pin;
+  }
+  return null;
+}
+
+// スタッフごとの清掃 PIN 一覧 (管理者のみ)
+router.get('/:storeId/cleaning-pins', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const { data, error } = await supabaseAdmin
+      .from('staff_cleaning_pins')
+      .select('membership_id, pin, updated_at, staff:store_staff!inner(id, user:profiles(name))')
+      .eq('store_id', storeId);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    const pins = (data || []).map((row: any) => ({
+      membershipId: row.membership_id,
+      pin: row.pin,
+      updatedAt: row.updated_at,
+      staffName: row.staff?.user?.name || '',
+    }));
+
+    res.json({ pins });
+  } catch (e: any) {
+    console.error('[stores GET /:storeId/cleaning-pins] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// スタッフ個別の PIN 発行/再発行
+router.post('/:storeId/cleaning-pins/:staffId/regenerate', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const staffId = req.params.staffId as string;
+
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    // 対象スタッフが同じ店舗に属するか確認
+    const { data: target, error: targetErr } = await supabaseAdmin
+      .from('store_staff')
+      .select('id, user:profiles(name)')
+      .eq('id', staffId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (targetErr || !target) {
+      res.status(404).json({ error: 'スタッフが見つかりません' });
+      return;
+    }
+
+    const pin = await generateUniqueCleaningPin(storeId);
+    if (!pin) {
+      res.status(500).json({ error: 'PIN を生成できませんでした' });
+      return;
+    }
+
+    // upsert
+    const { error: upErr } = await supabaseAdmin
+      .from('staff_cleaning_pins')
+      .upsert({
+        membership_id: staffId,
+        store_id: storeId,
+        pin,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'membership_id' });
+
+    if (upErr) {
+      res.status(500).json({ error: upErr.message });
+      return;
+    }
+
+    await writeAuditLog({
+      storeId,
+      actorId: req.user!.id,
+      actorRole: membership.role,
+      action: 'cleaning_pin.regenerate',
+      targetType: 'staff',
+      targetId: staffId,
+      targetName: (target as any).user?.name || null,
+      metadata: {},
+    });
+
+    res.json({ ok: true, pin, staffName: (target as any).user?.name || null });
+  } catch (e: any) {
+    console.error('[stores POST /:storeId/cleaning-pins/:staffId/regenerate] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// スタッフ個別の PIN 削除
+router.delete('/:storeId/cleaning-pins/:staffId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const staffId = req.params.staffId as string;
+
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const { error } = await supabaseAdmin
+      .from('staff_cleaning_pins')
+      .delete()
+      .eq('store_id', storeId)
+      .eq('membership_id', staffId);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    await writeAuditLog({
+      storeId,
+      actorId: req.user!.id,
+      actorRole: membership.role,
+      action: 'cleaning_pin.delete',
+      targetType: 'staff',
+      targetId: staffId,
+      metadata: {},
+    });
+
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error('[stores DELETE /:storeId/cleaning-pins/:staffId] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// NFC cleaning: 場所 (location) 管理
+// ============================================================
+
+// NFC location 一覧 (店舗メンバー全員)
+router.get('/:storeId/nfc-locations', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    const { data, error } = await supabaseAdmin
+      .from('nfc_cleaning_locations')
+      .select('id, slug, name, template_id, active, created_at, updated_at')
+      .eq('store_id', storeId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    // テンプレート名を併せて返す
+    const templateIds = Array.from(new Set((data || []).map((d: any) => d.template_id).filter(Boolean)));
+    let templateMap: Record<string, string> = {};
+    if (templateIds.length > 0) {
+      const { data: templates } = await supabaseAdmin
+        .from('checklist_templates')
+        .select('id, name')
+        .in('id', templateIds);
+      for (const t of templates || []) {
+        templateMap[(t as any).id] = (t as any).name;
+      }
+    }
+
+    const origin = `${req.protocol}://${req.get('host')}`;
+    const locations = (data || []).map((row: any) => ({
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      templateId: row.template_id,
+      templateName: row.template_id ? templateMap[row.template_id] || null : null,
+      active: row.active,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      url: `${origin}/nfc/clean?loc=${row.id}`,
+    }));
+
+    res.json({ locations });
+  } catch (e: any) {
+    console.error('[stores GET /:storeId/nfc-locations] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// NFC location 作成 (管理者のみ)
+router.post('/:storeId/nfc-locations', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    const slug = typeof req.body?.slug === 'string' ? req.body.slug.trim() : '';
+    const templateId = typeof req.body?.templateId === 'string' ? req.body.templateId : null;
+
+    if (!name) { res.status(400).json({ error: '名前は必須です' }); return; }
+    if (!slug || !/^[a-z0-9-]+$/i.test(slug)) {
+      res.status(400).json({ error: 'slug は半角英数とハイフンで入力してください' });
+      return;
+    }
+
+    // テンプレートが指定されていれば、同じ店舗のテンプレートか確認
+    if (templateId) {
+      const { data: tpl } = await supabaseAdmin
+        .from('checklist_templates')
+        .select('id, store_id')
+        .eq('id', templateId)
+        .maybeSingle();
+      if (!tpl || (tpl as any).store_id !== storeId) {
+        res.status(400).json({ error: '無効なテンプレートです' });
+        return;
+      }
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('nfc_cleaning_locations')
+      .insert({ store_id: storeId, slug, name, template_id: templateId, active: true })
+      .select('id, slug, name, template_id, active')
+      .single();
+
+    if (error) {
+      if ((error as any).code === '23505') {
+        res.status(409).json({ error: '同じ slug の場所がすでに存在します' });
+        return;
+      }
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    await writeAuditLog({
+      storeId,
+      actorId: req.user!.id,
+      actorRole: membership.role,
+      action: 'nfc_location.create',
+      targetType: 'nfc_location',
+      targetId: (data as any).id,
+      targetName: name,
+      metadata: { slug, templateId },
+    });
+
+    const origin = `${req.protocol}://${req.get('host')}`;
+    res.status(201).json({
+      ok: true,
+      location: {
+        ...(data as any),
+        url: `${origin}/nfc/clean?loc=${(data as any).id}`,
+      },
+    });
+  } catch (e: any) {
+    console.error('[stores POST /:storeId/nfc-locations] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// NFC location 更新 (管理者のみ)
+router.put('/:storeId/nfc-locations/:id', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const id = req.params.id as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (typeof req.body?.name === 'string') patch.name = req.body.name.trim();
+    if (typeof req.body?.slug === 'string') {
+      if (!/^[a-z0-9-]+$/i.test(req.body.slug)) {
+        res.status(400).json({ error: 'slug は半角英数とハイフンで入力してください' });
+        return;
+      }
+      patch.slug = req.body.slug.trim();
+    }
+    if ('templateId' in (req.body || {})) patch.template_id = req.body.templateId || null;
+    if (typeof req.body?.active === 'boolean') patch.active = req.body.active;
+
+    const { data, error } = await supabaseAdmin
+      .from('nfc_cleaning_locations')
+      .update(patch)
+      .eq('id', id)
+      .eq('store_id', storeId)
+      .select('id, slug, name, template_id, active')
+      .single();
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    await writeAuditLog({
+      storeId,
+      actorId: req.user!.id,
+      actorRole: membership.role,
+      action: 'nfc_location.update',
+      targetType: 'nfc_location',
+      targetId: id,
+      metadata: patch,
+    });
+
+    res.json({ ok: true, location: data });
+  } catch (e: any) {
+    console.error('[stores PUT /:storeId/nfc-locations/:id] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// NFC location 削除 (管理者のみ)
+router.delete('/:storeId/nfc-locations/:id', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const id = req.params.id as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const { error } = await supabaseAdmin
+      .from('nfc_cleaning_locations')
+      .delete()
+      .eq('id', id)
+      .eq('store_id', storeId);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    await writeAuditLog({
+      storeId,
+      actorId: req.user!.id,
+      actorRole: membership.role,
+      action: 'nfc_location.delete',
+      targetType: 'nfc_location',
+      targetId: id,
+      metadata: {},
+    });
+
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error('[stores DELETE /:storeId/nfc-locations/:id] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 店舗のチェックリストテンプレート一覧 (NFC location 作成時のセレクト用)
+router.get('/:storeId/checklist-templates', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    const { data, error } = await supabaseAdmin
+      .from('checklist_templates')
+      .select('id, name, description, scope, timing')
+      .eq('store_id', storeId)
+      .order('name', { ascending: true });
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json({ templates: data || [] });
+  } catch (e: any) {
+    console.error('[stores GET /:storeId/checklist-templates] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
 export const storesRouter = router;

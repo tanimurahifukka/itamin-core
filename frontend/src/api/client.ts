@@ -119,6 +119,49 @@ export const api = {
     params.set('limit', String(limit));
     return request<{ entries: AuditLogEntry[] }>(`/stores/${storeId}/audit-log?${params}`);
   },
+  // NFC cleaning: PIN management
+  listCleaningPins: (storeId: string) =>
+    request<{ pins: { membershipId: string; pin: string; updatedAt: string; staffName: string }[] }>(
+      `/stores/${storeId}/cleaning-pins`
+    ),
+  regenerateCleaningPin: (storeId: string, staffId: string) =>
+    request<{ ok: boolean; pin: string; staffName: string | null }>(
+      `/stores/${storeId}/cleaning-pins/${staffId}/regenerate`,
+      { method: 'POST' }
+    ),
+  deleteCleaningPin: (storeId: string, staffId: string) =>
+    request<OkResponse>(`/stores/${storeId}/cleaning-pins/${staffId}`, { method: 'DELETE' }),
+  // NFC cleaning: locations
+  listNfcLocations: (storeId: string) =>
+    request<{
+      locations: {
+        id: string;
+        slug: string;
+        name: string;
+        templateId: string | null;
+        templateName: string | null;
+        active: boolean;
+        createdAt: string;
+        updatedAt: string;
+        url: string;
+      }[];
+    }>(`/stores/${storeId}/nfc-locations`),
+  createNfcLocation: (storeId: string, input: { name: string; slug: string; templateId: string | null }) =>
+    request<{
+      ok: boolean;
+      location: { id: string; slug: string; name: string; template_id: string | null; active: boolean; url: string };
+    }>(`/stores/${storeId}/nfc-locations`, { method: 'POST', body: JSON.stringify(input) }),
+  updateNfcLocation: (
+    storeId: string,
+    id: string,
+    patch: { name?: string; slug?: string; templateId?: string | null; active?: boolean }
+  ) => request<OkResponse>(`/stores/${storeId}/nfc-locations/${id}`, { method: 'PUT', body: JSON.stringify(patch) }),
+  deleteNfcLocation: (storeId: string, id: string) =>
+    request<OkResponse>(`/stores/${storeId}/nfc-locations/${id}`, { method: 'DELETE' }),
+  listChecklistTemplatesForStore: (storeId: string) =>
+    request<{ templates: { id: string; name: string; description: string | null; scope: string; timing: string }[] }>(
+      `/stores/${storeId}/checklist-templates`
+    ),
   getStoreInvitations: (storeId: string) => request<{ invitations: Invitation[] }>(`/stores/${storeId}/invitations`),
   resendInvitation: (storeId: string, invitationId: string) =>
     request<OkResponse>(`/stores/${storeId}/invitations/${invitationId}/resend`, {
