@@ -1,0 +1,17 @@
+name: SwitchBot Temperature Readings
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  collect-readings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call switchbot-readings endpoint
+        run: |
+          curl --fail \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://itamin-core.vercel.app/api/cron/switchbot-readings
