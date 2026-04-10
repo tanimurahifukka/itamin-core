@@ -408,7 +408,7 @@ router.post('/:storeId/punch', requireKiosk, async (req: Request, res: Response)
     }
 
     if (action === 'clock-in') {
-      // 既に出勤中かチェック
+      // 既に出勤中かチェック（アプリレベルのガード）
       const { data: open } = await supabaseAdmin
         .from('time_records')
         .select('id, clock_in')
@@ -429,6 +429,11 @@ router.post('/:storeId/punch', requireKiosk, async (req: Request, res: Response)
         .single();
 
       if (error) {
+        // DB レベルの partial unique index 違反（並行リクエストによる race condition）
+        if (error.code === '23505') {
+          res.status(409).json({ error: '既に出勤中です（同時打刻検知）' });
+          return;
+        }
         res.status(500).json({ error: error.message });
         return;
       }

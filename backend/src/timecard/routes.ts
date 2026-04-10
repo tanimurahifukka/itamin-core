@@ -74,6 +74,11 @@ router.post('/:storeId/clock-in', requireAuth, async (req: Request, res: Respons
       .single();
 
     if (error) {
+      // DB レベルの partial unique index 違反（並行リクエストによる race condition）
+      if (error.code === '23505') {
+        res.status(409).json({ error: '既に出勤中です（同時打刻検知）' });
+        return;
+      }
       res.status(500).json({ error: error.message });
       return;
     }
@@ -372,6 +377,10 @@ router.post('/:storeId/correct-and-clockin', requireAuth, async (req: Request, r
       .single();
 
     if (insertErr) {
+      if (insertErr.code === '23505') {
+        res.status(409).json({ error: '既に出勤中です（同時打刻検知）' });
+        return;
+      }
       res.status(500).json({ error: insertErr.message });
       return;
     }
