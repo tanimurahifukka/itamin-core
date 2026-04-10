@@ -39,6 +39,9 @@ import type {
   LineLink,
   KioskStaff,
   OkResponse,
+  Customer,
+  CustomerListResponse,
+  CustomerDuplicateCheck,
 } from '../types/api';
 
 const API_BASE = '/api';
@@ -468,4 +471,26 @@ export const api = {
   // Kiosk
   getKioskStaff: (storeId: string) =>
     request<{ staff: KioskStaff[] }>(`/kiosk/${storeId}/staff`),
+
+  // Customers
+  getCustomers: (storeId: string, params?: { q?: string; tag?: string; limit?: number; offset?: number; include_deleted?: boolean }) => {
+    const qs = new URLSearchParams();
+    if (params?.q) qs.set('q', params.q);
+    if (params?.tag) qs.set('tag', params.tag);
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+    if (params?.include_deleted) qs.set('include_deleted', 'true');
+    const query = qs.toString();
+    return request<CustomerListResponse>(`/customers/${storeId}${query ? `?${query}` : ''}`);
+  },
+  getCustomer: (storeId: string, customerId: string) =>
+    request<Customer>(`/customers/${storeId}/${customerId}`),
+  createCustomer: (storeId: string, data: Partial<Omit<Customer, 'id' | 'store_id' | 'created_at' | 'updated_at' | 'deleted_at' | 'phone_normalized'>>) =>
+    request<Customer>(`/customers/${storeId}`, { method: 'POST', body: JSON.stringify(data) }),
+  updateCustomer: (storeId: string, customerId: string, data: Partial<Omit<Customer, 'id' | 'store_id' | 'created_at' | 'updated_at' | 'deleted_at' | 'phone_normalized'>>) =>
+    request<Customer>(`/customers/${storeId}/${customerId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteCustomer: (storeId: string, customerId: string) =>
+    request<OkResponse>(`/customers/${storeId}/${customerId}`, { method: 'DELETE' }),
+  checkCustomerDuplicate: (storeId: string, phone: string) =>
+    request<CustomerDuplicateCheck>(`/customers/${storeId}/duplicate-check?phone=${encodeURIComponent(phone)}`),
 };

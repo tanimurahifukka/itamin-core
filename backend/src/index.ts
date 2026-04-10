@@ -31,6 +31,7 @@ import { haccpKioskPlugin } from './plugins/haccp_kiosk';
 import { switchbotPlugin } from './plugins/switchbot';
 import { settingsPlugin } from './plugins/settings_plugin';
 import { salesCapturePlugin } from './plugins/sales_capture';
+import { customersPlugin } from './plugins/customers';
 import { switchbotRouter } from './services/switchbot/routes';
 import { collectSwitchBotReadings } from './services/switchbot/cron';
 import { lineAttendancePlugin, attendanceAdminPlugin } from './plugins/line_attendance';
@@ -82,6 +83,7 @@ pluginRegistry.register(attendanceAdminPlugin);
 pluginRegistry.register(kioskPlugin);
 pluginRegistry.register(haccpKioskPlugin);
 pluginRegistry.register(switchbotPlugin);
+pluginRegistry.register(customersPlugin);
 
 // 設定は常に最後
 pluginRegistry.register(settingsPlugin);

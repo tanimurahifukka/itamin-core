@@ -522,3 +522,35 @@ export interface KioskStaff {
   openRecordId?: string;
   clockInTime?: string;
 }
+
+// ============================================================
+// Customer
+// ============================================================
+
+export interface Customer {
+  id: string;
+  store_id: string;
+  name: string;
+  name_kana: string | null;
+  phone: string | null;
+  phone_normalized: string | null;
+  email: string | null;
+  birthday: string | null;
+  note: string | null;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface CustomerListResponse {
+  data: Customer[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface CustomerDuplicateCheck {
+  exists: boolean;
+  customer: Customer | null;
+}
