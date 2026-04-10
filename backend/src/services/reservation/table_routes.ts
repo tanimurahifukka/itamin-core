@@ -13,6 +13,7 @@ import {
   cancelReservation,
   resolvePublicStoreBySlug,
 } from './core';
+import { rateLimit } from './rate_limit';
 import type {
   ReservationRow,
   ReservationTableRow,
@@ -553,7 +554,10 @@ publicReservationRouter.get('/:slug/table/availability', async (req: Request, re
 });
 
 // 予約作成 (public)
-publicReservationRouter.post('/:slug/table/reservations', async (req: Request, res: Response) => {
+publicReservationRouter.post(
+  '/:slug/table/reservations',
+  rateLimit({ action: 'public.table.create', windowSec: 60, max: 5 }),
+  async (req: Request, res: Response) => {
   const slug = String(req.params.slug);
   const store = await resolvePublicStoreBySlug(slug);
   if (!store) {
@@ -658,7 +662,8 @@ publicReservationRouter.post('/:slug/table/reservations', async (req: Request, r
     const e = err as Error & { statusCode?: number };
     res.status(e.statusCode || 500).json({ error: e.message });
   }
-});
+  },
+);
 
 // 予約照会 (確認コードで引く)
 publicReservationRouter.get(

@@ -41,7 +41,13 @@ import { platformRouter } from './services/platform/routes';
 import { nfcRouter } from './nfc/routes';
 import { nfcPunchRouter } from './nfc/punch';
 import { reservationTablePlugin } from './plugins/reservation_table';
+import { reservationTimeslotPlugin } from './plugins/reservation_timeslot';
+import { reservationSchoolPlugin } from './plugins/reservation_school';
+import { reservationEventPlugin } from './plugins/reservation_event';
 import { publicReservationRouter } from './services/reservation/table_routes';
+import { timeslotPublicRouter } from './services/reservation/timeslot_routes';
+import { schoolPublicRouter } from './services/reservation/school_routes';
+import { eventPublicRouter } from './services/reservation/event_routes';
 import { dispatchPendingNotifications } from './services/reservation/email';
 
 const app = express();
@@ -71,6 +77,10 @@ app.use('/api/platform', platformRouter);
 app.use('/api/nfc/punch', nfcPunchRouter);
 app.use('/api/nfc', nfcRouter);
 // 公開予約 API (認証なし、slug ベース)
+// 特化ルーターを先に登録してから共通ルーターにフォールバック
+app.use('/api/public/r/:slug/timeslot', timeslotPublicRouter);
+app.use('/api/public/r/:slug/school', schoolPublicRouter);
+app.use('/api/public/r/:slug/event', eventPublicRouter);
 app.use('/api/public/r', publicReservationRouter);
 
 // Core plugins（無効化不可）
@@ -101,6 +111,9 @@ pluginRegistry.register(nfcCleaningPlugin);
 pluginRegistry.register(switchbotPlugin);
 pluginRegistry.register(customersPlugin);
 pluginRegistry.register(reservationTablePlugin);
+pluginRegistry.register(reservationTimeslotPlugin);
+pluginRegistry.register(reservationSchoolPlugin);
+pluginRegistry.register(reservationEventPlugin);
 
 // 設定は常に最後
 pluginRegistry.register(settingsPlugin);

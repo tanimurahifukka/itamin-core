@@ -38,7 +38,13 @@ import NfcCleanPage from './pages/NfcCleanPage';
 import NfcPunchPage from './pages/NfcPunchPage';
 import NfcLocationsPage from './pages/NfcLocationsPage';
 import ReservationTablePage from './pages/reservation/ReservationTablePage';
+import ReservationTimeslotPage from './pages/reservation/ReservationTimeslotPage';
+import ReservationSchoolPage from './pages/reservation/ReservationSchoolPage';
+import ReservationEventPage from './pages/reservation/ReservationEventPage';
 import PublicTableBookingPage from './pages/reservation/PublicTableBookingPage';
+import PublicTimeslotBookingPage from './pages/reservation/PublicTimeslotBookingPage';
+import PublicSchoolBookingPage from './pages/reservation/PublicSchoolBookingPage';
+import PublicEventBookingPage from './pages/reservation/PublicEventBookingPage';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -98,6 +104,9 @@ const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   switchbot: SwitchBotReadingsPage,
   customers: CustomersPage,
   reservation_table: ReservationTablePage,
+  reservation_timeslot: ReservationTimeslotPage,
+  reservation_school: ReservationSchoolPage,
+  reservation_event: ReservationEventPage,
   settings: PluginSettingsPage,
 };
 
@@ -422,6 +431,15 @@ export default function App() {
   // 公開テーブル予約（認証不要、slug ベース: /r/:slug/table）
   if (/^\/r\/[^/]+\/table/.test(window.location.pathname)) {
     return <PublicTableBookingPage />;
+  }
+  if (/^\/r\/[^/]+\/timeslot/.test(window.location.pathname)) {
+    return <PublicTimeslotBookingPage />;
+  }
+  if (/^\/r\/[^/]+\/school/.test(window.location.pathname)) {
+    return <PublicSchoolBookingPage />;
+  }
+  if (/^\/r\/[^/]+\/event/.test(window.location.pathname)) {
+    return <PublicEventBookingPage />;
   }
 
   // 組織管理・プラットフォーム管理ルート

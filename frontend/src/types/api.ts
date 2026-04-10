@@ -641,3 +641,90 @@ export interface PublicReservationSummary {
   ends_at: string;
   party_size: number;
 }
+
+// ── Timeslot ──
+export interface ReservationTimeslot {
+  id: string;
+  store_id: string;
+  name: string;
+  description: string | null;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  capacity: number;
+  price: number | null;
+  active: boolean;
+  sort_order: number;
+}
+
+export interface PublicTimeslotAvailability {
+  id: string;
+  name: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string;
+  capacity: number;
+  remaining: number;
+  price: number | null;
+}
+
+// ── School ──
+export interface ReservationSchool {
+  id: string;
+  store_id: string;
+  name: string;
+  description: string | null;
+  instructor: string | null;
+  capacity: number;
+  price: number | null;
+  image_url: string | null;
+  active: boolean;
+  sort_order: number;
+}
+
+export interface ReservationSchoolSession {
+  id: string;
+  school_id: string;
+  store_id: string;
+  starts_at: string;
+  ends_at: string;
+  capacity_override: number | null;
+  status: 'scheduled' | 'cancelled' | 'completed';
+  note: string | null;
+}
+
+export interface PublicSchoolSessionAvailability {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  capacity: number;
+  remaining: number;
+  note: string | null;
+}
+
+// ── Event ──
+export interface ReservationEvent {
+  id: string;
+  store_id: string;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string;
+  capacity: number;
+  price: number | null;
+  image_url: string | null;
+  status: 'draft' | 'published' | 'cancelled' | 'completed';
+  sort_order: number;
+}
+
+export interface PublicEventAvailability {
+  id: string;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string;
+  capacity: number;
+  remaining: number;
+  price: number | null;
+  image_url: string | null;
+}

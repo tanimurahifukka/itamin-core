@@ -49,6 +49,13 @@ import type {
   PublicStoreInfo,
   AvailabilitySlot,
   PublicReservationSummary,
+  ReservationTimeslot,
+  PublicTimeslotAvailability,
+  ReservationSchool,
+  ReservationSchoolSession,
+  PublicSchoolSessionAvailability,
+  ReservationEvent,
+  PublicEventAvailability,
 } from '../types/api';
 
 const API_BASE = '/api';
@@ -691,5 +698,201 @@ export const api = {
     request<{ reservation: { id: string; status: string } }>(
       `/public/r/${slug}/reservations/${code}/cancel`,
       { method: 'POST', body: JSON.stringify({ email }) },
+    ),
+
+  // ============================================================
+  // Reservation — timeslot
+  // ============================================================
+  listReservationTimeslots: (storeId: string) =>
+    request<{ timeslots: ReservationTimeslot[] }>(
+      `/reservation/timeslot/${storeId}/timeslots`,
+    ),
+  createReservationTimeslot: (
+    storeId: string,
+    data: Omit<ReservationTimeslot, 'id' | 'store_id'>,
+  ) =>
+    request<{ timeslot: ReservationTimeslot }>(
+      `/reservation/timeslot/${storeId}/timeslots`,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
+  updateReservationTimeslot: (
+    storeId: string,
+    id: string,
+    patch: Partial<Omit<ReservationTimeslot, 'id' | 'store_id'>>,
+  ) =>
+    request<{ timeslot: ReservationTimeslot }>(
+      `/reservation/timeslot/${storeId}/timeslots/${id}`,
+      { method: 'PATCH', body: JSON.stringify(patch) },
+    ),
+  deleteReservationTimeslot: (storeId: string, id: string) =>
+    request<OkResponse>(`/reservation/timeslot/${storeId}/timeslots/${id}`, {
+      method: 'DELETE',
+    }),
+  listTimeslotReservations: (storeId: string, from?: string, to?: string) => {
+    const q = new URLSearchParams();
+    if (from) q.set('from', from);
+    if (to) q.set('to', to);
+    const qs = q.toString();
+    return request<{ reservations: ReservationRow[] }>(
+      `/reservation/timeslot/${storeId}/reservations${qs ? `?${qs}` : ''}`,
+    );
+  },
+  cancelTimeslotReservation: (storeId: string, reservationId: string, reason?: string) =>
+    request<{ reservation: ReservationRow }>(
+      `/reservation/timeslot/${storeId}/reservations/${reservationId}/cancel`,
+      { method: 'POST', body: JSON.stringify({ reason }) },
+    ),
+  getPublicTimeslotAvailability: (slug: string, date: string) =>
+    request<{ slots: PublicTimeslotAvailability[]; reason?: string }>(
+      `/public/r/${slug}/timeslot/availability?date=${date}`,
+    ),
+  createPublicTimeslotReservation: (
+    slug: string,
+    data: {
+      timeslot_id: string;
+      date: string;
+      party_size: number;
+      customer_name: string;
+      customer_phone?: string;
+      customer_email: string;
+      notes?: string;
+    },
+  ) =>
+    request<{ reservation: PublicReservationSummary }>(
+      `/public/r/${slug}/timeslot/reservations`,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
+
+  // ============================================================
+  // Reservation — school
+  // ============================================================
+  listReservationSchools: (storeId: string) =>
+    request<{ schools: ReservationSchool[] }>(`/reservation/school/${storeId}/schools`),
+  createReservationSchool: (
+    storeId: string,
+    data: Omit<ReservationSchool, 'id' | 'store_id'>,
+  ) =>
+    request<{ school: ReservationSchool }>(`/reservation/school/${storeId}/schools`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateReservationSchool: (
+    storeId: string,
+    id: string,
+    patch: Partial<Omit<ReservationSchool, 'id' | 'store_id'>>,
+  ) =>
+    request<{ school: ReservationSchool }>(
+      `/reservation/school/${storeId}/schools/${id}`,
+      { method: 'PATCH', body: JSON.stringify(patch) },
+    ),
+  deleteReservationSchool: (storeId: string, id: string) =>
+    request<OkResponse>(`/reservation/school/${storeId}/schools/${id}`, {
+      method: 'DELETE',
+    }),
+  listSchoolSessions: (storeId: string, schoolId: string) =>
+    request<{ sessions: ReservationSchoolSession[] }>(
+      `/reservation/school/${storeId}/schools/${schoolId}/sessions`,
+    ),
+  createSchoolSession: (
+    storeId: string,
+    schoolId: string,
+    data: {
+      starts_at: string;
+      ends_at: string;
+      capacity_override?: number | null;
+      note?: string | null;
+    },
+  ) =>
+    request<{ session: ReservationSchoolSession }>(
+      `/reservation/school/${storeId}/schools/${schoolId}/sessions`,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
+  deleteSchoolSession: (storeId: string, sessionId: string) =>
+    request<OkResponse>(`/reservation/school/${storeId}/sessions/${sessionId}`, {
+      method: 'DELETE',
+    }),
+  listSchoolReservations: (storeId: string) =>
+    request<{ reservations: ReservationRow[] }>(
+      `/reservation/school/${storeId}/reservations`,
+    ),
+  cancelSchoolReservation: (storeId: string, reservationId: string, reason?: string) =>
+    request<{ reservation: ReservationRow }>(
+      `/reservation/school/${storeId}/reservations/${reservationId}/cancel`,
+      { method: 'POST', body: JSON.stringify({ reason }) },
+    ),
+  getPublicSchoolCourses: (slug: string) =>
+    request<{ courses: ReservationSchool[] }>(`/public/r/${slug}/school/courses`),
+  getPublicSchoolSessions: (slug: string, schoolId: string) =>
+    request<{
+      course: ReservationSchool;
+      sessions: PublicSchoolSessionAvailability[];
+    }>(`/public/r/${slug}/school/courses/${schoolId}/sessions`),
+  createPublicSchoolReservation: (
+    slug: string,
+    data: {
+      session_id: string;
+      party_size: number;
+      customer_name: string;
+      customer_phone?: string;
+      customer_email: string;
+      notes?: string;
+    },
+  ) =>
+    request<{ reservation: PublicReservationSummary }>(
+      `/public/r/${slug}/school/reservations`,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
+
+  // ============================================================
+  // Reservation — event
+  // ============================================================
+  listReservationEvents: (storeId: string) =>
+    request<{ events: ReservationEvent[] }>(`/reservation/event/${storeId}/events`),
+  createReservationEvent: (
+    storeId: string,
+    data: Omit<ReservationEvent, 'id' | 'store_id'>,
+  ) =>
+    request<{ event: ReservationEvent }>(`/reservation/event/${storeId}/events`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateReservationEvent: (
+    storeId: string,
+    id: string,
+    patch: Partial<Omit<ReservationEvent, 'id' | 'store_id'>>,
+  ) =>
+    request<{ event: ReservationEvent }>(
+      `/reservation/event/${storeId}/events/${id}`,
+      { method: 'PATCH', body: JSON.stringify(patch) },
+    ),
+  deleteReservationEvent: (storeId: string, id: string) =>
+    request<OkResponse>(`/reservation/event/${storeId}/events/${id}`, {
+      method: 'DELETE',
+    }),
+  listEventReservations: (storeId: string) =>
+    request<{ reservations: ReservationRow[] }>(
+      `/reservation/event/${storeId}/reservations`,
+    ),
+  cancelEventReservation: (storeId: string, reservationId: string, reason?: string) =>
+    request<{ reservation: ReservationRow }>(
+      `/reservation/event/${storeId}/reservations/${reservationId}/cancel`,
+      { method: 'POST', body: JSON.stringify({ reason }) },
+    ),
+  getPublicEvents: (slug: string) =>
+    request<{ events: PublicEventAvailability[] }>(`/public/r/${slug}/event/events`),
+  createPublicEventReservation: (
+    slug: string,
+    data: {
+      event_id: string;
+      party_size: number;
+      customer_name: string;
+      customer_phone?: string;
+      customer_email: string;
+      notes?: string;
+    },
+  ) =>
+    request<{ reservation: PublicReservationSummary }>(
+      `/public/r/${slug}/event/reservations`,
+      { method: 'POST', body: JSON.stringify(data) },
     ),
 };

@@ -156,6 +156,51 @@ export function renderCancelEmail(params: {
 }
 
 // ------------------------------------------------------------
+// LINE push (optional channel)
+// ------------------------------------------------------------
+// 顧客の LINE userId が reservation_notifications.recipient に入っている場合のみ送信。
+// 店舗の LINE チャネルアクセストークンは stores.line_channel_access_token を想定。
+// (未設定なら skipped)
+
+async function sendLinePush(
+  recipientUserId: string,
+  accessToken: string,
+  text: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    const res = await fetch('https://api.line.me/v2/bot/message/push', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        to: recipientUserId,
+        messages: [{ type: 'text', text }],
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      return { error: `line ${res.status}: ${body}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+function renderLineText(kind: string, reservation: ReservationRow, storeName: string): string {
+  const when = fmtDateTime(reservation.starts_at);
+  if (kind === 'confirm') {
+    return `【${storeName}】ご予約を承りました\n${when}\n${reservation.party_size}名\n確認コード: ${reservation.confirmation_code}`;
+  }
+  if (kind === 'cancel') {
+    return `【${storeName}】ご予約をキャンセルしました\n${when}\n確認コード: ${reservation.confirmation_code}`;
+  }
+  return `【${storeName}】${when} (${reservation.confirmation_code})`;
+}
+
+// ------------------------------------------------------------
 // Notification queue worker
 // ------------------------------------------------------------
 // cron から呼ばれる想定。pending 通知を順次処理する。
@@ -189,16 +234,6 @@ export async function dispatchPendingNotifications(limit: number = 20): Promise<
     kind: string;
     recipient: string | null;
   }>) {
-    if (n.channel !== 'email') {
-      // MVP は email のみ。line/sms は今回スコープ外
-      await supabaseAdmin
-        .from('reservation_notifications')
-        .update({ status: 'skipped', error: 'channel not supported in MVP' })
-        .eq('id', n.id);
-      skipped++;
-      continue;
-    }
-
     // reservation + store を取る
     const { data: r } = await supabaseAdmin
       .from('reservations')
@@ -226,6 +261,57 @@ export async function dispatchPendingNotifications(limit: number = 20): Promise<
       slug: string | null;
       phone: string | null;
     };
+
+    if (n.channel === 'line') {
+      if (!n.recipient) {
+        await supabaseAdmin
+          .from('reservation_notifications')
+          .update({ status: 'skipped', error: 'no LINE recipient (customer not linked)' })
+          .eq('id', n.id);
+        skipped++;
+        continue;
+      }
+      // 店舗の LINE チャネルトークンを取る
+      const { data: lineConfig } = await supabaseAdmin
+        .from('line_channels')
+        .select('access_token')
+        .eq('store_id', reservation.store_id)
+        .maybeSingle();
+      const accessToken = (lineConfig as { access_token?: string } | null)?.access_token;
+      if (!accessToken) {
+        await supabaseAdmin
+          .from('reservation_notifications')
+          .update({ status: 'skipped', error: 'LINE channel not configured for store' })
+          .eq('id', n.id);
+        skipped++;
+        continue;
+      }
+      const text = renderLineText(n.kind, reservation, store.name);
+      const result = await sendLinePush(n.recipient, accessToken, text);
+      if (result.error) {
+        await supabaseAdmin
+          .from('reservation_notifications')
+          .update({ status: 'failed', error: result.error })
+          .eq('id', n.id);
+        failed++;
+      } else {
+        await supabaseAdmin
+          .from('reservation_notifications')
+          .update({ status: 'sent', sent_at: new Date().toISOString() })
+          .eq('id', n.id);
+        sent++;
+      }
+      continue;
+    }
+
+    if (n.channel !== 'email') {
+      await supabaseAdmin
+        .from('reservation_notifications')
+        .update({ status: 'skipped', error: `channel ${n.channel} not supported` })
+        .eq('id', n.id);
+      skipped++;
+      continue;
+    }
 
     let msg: EmailMessage | null = null;
     if (n.kind === 'confirm') {
