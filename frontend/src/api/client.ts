@@ -4,6 +4,7 @@ import type {
   StoreAccount,
   StaffMember,
   Invitation,
+  AuditLogEntry,
   TimeRecord,
   TimecardStatus,
   MonthlySummaryStaff,
@@ -112,6 +113,12 @@ export const api = {
       `/stores/${storeId}/staff/${staffId}/reset-password`,
       { method: 'POST', body: JSON.stringify(password ? { password } : {}) }
     ),
+  getAuditLog: (storeId: string, action?: string, limit = 50) => {
+    const params = new URLSearchParams();
+    if (action) params.set('action', action);
+    params.set('limit', String(limit));
+    return request<{ entries: AuditLogEntry[] }>(`/stores/${storeId}/audit-log?${params}`);
+  },
   getStoreInvitations: (storeId: string) => request<{ invitations: Invitation[] }>(`/stores/${storeId}/invitations`),
   resendInvitation: (storeId: string, invitationId: string) =>
     request<OkResponse>(`/stores/${storeId}/invitations/${invitationId}/resend`, {

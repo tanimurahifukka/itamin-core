@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
 import { requireManagedStore, requireStoreMembership, canResetStaffPassword, VALID_STAFF_ROLES } from './authorization';
+import { writeAuditLog, revokeUserSessions } from '../lib/audit';
 
 const router = Router();
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -814,6 +815,32 @@ router.post('/:storeId/staff/:staffId/reset-password', requireAuth, async (req: 
       return;
     }
 
+    // 対象ユーザーの既存セッションを即時 revoke
+    await revokeUserSessions((target as any).user_id);
+
+    // actor (操作者) の情報を取得してログに記録
+    const { data: actorProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('name')
+      .eq('id', req.user!.id)
+      .maybeSingle();
+
+    await writeAuditLog({
+      storeId,
+      actorId: req.user!.id,
+      actorName: (actorProfile as any)?.name || req.user!.email || null,
+      actorRole: membership.role,
+      action: 'password_reset',
+      targetType: 'staff',
+      targetId: staffId,
+      targetName: (target as any).user?.name || (target as any).user?.email || null,
+      metadata: {
+        custom_password_used: !!customPassword,
+        target_role: (target as any).role,
+        sessions_revoked: true,
+      },
+    });
+
     console.log(`[stores] password reset: store=${storeId} staff=${staffId} by=${req.user!.id} role=${membership.role}`);
 
     res.json({
@@ -824,6 +851,46 @@ router.post('/:storeId/staff/:staffId/reset-password', requireAuth, async (req: 
     });
   } catch (e: any) {
     console.error('[stores POST /:storeId/staff/:staffId/reset-password] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 店舗の監査ログ取得 (管理者のみ)
+// クエリ: ?action=password_reset&limit=50
+router.get('/:storeId/audit-log', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+
+    // 管理者ロールのみ
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const action = typeof req.query.action === 'string' ? req.query.action : undefined;
+    const rawLimit = Number(req.query.limit);
+    const limit = Math.min(Math.max(Number.isFinite(rawLimit) ? rawLimit : 50, 1), 200);
+
+    let query = supabaseAdmin
+      .from('audit_logs')
+      .select('id, actor_id, actor_name, actor_role, action, target_type, target_id, target_name, metadata, created_at')
+      .eq('store_id', storeId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (action) {
+      query = query.eq('action', action);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[stores GET audit-log] error:', error);
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json({ entries: data || [] });
+  } catch (e: any) {
+    console.error('[stores GET /:storeId/audit-log] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });

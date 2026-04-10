@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
-import type { StaffMember, Invitation } from '../types/api';
+import type { StaffMember, Invitation, AuditLogEntry } from '../types/api';
 
 const roleLabels: Record<string, string> = {
   owner: 'オーナー',
@@ -18,6 +18,19 @@ const assignableRoles = [
   { value: 'full_time', label: '正社員' },
   { value: 'part_time', label: 'アルバイト' },
 ];
+
+const staffMenuItemStyle: React.CSSProperties = {
+  display: 'block',
+  width: '100%',
+  textAlign: 'left',
+  padding: '10px 14px',
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: '0.9rem',
+  fontFamily: 'inherit',
+  color: '#1f2937',
+};
 
 export default function StaffPage() {
   const { selectedStore } = useAuth();
@@ -60,6 +73,27 @@ export default function StaffPage() {
   const [resetPasswordInput, setResetPasswordInput] = useState('');
   const [resetting, setResetting] = useState(false);
   const [resetResult, setResetResult] = useState<{ password: string; message: string } | null>(null);
+
+  // 行アクションドロップダウン
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // 監査ログ (リセット履歴) モーダル
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyEntries, setHistoryEntries] = useState<AuditLogEntry[]>([]);
+
+  // クリック外で行メニューを閉じる
+  useEffect(() => {
+    if (!openMenuId) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openMenuId]);
 
   const isOwner = selectedStore?.role === 'owner';
 
@@ -250,6 +284,20 @@ export default function StaffPage() {
     });
   };
 
+  const openHistoryModal = async () => {
+    if (!selectedStore) return;
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    try {
+      const result = await api.getAuditLog(selectedStore.id, 'password_reset', 50);
+      setHistoryEntries(result.entries);
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '履歴の取得に失敗しました', 'error');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   // 再入職
   const [rehireEmail, setRehireEmail] = useState('');
   const [rehireRole, setRehireRole] = useState('part_time');
@@ -341,7 +389,26 @@ export default function StaffPage() {
       </div>
 
       <div className="staff-section">
-        <h3 style={{ marginBottom: 16 }}>スタッフ一覧</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <h3 style={{ margin: 0 }}>スタッフ一覧</h3>
+          {isOwner && (
+            <button
+              onClick={openHistoryModal}
+              style={{
+                padding: '8px 14px',
+                background: '#f1f5f9',
+                color: '#475569',
+                border: '1px solid #e2e8f0',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+              }}
+              title="パスワードリセット履歴"
+            >
+              📋 リセット履歴
+            </button>
+          )}
+        </div>
 
         {staffList.map((s) => (
           <div key={s.id} className="staff-item-card">
@@ -459,23 +526,59 @@ export default function StaffPage() {
                 )
               )}
               {s.role !== 'owner' && (
-                <button
-                  className="remove-staff-btn"
-                  onClick={() => openResetModal(s)}
-                  title="パスワードリセット"
-                  style={{ background: '#f59e0b' }}
+                <div
+                  ref={openMenuId === s.id ? menuRef : undefined}
+                  style={{ position: 'relative' }}
                 >
-                  PW再設定
-                </button>
-              )}
-              {s.role !== 'owner' && (
-                <button
-                  className="remove-staff-btn"
-                  onClick={() => openRemoveModal(s)}
-                  title="退職処理"
-                >
-                  退職
-                </button>
+                  <button
+                    className="staff-action-menu-btn"
+                    onClick={() => setOpenMenuId(openMenuId === s.id ? null : s.id)}
+                    aria-label="アクション"
+                    title="アクション"
+                    style={{
+                      background: '#f1f5f9',
+                      border: 'none',
+                      borderRadius: 6,
+                      padding: '6px 10px',
+                      cursor: 'pointer',
+                      fontSize: '1.1rem',
+                      color: '#475569',
+                      lineHeight: 1,
+                    }}
+                  >
+                    ⋯
+                  </button>
+                  {openMenuId === s.id && (
+                    <div
+                      role="menu"
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 4px)',
+                        right: 0,
+                        background: '#fff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 8,
+                        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.12)',
+                        minWidth: 180,
+                        zIndex: 50,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <button
+                        onClick={() => { setOpenMenuId(null); openResetModal(s); }}
+                        style={staffMenuItemStyle}
+                      >
+                        🔑 パスワードを再設定
+                      </button>
+                      <button
+                        onClick={() => { setOpenMenuId(null); openRemoveModal(s); }}
+                        style={{ ...staffMenuItemStyle, color: '#dc2626' }}
+                      >
+                        🚪 退職処理
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -672,6 +775,66 @@ export default function StaffPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* リセット履歴モーダル */}
+      {historyOpen && (
+        <div className="remove-modal-overlay" onClick={() => setHistoryOpen(false)}>
+          <div
+            className="remove-modal"
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: 560, width: '92%' }}
+          >
+            <div className="remove-modal-icon">📋</div>
+            <h3 className="remove-modal-title">パスワードリセット履歴</h3>
+            <p className="remove-modal-desc" style={{ textAlign: 'left' }}>
+              直近 50 件までのパスワードリセット記録を表示します。
+            </p>
+            <div style={{ maxHeight: 360, overflowY: 'auto', marginTop: 8, border: '1px solid #e2e8f0', borderRadius: 6 }}>
+              {historyLoading ? (
+                <div style={{ padding: 24, textAlign: 'center', color: '#64748b' }}>読み込み中...</div>
+              ) : historyEntries.length === 0 ? (
+                <div style={{ padding: 24, textAlign: 'center', color: '#64748b' }}>履歴はまだありません</div>
+              ) : (
+                historyEntries.map((entry) => {
+                  const meta = entry.metadata || {};
+                  const custom = Boolean((meta as Record<string, unknown>).custom_password_used);
+                  return (
+                    <div
+                      key={entry.id}
+                      style={{
+                        padding: '12px 14px',
+                        borderBottom: '1px solid #f1f5f9',
+                        fontSize: '0.88rem',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <div style={{ color: '#0f172a', marginBottom: 4 }}>
+                        <strong>{entry.target_name || '(削除済みスタッフ)'}</strong>
+                        <span style={{ color: '#64748b', marginLeft: 8 }}>
+                          ← {entry.actor_name || '(不明)'}
+                          {entry.actor_role ? ` (${roleLabels[entry.actor_role] || entry.actor_role})` : ''}
+                        </span>
+                      </div>
+                      <div style={{ color: '#64748b', fontSize: '0.8rem' }}>
+                        {new Date(entry.created_at).toLocaleString('ja-JP')}
+                        {custom ? ' · カスタムパスワード' : ' · 初期パスワード'}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div className="remove-modal-actions" style={{ marginTop: 16 }}>
+              <button
+                className="remove-modal-submit active"
+                onClick={() => setHistoryOpen(false)}
+              >
+                閉じる
+              </button>
+            </div>
           </div>
         </div>
       )}
