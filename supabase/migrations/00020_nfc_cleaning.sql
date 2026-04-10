@@ -39,7 +39,7 @@ DROP POLICY IF EXISTS scp_select_managed ON public.staff_cleaning_pins;
 CREATE POLICY scp_select_managed ON public.staff_cleaning_pins
   FOR SELECT TO authenticated
   USING (
-    store_id = ANY(public.get_my_managed_store_ids())
+    store_id IN (SELECT public.get_my_managed_store_ids())
     OR public.is_platform_team()
   );
 
@@ -69,7 +69,7 @@ DROP POLICY IF EXISTS ncl_select_members ON public.nfc_cleaning_locations;
 CREATE POLICY ncl_select_members ON public.nfc_cleaning_locations
   FOR SELECT TO authenticated
   USING (
-    store_id = ANY(public.get_my_store_ids())
+    store_id IN (SELECT public.get_my_store_ids())
     OR public.is_platform_team()
   );
 
@@ -77,8 +77,8 @@ CREATE POLICY ncl_select_members ON public.nfc_cleaning_locations
 DROP POLICY IF EXISTS ncl_write_managed ON public.nfc_cleaning_locations;
 CREATE POLICY ncl_write_managed ON public.nfc_cleaning_locations
   FOR ALL TO authenticated
-  USING     (store_id = ANY(public.get_my_managed_store_ids()))
-  WITH CHECK (store_id = ANY(public.get_my_managed_store_ids()));
+  USING     (store_id IN (SELECT public.get_my_managed_store_ids()))
+  WITH CHECK (store_id IN (SELECT public.get_my_managed_store_ids()));
 
 -- ── 3. "トイレ清掃" system template seed ─────────────────────
 -- 既存の sofe 仕様書の 6 項目をそのまま登録する。

@@ -39,6 +39,7 @@ import { lineAttendancePlugin, attendanceAdminPlugin } from './plugins/line_atte
 import { organizationsRouter } from './services/organizations/routes';
 import { platformRouter } from './services/platform/routes';
 import { nfcRouter } from './nfc/routes';
+import { nfcPunchRouter } from './nfc/punch';
 
 const app = express();
 
@@ -63,6 +64,8 @@ app.use('/api/line-staff', lineStaffRouter);
 app.use('/api/webhooks/line', lineWebhookRouter);
 app.use('/api/organizations', organizationsRouter);
 app.use('/api/platform', platformRouter);
+// `/api/nfc/punch/*` を `/api/nfc/*` より先に登録して優先させる
+app.use('/api/nfc/punch', nfcPunchRouter);
 app.use('/api/nfc', nfcRouter);
 
 // Core plugins（無効化不可）

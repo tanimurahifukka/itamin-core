@@ -35,6 +35,7 @@ import CustomersPage from './pages/CustomersPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import PlatformDashboard from './pages/PlatformDashboard';
 import NfcCleanPage from './pages/NfcCleanPage';
+import NfcPunchPage from './pages/NfcPunchPage';
 import NfcLocationsPage from './pages/NfcLocationsPage';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
@@ -408,6 +409,11 @@ export default function App() {
   // NFC 清掃チェック（認証不要の公開ページ）
   if (window.location.pathname === '/nfc/clean') {
     return <NfcCleanPage />;
+  }
+
+  // NFC 打刻（認証不要の公開ページ、PIN 認証）
+  if (window.location.pathname === '/nfc/punch') {
+    return <NfcPunchPage />;
   }
 
   // 組織管理・プラットフォーム管理ルート

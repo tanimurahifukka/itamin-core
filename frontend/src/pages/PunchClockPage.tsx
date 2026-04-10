@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import ChecklistGate from '../components/ChecklistGate';
+import PunchRouteHint from '../components/PunchRouteHint';
 import { showToast } from '../components/Toast';
 import type { MenuItem, InventoryItem, DailyReportItem } from '../types/api';
 
@@ -322,6 +323,12 @@ export default function PunchClockPage() {
 
   return (
     <div className="punch-clock">
+      {selectedStore && (
+        <PunchRouteHint
+          storeId={selectedStore.id}
+          isManager={!!isManagerRole || selectedStore.role === 'owner'}
+        />
+      )}
       <div className="current-time">{formatTime(time)}</div>
       <div className="current-date">{formatDate(time)}</div>
 
