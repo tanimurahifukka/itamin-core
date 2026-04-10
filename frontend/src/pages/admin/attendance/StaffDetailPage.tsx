@@ -1,9 +1,33 @@
 /**
  * A03 スタッフ勤怠詳細
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
+
+interface AttendanceRecord {
+  id: string;
+  businessDate: string;
+  clockInAt: string | null;
+  clockOutAt: string | null;
+  breakMinutes: number;
+  status: string;
+  note?: string;
+}
+
+interface CorrectionItem {
+  id: string;
+  requested_business_date: string;
+  status: string;
+  request_type: string;
+  reason: string;
+}
+
+interface StaffDetailData {
+  staff?: { name: string };
+  records?: AttendanceRecord[];
+  corrections?: CorrectionItem[];
+}
 
 function formatTime(iso: string | null) {
   if (!iso) return '—';
@@ -23,31 +47,38 @@ interface Props {
 
 export default function StaffDetailPage({ userId, onBack }: Props) {
   const { selectedStore } = useAuth();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<StaffDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editClockIn, setEditClockIn] = useState('');
   const [editClockOut, setEditClockOut] = useState('');
   const [editNote, setEditNote] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<AttendanceRecord | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const isOwner = selectedStore?.role === 'owner';
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
 
   const storeId = selectedStore?.id;
 
-  const load = () => {
+  const load = useCallback(async () => {
     if (!storeId) return;
     setLoading(true);
     const m = `${year}-${String(month).padStart(2, '0')}`;
-    api.getAdminStaffAttendance(storeId, userId, m)
-      .then(res => setData(res))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  };
+    try {
+      const res = await api.getAdminStaffAttendance(storeId, userId, m);
+      setData(res as unknown as StaffDetailData);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [storeId, userId, year, month]);
 
-  useEffect(() => { load(); }, [storeId, userId, year, month]);
+  useEffect(() => { load(); }, [load]);
 
-  const startEdit = (r: any) => {
+  const startEdit = (r: AttendanceRecord) => {
     setEditingId(r.id);
     setEditClockIn(r.clockInAt ? new Date(r.clockInAt).toISOString().slice(0, 16) : '');
     setEditClockOut(r.clockOutAt ? new Date(r.clockOutAt).toISOString().slice(0, 16) : '');
@@ -64,8 +95,25 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
       });
       setEditingId(null);
       load();
-    } catch (e: any) {
-      alert(e.body?.error || 'エラーが発生しました');
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      alert(err.body?.error || 'エラーが発生しました');
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (deleting) return;
+    if (!storeId || !deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api.adminDeleteRecord(storeId, deleteTarget.id);
+      setDeleteTarget(null);
+      load();
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      alert(err.body?.error || '削除に失敗しました');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -106,7 +154,7 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
           </tr>
         </thead>
         <tbody>
-          {(data?.records || []).map((r: any) => (
+          {(data?.records || []).map((r) => (
             <tr key={r.id} data-testid="staff-detail-row">
               {editingId === r.id ? (
                 <>
@@ -128,11 +176,14 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
                   <td>{formatTime(r.clockInAt)}</td>
                   <td>{formatTime(r.clockOutAt)}</td>
                   <td>{r.breakMinutes}分</td>
-                  <td>{calcHours(r.clockInAt, r.clockOutAt, r.breakMinutes)}</td>
+                  <td>{r.clockInAt ? calcHours(r.clockInAt, r.clockOutAt, r.breakMinutes) : '—'}</td>
                   <td><span className={`badge badge-${r.status}`}>{r.status}</span></td>
                   <td>{r.note || ''}</td>
                   <td>
                     <button className="button button-small" onClick={() => startEdit(r)} data-testid="edit-record-button">編集</button>
+                    {isOwner && (
+                      <button className="button button-small button-danger" onClick={() => setDeleteTarget(r)} data-testid="delete-record-button">削除</button>
+                    )}
                   </td>
                 </>
               )}
@@ -144,11 +195,33 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
         </tbody>
       </table>
 
+      {/* 削除確認ダイアログ */}
+      {deleteTarget && (
+        <div className="modal-overlay" data-testid="delete-confirm-modal">
+          <div className="modal">
+            <h3>勤怠レコード削除</h3>
+            <p>以下のレコードを削除しますか？この操作は取り消せません。</p>
+            <table className="table">
+              <tbody>
+                <tr><td>日付</td><td>{deleteTarget.businessDate}</td></tr>
+                <tr><td>出勤</td><td>{formatTime(deleteTarget.clockInAt)}</td></tr>
+                <tr><td>退勤</td><td>{formatTime(deleteTarget.clockOutAt)}</td></tr>
+                <tr><td>状態</td><td>{deleteTarget.status}</td></tr>
+              </tbody>
+            </table>
+            <div className="modal-actions">
+              <button className="button button-danger" onClick={confirmDelete} disabled={deleting} data-testid="confirm-delete-button">{deleting ? '削除中...' : '削除する'}</button>
+              <button className="button" onClick={() => setDeleteTarget(null)}>キャンセル</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 修正申請一覧 */}
       {data?.corrections && data.corrections.length > 0 && (
         <div className="admin-corrections-section">
           <h3>修正申請</h3>
-          {data.corrections.map((c: any) => (
+          {data.corrections.map((c) => (
             <div key={c.id} className="admin-correction-card">
               <span>{c.requested_business_date}</span>
               <span className={`badge badge-${c.status}`}>{c.status}</span>

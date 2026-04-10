@@ -889,6 +889,81 @@ router.patch('/admin/records/:recordId', requireAuth, async (req: Request, res: 
 });
 
 // ================================================================
+// 管理者向け: 勤怠レコード削除 (owner のみ)
+// ================================================================
+router.delete('/admin/records/:recordId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.query.storeId as string;
+    const recordId = req.params.recordId as string;
+    if (!storeId) { res.status(400).json({ error: 'storeId is required' }); return; }
+
+    const mgmt = await requireManagedStore(req, res, storeId);
+    if (!mgmt) return;
+
+    // Only owner role is allowed to delete records
+    if (mgmt.role !== 'owner') {
+      res.status(403).json({ error: 'オーナーのみが勤怠レコードを削除できます' });
+      return;
+    }
+
+    // Verify the target record belongs to this store
+    const { data: target } = await supabaseAdmin
+      .from('attendance_records')
+      .select('*')
+      .eq('id', recordId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (!target) {
+      res.status(404).json({ error: '勤怠レコードが見つかりません' });
+      return;
+    }
+
+    // Delete related attendance_breaks first (foreign key constraint)
+    const { error: breaksError } = await supabaseAdmin
+      .from('attendance_breaks')
+      .delete()
+      .eq('attendance_record_id', recordId);
+    if (breaksError) { res.status(500).json({ error: breaksError.message }); return; }
+
+    // Delete related attendance_events (foreign key constraint)
+    const { error: eventsError } = await supabaseAdmin
+      .from('attendance_events')
+      .delete()
+      .eq('attendance_record_id', recordId);
+    if (eventsError) { res.status(500).json({ error: eventsError.message }); return; }
+
+    // Delete related attendance_correction_requests (foreign key constraint)
+    const { error: correctionsError } = await supabaseAdmin
+      .from('attendance_correction_requests')
+      .delete()
+      .eq('attendance_record_id', recordId);
+    if (correctionsError) { res.status(500).json({ error: correctionsError.message }); return; }
+
+    // Physically delete the attendance record
+    const { error: deleteError } = await supabaseAdmin
+      .from('attendance_records')
+      .delete()
+      .eq('id', recordId);
+    if (deleteError) { res.status(500).json({ error: deleteError.message }); return; }
+
+    // Write audit log with the full snapshot of the deleted record
+    await writeEvent(supabaseAdmin, {
+      storeId, userId: target.user_id, recordId,
+      eventType: 'admin_delete',
+      payload: { deleted: target },
+      createdBy: req.user!.id,
+    });
+
+    res.json({ ok: true, message: '勤怠レコードを削除しました' });
+  } catch (e: unknown) {
+    console.error('[attendance DELETE /admin/records/:recordId]', e);
+    const message = e instanceof Error ? e.message : 'Internal server error';
+    res.status(500).json({ error: message });
+  }
+});
+
+// ================================================================
 // 管理者向け: 修正申請一覧
 // ================================================================
 router.get('/admin/corrections', requireAuth, async (req: Request, res: Response) => {
