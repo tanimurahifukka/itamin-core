@@ -2,7 +2,7 @@
  * LINEシフト確認ページ（Supabase Auth不要）
  * 今週〜来週の自分のシフトを表示する。
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Props {
   lineUserId: string;
@@ -27,7 +27,7 @@ const STATUS_LABELS: Record<string, string> = {
   published: '確定',
 };
 
-async function lineStaffApi(path: string, body: Record<string, any>) {
+async function lineStaffApi(path: string, body: Record<string, unknown>) {
   const res = await fetch(`/api/line-staff${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -45,26 +45,27 @@ function formatDate(dateStr: string) {
 
 export default function LineShiftPage({ lineUserId, storeId, displayName }: Props) {
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [, setStartDate] = useState('');
+  const [, setEndDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       const res = await lineStaffApi('/shifts', { lineUserId, storeId });
       setShifts(res.shifts);
       setStartDate(res.startDate);
       setEndDate(res.endDate);
-    } catch (e: any) {
-      setError(e.body?.error || e.message || 'エラーが発生しました');
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      setError(err.body?.error || err.message || 'エラーが発生しました');
     } finally {
       setLoading(false);
     }
-  };
+  }, [lineUserId, storeId]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return <div className="loading">読み込み中...</div>;
   if (error) return <div className="attendance-home"><p style={{ color: '#ef4444' }}>{error}</p></div>;

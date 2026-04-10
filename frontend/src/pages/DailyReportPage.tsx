@@ -1,30 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
-
-interface DailyReport {
-  id: string;
-  date: string;
-  sales: number;
-  customerCount: number;
-  weather: string;
-  memo: string;
-}
-
-interface Summary {
-  totalSales: number;
-  totalCustomers: number;
-  avgCustomers: number;
-  reportCount: number;
-}
-
-interface MenuItem {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-}
+import type { DailyReport, DailyReportSummary, MenuItem, DailyReportItem, InventoryItem } from '../types/api';
 
 type InputMode = 'manual' | 'menu';
 
@@ -33,7 +11,7 @@ const WEATHER_OPTIONS = ['晴れ', '曇り', '雨', '雪'];
 export default function DailyReportPage() {
   const { selectedStore } = useAuth();
   const [reports, setReports] = useState<DailyReport[]>([]);
-  const [summary, setSummary] = useState<Summary>({ totalSales: 0, totalCustomers: 0, avgCustomers: 0, reportCount: 0 });
+  const [summary, setSummary] = useState<DailyReportSummary>({ totalSales: 0, totalCustomers: 0, avgCustomers: 0, reportCount: 0 });
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
@@ -45,7 +23,7 @@ export default function DailyReportPage() {
   const [formMemo, setFormMemo] = useState('');
   const [saving, setSaving] = useState(false);
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
-  const [detailItems, setDetailItems] = useState<{ menuItemName: string; quantity: number; unitPrice: number; subtotal: number }[]>([]);
+  const [detailItems, setDetailItems] = useState<DailyReportItem[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
   // 商品別入力
@@ -54,29 +32,31 @@ export default function DailyReportPage() {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   // 在庫
-  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [inventoryUpdates, setInventoryUpdates] = useState<Record<string, string>>({});
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     if (!selectedStore) return;
+    // The backend returns { reports, summary } but the API client type only declares { reports }.
+    // Cast to include the summary field which is present at runtime.
     api.getDailyReports(selectedStore.id, year, month)
-      .then((data: any) => {
+      .then((data: { reports: DailyReport[]; summary?: DailyReportSummary }) => {
         setReports(data.reports);
-        setSummary(data.summary);
+        if (data.summary) setSummary(data.summary);
       })
       .catch(() => {});
-  };
+  }, [selectedStore, year, month]);
 
-  useEffect(() => { loadData(); }, [selectedStore, year, month]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   // メニュー商品 + 在庫を読み込み
   useEffect(() => {
     if (!selectedStore) return;
     api.getMenuItems(selectedStore.id, true)
-      .then((data: any) => setMenuItems(data.items || []))
+      .then(data => setMenuItems(data.items || []))
       .catch(() => {});
     api.getInventory(selectedStore.id)
-      .then((data: any) => setInventoryItems(data.items || []))
+      .then(data => setInventoryItems(data.items || []))
       .catch(() => {});
   }, [selectedStore]);
 
@@ -84,7 +64,7 @@ export default function DailyReportPage() {
   useEffect(() => {
     if (!selectedStore || !formDate) return;
     api.getDailyReport(selectedStore.id, formDate)
-      .then((data: any) => {
+      .then(data => {
         if (data.report) {
           setFormSales(String(data.report.sales || ''));
           setFormCustomers(String(data.report.customerCount || ''));
@@ -99,7 +79,7 @@ export default function DailyReportPage() {
         // 明細がある場合はquantitiesにセット
         const q: Record<string, number> = {};
         if (data.items && data.items.length > 0) {
-          data.items.forEach((item: any) => {
+          data.items.forEach((item: DailyReportItem) => {
             q[item.menuItemId] = item.quantity;
           });
           setInputMode('menu');
@@ -149,15 +129,15 @@ export default function DailyReportPage() {
       }
       if (invUpdates.length > 0) {
         api.getInventory(selectedStore.id)
-          .then((data: any) => setInventoryItems(data.items || []))
+          .then(data => setInventoryItems(data.items || []))
           .catch(() => {});
         setInventoryUpdates({});
       }
 
       showToast('保存しました', 'success');
       loadData();
-    } catch (e: any) {
-      showToast(e.message || '保存に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '保存に失敗しました', 'error');
     } finally {
       setSaving(false);
     }
@@ -265,7 +245,7 @@ export default function DailyReportPage() {
           <div style={{ marginTop: 10, padding: 12, background: '#fefce8', borderRadius: 8, border: '1px solid #fde68a' }}>
             <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#92400e', marginBottom: 8 }}>在庫残量チェック</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {inventoryItems.map((inv: any) => (
+              {inventoryItems.map((inv) => (
                 <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <span style={{ fontSize: '0.85rem', flex: 1 }}>
                     {inv.name}
@@ -344,7 +324,7 @@ export default function DailyReportPage() {
                         setExpandedDate(r.date);
                         setDetailLoading(true);
                         api.getDailyReport(selectedStore!.id, r.date)
-                          .then((data: any) => {
+                          .then(data => {
                             setDetailItems(data.items || []);
                           })
                           .catch(() => setDetailItems([]))
@@ -364,7 +344,7 @@ export default function DailyReportPage() {
                     <div className="daily-report-card-body">
                       <span className="daily-report-stat">¥{Number(r.sales).toLocaleString()}</span>
                       <span className="daily-report-stat">{r.customerCount}人</span>
-                      {(r as any).createdByName && <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{(r as any).createdByName}</span>}
+                      {r.createdByName && <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{r.createdByName}</span>}
                     </div>
                     {r.memo && <div className="daily-report-memo">{r.memo}</div>}
                   </div>
@@ -377,7 +357,7 @@ export default function DailyReportPage() {
                         <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>品目別データなし（手入力）</div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {detailItems.map((item: any, i: number) => (
+                          {detailItems.map((item, i) => (
                             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                               <span>{item.menuItemName} × {item.quantity}</span>
                               <span style={{ fontWeight: 500 }}>¥{Number(item.subtotal).toLocaleString()}</span>

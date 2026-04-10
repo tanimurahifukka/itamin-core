@@ -35,8 +35,7 @@ async function kioskRequest<T>(path: string, options?: RequestInit): Promise<T> 
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: 'Request failed' }));
-    const err: any = new Error(body.error || `HTTP ${res.status}`);
-    err.status = res.status;
+    const err = Object.assign(new Error(body.error || `HTTP ${res.status}`), { status: res.status });
     throw err;
   }
   return res.json();
@@ -99,7 +98,7 @@ export const kioskApi = {
       items: Array<{ id: string; label: string; item_type: string; required: boolean; min_value?: number; max_value?: number; unit?: string; options?: string[] }>;
     }> }>(`/kiosk/${storeId}/haccp/templates${timing ? `?timing=${timing}` : ''}`),
 
-  submitHaccp: (storeId: string, data: { template_id: string; membership_id: string; timing: string; items: any[] }) =>
+  submitHaccp: (storeId: string, data: { template_id: string; membership_id: string; timing: string; items: Record<string, unknown>[] }) =>
     kioskRequest<{ ok: boolean; submissionId: string }>(
       `/kiosk/${storeId}/haccp/submissions`,
       { method: 'POST', body: JSON.stringify(data) }

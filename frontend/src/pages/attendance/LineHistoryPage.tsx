@@ -2,7 +2,7 @@
  * LINE勤怠履歴ページ（Supabase Auth不要）
  * 月別の自分の勤怠履歴を閲覧する。
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Props {
   lineUserId: string;
@@ -33,7 +33,7 @@ const STATUS_LABELS: Record<string, string> = {
   completed: '退勤済み',
 };
 
-async function lineStaffApi(path: string, body: Record<string, any>) {
+async function lineStaffApi(path: string, body: Record<string, unknown>) {
   const res = await fetch(`/api/line-staff${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -73,21 +73,22 @@ export default function LineHistoryPage({ lineUserId, storeId, displayName }: Pr
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = async (y: number, m: number) => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const res = await lineStaffApi('/history', { lineUserId, storeId, year: y, month: m });
+      const res = await lineStaffApi('/history', { lineUserId, storeId, year, month });
       setRecords(res.records);
       setSummary(res.summary);
-    } catch (e: any) {
-      setError(e.body?.error || e.message || 'エラーが発生しました');
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      setError(err.body?.error || err.message || 'エラーが発生しました');
     } finally {
       setLoading(false);
     }
-  };
+  }, [lineUserId, storeId, year, month]);
 
-  useEffect(() => { load(year, month); }, [year, month]);
+  useEffect(() => { load(); }, [load]);
 
   const goMonth = (delta: number) => {
     let y = year;

@@ -1,7 +1,7 @@
 import type { Express } from 'express';
 import type { Plugin } from '../types';
 
-class PluginRegistry {
+export class PluginRegistry {
   private plugins: Map<string, Plugin> = new Map();
 
   register(plugin: Plugin): void {

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
+import type { StaffMember, Invitation } from '../types/api';
 
 const roleLabels: Record<string, string> = {
   owner: 'オーナー',
@@ -20,8 +21,8 @@ const assignableRoles = [
 
 export default function StaffPage() {
   const { selectedStore } = useAuth();
-  const [staffList, setStaffList] = useState<any[]>([]);
-  const [invitations, setInvitations] = useState<any[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('part_time');
@@ -50,13 +51,13 @@ export default function StaffPage() {
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
 
   // 退職モーダル
-  const [removeTarget, setRemoveTarget] = useState<any | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<StaffMember | null>(null);
   const [confirmInput, setConfirmInput] = useState('');
   const [removing, setRemoving] = useState(false);
 
   const isOwner = selectedStore?.role === 'owner';
 
-  const loadStaff = () => {
+  const loadStaff = useCallback(() => {
     if (!selectedStore) return;
     Promise.all([
       api.getStoreStaff(selectedStore.id),
@@ -69,9 +70,9 @@ export default function StaffPage() {
         setInitialPassword(pwData.initialPassword);
       })
       .catch(() => {});
-  };
+  }, [selectedStore]);
 
-  useEffect(() => { loadStaff(); }, [selectedStore]);
+  useEffect(() => { loadStaff(); }, [loadStaff]);
 
   const handleAdd = async () => {
     if (!selectedStore || !name.trim() || !email.trim()) return;
@@ -88,8 +89,8 @@ export default function StaffPage() {
         setSuccess(`${name} さんを追加しました`);
       }
       loadStaff();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -101,8 +102,8 @@ export default function StaffPage() {
     try {
       const result = await api.resendInvitation(selectedStore.id, invitationId);
       setSuccess(result.message || `${inviteeName} さんに招待メールを再送しました`);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setResendingId(null);
     }
@@ -116,8 +117,8 @@ export default function StaffPage() {
       showToast('時給を更新しました', 'success');
       setEditingWageId(null);
       loadStaff();
-    } catch (e: any) {
-      showToast(e.message || '更新に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '更新に失敗しました', 'error');
     }
   };
 
@@ -129,8 +130,8 @@ export default function StaffPage() {
       showToast('交通費を更新しました', 'success');
       setEditingTransportId(null);
       loadStaff();
-    } catch (e: any) {
-      showToast(e.message || '更新に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '更新に失敗しました', 'error');
     }
   };
 
@@ -141,8 +142,8 @@ export default function StaffPage() {
       showToast('入社日を更新しました', 'success');
       setEditingJoinedId(null);
       loadStaff();
-    } catch (e: any) {
-      showToast(e.message || '更新に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '更新に失敗しました', 'error');
     }
   };
 
@@ -157,8 +158,8 @@ export default function StaffPage() {
       setEditingPassword(false);
       setNewPassword('');
       showToast('初期パスワードを変更しました', 'success');
-    } catch (e: any) {
-      showToast(e.message || '変更に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '変更に失敗しました', 'error');
     }
   };
 
@@ -168,8 +169,8 @@ export default function StaffPage() {
       await api.cancelInvitation(selectedStore.id, invitationId);
       showToast(`${inviteeName} さんの招待をキャンセルしました`, 'info');
       loadStaff();
-    } catch (e: any) {
-      showToast(e.message || '招待キャンセルに失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '招待キャンセルに失敗しました', 'error');
     }
   };
 
@@ -180,12 +181,12 @@ export default function StaffPage() {
       showToast('ロールを変更しました', 'success');
       setEditingRoleId(null);
       loadStaff();
-    } catch (e: any) {
-      showToast(e.message || 'ロール変更に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'ロール変更に失敗しました', 'error');
     }
   };
 
-  const openRemoveModal = (staff: any) => {
+  const openRemoveModal = (staff: StaffMember) => {
     setRemoveTarget(staff);
     setConfirmInput('');
     setRemoving(false);
@@ -199,8 +200,8 @@ export default function StaffPage() {
       showToast(result.message || `${removeTarget.userName} さんを退職処理しました`, 'success');
       setRemoveTarget(null);
       loadStaff();
-    } catch (e: any) {
-      showToast(e.message || '退職処理に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '退職処理に失敗しました', 'error');
     } finally {
       setRemoving(false);
     }
@@ -222,8 +223,8 @@ export default function StaffPage() {
       setRehireEmail('');
       setRehireRole('part_time');
       loadStaff();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setRehiring(false);
     }
@@ -299,7 +300,7 @@ export default function StaffPage() {
       <div className="staff-section">
         <h3 style={{ marginBottom: 16 }}>スタッフ一覧</h3>
 
-        {staffList.map((s: any) => (
+        {staffList.map((s) => (
           <div key={s.id} className="staff-item-card">
             <div className="staff-item-top">
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', color: '#666', flexShrink: 0 }}>
@@ -430,7 +431,7 @@ export default function StaffPage() {
         {invitations.length > 0 && (
           <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #f0f0f0' }}>
             <h4 style={{ marginBottom: 10 }}>招待中</h4>
-            {invitations.map((inv: any) => (
+            {invitations.map((inv) => (
               <div key={inv.id} className="staff-item">
                 <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#f7f8fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', color: '#666', flexShrink: 0 }}>
                   {(inv.name || inv.email || '?')[0].toUpperCase()}

@@ -1,31 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
+import type { PluginInfo as ApiPluginInfo, StoreAccount as ApiStoreAccount } from '../types/api';
 
-interface SettingField {
-  key: string;
-  label: string;
-  type: 'text' | 'textarea' | 'number' | 'boolean' | 'select';
-  default?: string | number | boolean;
-  options?: { value: string; label: string }[];
-  description?: string;
-}
-
-interface PluginInfo {
-  name: string;
-  version: string;
-  description: string;
-  label: string;
-  icon: string;
-  core: boolean;
-  enabled: boolean;
-  config: Record<string, any>;
-  settingsSchema: SettingField[];
-  defaultRoles: string[];
-  allowedRoles: string[];
-  displayOrder: number;
-}
+// Use shared API types; re-export as local aliases for convenience
+type SettingField = ApiPluginInfo['settingsSchema'][number];
+type PluginInfo = ApiPluginInfo;
 
 interface StoreAccount {
   id: string;
@@ -54,7 +35,7 @@ const ALL_ROLES = [
   { value: 'part_time', label: 'アルバイト' },
 ];
 
-function normalizeAccount(account: any): StoreAccount {
+function normalizeAccount(account: ApiStoreAccount | null | undefined): StoreAccount {
   return {
     id: String(account?.id ?? ''),
     name: String(account?.name ?? ''),
@@ -79,7 +60,7 @@ export default function PluginSettingsPage() {
   const { selectedStore, refreshStores } = useAuth();
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [expandedPlugin, setExpandedPlugin] = useState<string | null>(null);
-  const [localConfigs, setLocalConfigs] = useState<Record<string, Record<string, any>>>({});
+  const [localConfigs, setLocalConfigs] = useState<Record<string, Record<string, unknown>>>({});
   const [localPerms, setLocalPerms] = useState<Record<string, string[]>>({});
   const [savingConfig, setSavingConfig] = useState<string | null>(null);
   const [configMsg, setConfigMsg] = useState<Record<string, string>>({});
@@ -97,10 +78,15 @@ export default function PluginSettingsPage() {
   const [kioskPinDraft, setKioskPinDraft] = useState('');
   const [editingKioskPin, setEditingKioskPin] = useState(false);
   const [savingKioskPin, setSavingKioskPin] = useState(false);
-  const [switchbotDevices, setSwitchbotDevices] = useState<any[]>([]);
+  interface SwitchBotDevice {
+    deviceId: string;
+    deviceName?: string;
+    deviceType?: string;
+  }
+  const [switchbotDevices, setSwitchbotDevices] = useState<SwitchBotDevice[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     if (!selectedStore) return;
     try {
       const [pluginData, accountData, passwordData] = await Promise.all([
@@ -110,7 +96,7 @@ export default function PluginSettingsPage() {
       ]);
 
       setPlugins(pluginData.plugins);
-      const configs: Record<string, Record<string, any>> = {};
+      const configs: Record<string, Record<string, unknown>> = {};
       const perms: Record<string, string[]> = {};
       for (const plugin of pluginData.plugins) {
         configs[plugin.name] = { ...plugin.config };
@@ -130,11 +116,11 @@ export default function PluginSettingsPage() {
       setStoreAccount(null);
       setAccountForm(EMPTY_ACCOUNT_FORM);
     }
-  };
+  }, [selectedStore]);
 
   useEffect(() => {
     loadSettings();
-  }, [selectedStore]);
+  }, [loadSettings]);
 
   const togglePlugin = async (pluginName: string, enabled: boolean) => {
     if (!selectedStore) return;
@@ -148,7 +134,7 @@ export default function PluginSettingsPage() {
     } catch {}
   };
 
-  const updateLocalConfig = (pluginName: string, key: string, value: any) => {
+  const updateLocalConfig = (pluginName: string, key: string, value: unknown) => {
     setLocalConfigs(prev => ({
       ...prev,
       [pluginName]: { ...prev[pluginName], [key]: value },
@@ -188,8 +174,8 @@ export default function PluginSettingsPage() {
       await loadSettings();
       setConfigMsg(prev => ({ ...prev, [pluginName]: '保存しました' }));
       setTimeout(() => setConfigMsg(prev => ({ ...prev, [pluginName]: '' })), 2000);
-    } catch (e: any) {
-      setConfigMsg(prev => ({ ...prev, [pluginName]: `エラー: ${e.message}` }));
+    } catch (e: unknown) {
+      setConfigMsg(prev => ({ ...prev, [pluginName]: `エラー: ${e instanceof Error ? e.message : String(e)}` }));
     } finally {
       setSavingConfig(null);
     }
@@ -202,8 +188,8 @@ export default function PluginSettingsPage() {
       const res = await api.getSwitchBotDevices(selectedStore.id);
       setSwitchbotDevices(res.devices || []);
       showToast(`${res.devices?.length || 0}台のデバイスを取得しました`, 'success');
-    } catch (e: any) {
-      showToast(e.message || 'デバイス取得に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'デバイス取得に失敗しました', 'error');
     } finally {
       setLoadingDevices(false);
     }
@@ -245,9 +231,10 @@ export default function PluginSettingsPage() {
       await refreshStores();
       setAccountMsg('保存しました');
       showToast('施設アカウントを更新しました', 'success');
-    } catch (e: any) {
-      setAccountMsg(`エラー: ${e.message}`);
-      showToast(e.message || '施設アカウントの保存に失敗しました', 'error');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '施設アカウントの保存に失敗しました';
+      setAccountMsg(`エラー: ${msg}`);
+      showToast(msg, 'error');
     } finally {
       setAccountSaving(false);
     }
@@ -266,8 +253,8 @@ export default function PluginSettingsPage() {
       setEditingKioskPin(false);
       setKioskPinDraft('');
       showToast('キオスクPINを設定しました', 'success');
-    } catch (e: any) {
-      showToast(e.message || 'PINの設定に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'PINの設定に失敗しました', 'error');
     } finally {
       setSavingKioskPin(false);
     }
@@ -289,8 +276,8 @@ export default function PluginSettingsPage() {
       setInitialPasswordDraft(nextPassword);
       setEditingInitialPassword(false);
       showToast('初期パスワードを更新しました', 'success');
-    } catch (e: any) {
-      showToast(e.message || '初期パスワードの更新に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '初期パスワードの更新に失敗しました', 'error');
     } finally {
       setSavingInitialPassword(false);
     }
@@ -609,7 +596,7 @@ export default function PluginSettingsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <input
                         type="number"
-                        value={localConfigs[plugin.name]?.display_order ?? plugin.displayOrder}
+                        value={Number(localConfigs[plugin.name]?.display_order ?? plugin.displayOrder)}
                         onChange={e => updateLocalConfig(plugin.name, 'display_order', Number(e.target.value) || 0)}
                         style={{ ...inputStyle, width: 80 }}
                         min={0}
@@ -666,7 +653,7 @@ export default function PluginSettingsPage() {
                       </button>
                       {switchbotDevices.length > 0 && (
                         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {switchbotDevices.map((d: any) => (
+                          {switchbotDevices.map((d) => (
                             <div key={d.deviceId} style={{ background: '#fff', border: '1px solid #fed7aa', borderRadius: 6, padding: '8px 12px', fontSize: '0.82rem' }}>
                               <span style={{ fontWeight: 600 }}>{d.deviceName || d.deviceId}</span>
                               <span style={{ color: '#888', marginLeft: 8 }}>{d.deviceType}</span>

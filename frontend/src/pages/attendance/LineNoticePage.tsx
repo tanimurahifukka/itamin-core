@@ -2,7 +2,7 @@
  * LINE連絡ノートページ（Supabase Auth不要）
  * 店舗のお知らせを閲覧・既読マークする。
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Props {
   lineUserId: string;
@@ -22,7 +22,7 @@ interface Notice {
   readAt: string | null;
 }
 
-async function lineStaffApi(path: string, body: Record<string, any>) {
+async function lineStaffApi(path: string, body: Record<string, unknown>) {
   const res = await fetch(`/api/line-staff${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -45,20 +45,21 @@ export default function LineNoticePage({ lineUserId, storeId }: Props) {
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
       const res = await lineStaffApi('/notices', { lineUserId, storeId });
       setNotices(res.notices);
-    } catch (e: any) {
-      setError(e.body?.error || e.message || 'エラーが発生しました');
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      setError(err.body?.error || err.message || 'エラーが発生しました');
     } finally {
       setLoading(false);
     }
-  };
+  }, [lineUserId, storeId]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const handleExpand = async (noticeId: string) => {
     if (expanded === noticeId) {

@@ -1,41 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
 import TimePicker15 from '../components/TimePicker15';
+import type { Shift, ShiftRequest, ShiftTemplate } from '../types/api';
 
-interface Shift {
-  id: string;
-  staffId: string;
-  staffName: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  breakMinutes: number;
-  note: string;
-  status: 'draft' | 'published';
-}
+// Local alias for ShiftTemplate
+type Template = ShiftTemplate;
 
-interface ShiftRequest {
-  id: string;
-  staffId: string;
-  staffName: string;
-  date: string;
-  requestType: 'available' | 'unavailable' | 'preferred';
-  startTime: string | null;
-  endTime: string | null;
-  note: string | null;
-}
-
-interface Template {
-  id: string;
-  name: string;
-  startTime: string;
-  endTime: string;
-  breakMinutes: number;
-  color: string | null;
-}
-
+// Local StaffMember only exposes the fields used in this component (subset of api.StaffMember)
 interface StaffMember {
   id: string;
   userName: string;
@@ -94,7 +67,7 @@ export default function ShiftPage() {
     return d;
   });
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!selectedStore) return;
     const dateStr = formatDate(weekStart);
     try {
@@ -106,13 +79,16 @@ export default function ShiftPage() {
       ]);
       setShifts(shiftData.shifts);
       setDatesRange({ start: shiftData.startDate, end: shiftData.endDate });
-      setStaffList(staffData.staff.map((s: any) => ({ id: s.id, userName: s.userName })));
+      setStaffList(staffData.staff.map((s: { id: string; userName: string }) => ({ id: s.id, userName: s.userName })));
       setRequests(requestData.requests);
       setTemplates(tplData.templates);
     } catch {}
-  };
+  }, [selectedStore, weekStart, numDays]);
 
-  useEffect(() => { loadData(); }, [selectedStore, weekStart, numDays]);
+  useEffect(() => {
+    const run = async () => { await loadData(); };
+    void run();
+  }, [loadData]);
 
   const stepDays = viewSpan === 'half-month' ? 15 : 7;
   const prevPeriod = () => { const d = new Date(weekStart); d.setDate(d.getDate() - stepDays); setWeekStart(getMonday(d)); };
@@ -143,8 +119,8 @@ export default function ShiftPage() {
       setEditing(null);
       showToast('シフトを保存しました', 'success');
       await loadData();
-    } catch (e: any) {
-      showToast(e.message || '保存に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '保存に失敗しました', 'error');
     }
   };
 
@@ -166,8 +142,8 @@ export default function ShiftPage() {
         showToast('確定するシフトがありません', 'info');
       }
       await loadData();
-    } catch (e: any) {
-      showToast(e.message || '確定に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '確定に失敗しました', 'error');
     }
   };
 

@@ -5,9 +5,18 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
 
+interface AttendancePolicy {
+  timezone: string;
+  business_day_cutoff_hour?: number;
+  rounding_unit_minutes?: number;
+  rounding_mode?: string;
+  auto_close_break_before_clock_out?: boolean;
+  require_manager_approval?: boolean;
+}
+
 export default function PolicySettingsPage() {
   const { selectedStore } = useAuth();
-  const [policy, setPolicy] = useState<any>(null);
+  const [policy, setPolicy] = useState<AttendancePolicy | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
@@ -38,8 +47,9 @@ export default function PolicySettingsPage() {
       setPolicy(res.policy);
       setToast('保存しました');
       setTimeout(() => setToast(''), 3000);
-    } catch (e: any) {
-      alert(e.body?.error || 'エラーが発生しました');
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      alert(err.body?.error || 'エラーが発生しました');
     } finally {
       setSaving(false);
     }

@@ -1,9 +1,20 @@
 /**
  * S03 勤怠履歴一覧
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
+
+interface AttendanceRecord {
+  id: string;
+  businessDate: string;
+  clockInAt: string;
+  clockOutAt: string | null;
+  breakMinutes: number;
+  status: string;
+  correctionStatus?: string;
+  note?: string;
+}
 
 const STATUS_LABELS: Record<string, string> = {
   working: '勤務中',
@@ -25,12 +36,12 @@ function calcHours(clockIn: string, clockOut: string | null, breakMin: number) {
 }
 
 interface Props {
-  onNavigate: (page: string, data?: any) => void;
+  onNavigate: (page: string, data?: { record?: AttendanceRecord }) => void;
 }
 
 export default function AttendanceHistoryPage({ onNavigate }: Props) {
   const { selectedStore } = useAuth();
-  const [records, setRecords] = useState<any[]>([]);
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -38,15 +49,21 @@ export default function AttendanceHistoryPage({ onNavigate }: Props) {
 
   const storeId = selectedStore?.id;
 
-  useEffect(() => {
+  const loadHistory = useCallback(async () => {
     if (!storeId) return;
     setLoading(true);
     const m = `${year}-${String(month).padStart(2, '0')}`;
-    api.getAttendanceHistory(storeId, m)
-      .then(res => setRecords(res.records || []))
-      .catch(() => setRecords([]))
-      .finally(() => setLoading(false));
+    try {
+      const res = await api.getAttendanceHistory(storeId, m);
+      setRecords((res.records as unknown as AttendanceRecord[]) || []);
+    } catch {
+      setRecords([]);
+    } finally {
+      setLoading(false);
+    }
   }, [storeId, year, month]);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
 
   const prevMonth = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
@@ -73,7 +90,7 @@ export default function AttendanceHistoryPage({ onNavigate }: Props) {
         <div className="attendance-empty">この月の記録はありません</div>
       ) : (
         <div className="attendance-record-list">
-          {records.map((r: any) => (
+          {records.map((r) => (
             <div key={r.id} className="attendance-record-card" data-testid="attendance-record-card">
               <div className="attendance-record-date">{r.businessDate}</div>
               <div className="attendance-record-times">

@@ -1,38 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
-import { showToast } from '../components/Toast';
+import type { StaffOvertimeInfo } from '../types/api';
 
-interface StaffOvertime {
-  userId: string;
-  name: string;
-  role: string;
-  totalWorkHours: number;
-  totalDays: number;
-  overtimeHours: number;
-  limitHours: number;
-  exceeded: boolean;
-  warning: boolean;
-}
+type StaffOvertime = StaffOvertimeInfo;
 
 export default function OvertimeAlertPage() {
   const { selectedStore } = useAuth();
   const [staffOvertime, setStaffOvertime] = useState<StaffOvertime[]>([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [settings, setSettings] = useState({ monthlyLimitHours: 45, standardHoursPerDay: 8 });
+  const [settings] = useState({ monthlyLimitHours: 45, standardHoursPerDay: 8 });
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     if (!selectedStore) return;
     api.getOvertimeAlert(selectedStore.id, year, month)
-      .then((data: any) => {
-        setStaffOvertime(data.staffOvertime);
-        setSettings(data.settings);
+      .then((data) => {
+        setStaffOvertime(data.staff);
       })
       .catch(() => {});
-  };
+  }, [selectedStore, year, month]);
 
-  useEffect(() => { loadData(); }, [selectedStore, year, month]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const exceededCount = staffOvertime.filter(s => s.exceeded).length;
   const warningCount = staffOvertime.filter(s => s.warning && !s.exceeded).length;

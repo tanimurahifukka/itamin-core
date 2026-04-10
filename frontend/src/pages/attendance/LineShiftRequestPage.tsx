@@ -2,7 +2,7 @@
  * LINEシフト希望ページ（Supabase Auth不要）
  * シフトテンプレート（通し・SUNABACO等）から選択して希望を出せる。
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Props {
   lineUserId: string;
@@ -41,7 +41,7 @@ const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
   preferred: { bg: '#dbeafe', color: '#1e40af' },
 };
 
-async function lineStaffApi(path: string, body: Record<string, any>) {
+async function lineStaffApi(path: string, body: Record<string, unknown>) {
   const res = await fetch(`/api/line-staff${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -78,7 +78,7 @@ export default function LineShiftRequestPage({ lineUserId, storeId }: Props) {
   const [formNote, setFormNote] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       const [reqRes, tplRes] = await Promise.all([
@@ -87,14 +87,15 @@ export default function LineShiftRequestPage({ lineUserId, storeId }: Props) {
       ]);
       setRequests(reqRes.requests);
       setTemplates(tplRes.templates || []);
-    } catch (e: any) {
-      setError(e.body?.error || e.message || 'エラーが発生しました');
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      setError(err.body?.error || err.message || 'エラーが発生しました');
     } finally {
       setLoading(false);
     }
-  };
+  }, [lineUserId, storeId]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 3000);
@@ -145,8 +146,9 @@ export default function LineShiftRequestPage({ lineUserId, storeId }: Props) {
       setFormNote('');
       setSelectedTemplate('');
       await load();
-    } catch (e: any) {
-      setToast({ msg: e.body?.error || e.message || 'エラー', type: 'error' });
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      setToast({ msg: err.body?.error || err.message || 'エラー', type: 'error' });
     } finally {
       setSaving(false);
     }

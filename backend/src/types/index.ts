@@ -3,7 +3,7 @@
 export interface PluginSettingField {
   key: string;
   label: string;
-  type: 'text' | 'textarea' | 'number' | 'boolean' | 'select';
+  type: 'text' | 'textarea' | 'number' | 'boolean' | 'select' | 'password';
   default?: string | number | boolean;
   options?: { value: string; label: string }[];  // type=select 用
   description?: string;

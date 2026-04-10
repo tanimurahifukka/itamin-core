@@ -2,7 +2,7 @@
  * LINE日報ページ（Supabase Auth不要）
  * 本日の日報を閲覧・保存する。
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Props {
   lineUserId: string;
@@ -11,18 +11,9 @@ interface Props {
   pictureUrl?: string;
 }
 
-interface DailyReport {
-  id: string;
-  date: string;
-  sales: number;
-  customerCount: number;
-  weather: string;
-  memo: string;
-}
-
 const WEATHER_OPTIONS = ['晴れ', '曇り', '雨', '雪', 'その他'];
 
-async function lineStaffApi(path: string, body: Record<string, any>) {
+async function lineStaffApi(path: string, body: Record<string, unknown>) {
   const res = await fetch(`/api/line-staff${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -33,7 +24,7 @@ async function lineStaffApi(path: string, body: Record<string, any>) {
   return data;
 }
 
-export default function LineDailyReportPage({ lineUserId, storeId, displayName }: Props) {
+export default function LineDailyReportPage({ lineUserId, storeId }: Props) {
   const today = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState(today);
   const [sales, setSales] = useState('');
@@ -46,11 +37,11 @@ export default function LineDailyReportPage({ lineUserId, storeId, displayName }
   const [error, setError] = useState('');
   const [existingId, setExistingId] = useState<string | null>(null);
 
-  const load = async (d: string) => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const res = await lineStaffApi('/daily-report', { lineUserId, storeId, date: d });
+      const res = await lineStaffApi('/daily-report', { lineUserId, storeId, date });
       if (res.report) {
         setSales(String(res.report.sales || ''));
         setCustomerCount(String(res.report.customerCount || ''));
@@ -64,14 +55,15 @@ export default function LineDailyReportPage({ lineUserId, storeId, displayName }
         setMemo('');
         setExistingId(null);
       }
-    } catch (e: any) {
-      setError(e.body?.error || e.message || 'エラーが発生しました');
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      setError(err.body?.error || err.message || 'エラーが発生しました');
     } finally {
       setLoading(false);
     }
-  };
+  }, [lineUserId, storeId, date]);
 
-  useEffect(() => { load(date); }, [date]);
+  useEffect(() => { load(); }, [load]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 3000);
@@ -91,8 +83,9 @@ export default function LineDailyReportPage({ lineUserId, storeId, displayName }
       });
       setToast({ msg: '保存しました', type: 'success' });
       if (res.report) setExistingId(res.report.id);
-    } catch (e: any) {
-      setToast({ msg: e.body?.error || e.message || 'エラー', type: 'error' });
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      setToast({ msg: err.body?.error || err.message || 'エラー', type: 'error' });
     } finally {
       setSaving(false);
     }

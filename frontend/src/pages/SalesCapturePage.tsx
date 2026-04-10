@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { supabase } from '../api/supabase';
 import { showToast } from '../components/Toast';
+import type { SalesClose, SalesReceipt, CashClose } from '../types/api';
 
 type Tab = 'close' | 'receipts' | 'cash';
 
@@ -15,7 +16,7 @@ export default function SalesCapturePage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   // 売上締め
-  const [closeData, setCloseData] = useState<any>(null);
+  const [closeData, setCloseData] = useState<SalesClose | null>(null);
   const [grossSales, setGrossSales] = useState('');
   const [netSales, setNetSales] = useState('');
   const [taxAmount, setTaxAmount] = useState('');
@@ -26,12 +27,12 @@ export default function SalesCapturePage() {
   const [closeSaving, setCloseSaving] = useState(false);
 
   // レシート
-  const [receipts, setReceipts] = useState<any[]>([]);
+  const [receipts, setReceipts] = useState<SalesReceipt[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // 現金締め
-  const [cashCloseData, setCashCloseData] = useState<any>(null);
+  const [, setCashCloseData] = useState<CashClose | null>(null);
   const [expectedCash, setExpectedCash] = useState('');
   const [countedCash, setCountedCash] = useState('');
   const [cashNote, setCashNote] = useState('');
@@ -99,8 +100,8 @@ export default function SalesCapturePage() {
       // 再読み込み
       const data = await api.getSalesClose(selectedStore.id, date);
       setCloseData(data.close);
-    } catch (e: any) {
-      showToast(e.message, 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '保存に失敗しました', 'error');
     } finally {
       setCloseSaving(false);
     }
@@ -114,8 +115,8 @@ export default function SalesCapturePage() {
       showToast('売上を承認しました', 'success');
       const data = await api.getSalesClose(selectedStore.id, date);
       setCloseData(data.close);
-    } catch (e: any) {
-      showToast(e.message, 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '承認に失敗しました', 'error');
     }
   };
 
@@ -147,8 +148,8 @@ export default function SalesCapturePage() {
       showToast('レシートをアップロードしました', 'success');
       const data = await api.getSalesReceipts(selectedStore.id, date);
       setReceipts(data.receipts || []);
-    } catch (err: any) {
-      showToast(err.message || 'アップロード失敗', 'error');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'アップロード失敗', 'error');
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -169,8 +170,8 @@ export default function SalesCapturePage() {
       showToast('現金締めを保存しました', 'success');
       const data = await api.getCashClose(selectedStore.id, date);
       setCashCloseData(data.cashClose);
-    } catch (e: any) {
-      showToast(e.message, 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '保存に失敗しました', 'error');
     } finally {
       setCashSaving(false);
     }
@@ -300,7 +301,7 @@ export default function SalesCapturePage() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {receipts.map((r: any) => (
+              {receipts.map((r) => (
                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'white', borderRadius: 8, border: '1px solid #e5e7eb' }}>
                   <div>
                     <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{r.fileName}</div>

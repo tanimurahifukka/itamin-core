@@ -29,8 +29,9 @@ export default function LineLinkPage({ lineUserId, displayName, pictureUrl, onLi
     try {
       await api.lineLinkWithCode(code.trim(), lineUserId, displayName, pictureUrl);
       onLinked();
-    } catch (err: any) {
-      const msg = err.body?.error || err.message || 'エラーが発生しました';
+    } catch (err: unknown) {
+      const e = err as { body?: { error?: string }; message?: string };
+      const msg = e.body?.error || e.message || 'エラーが発生しました';
       setError(msg);
     } finally {
       setLoading(false);

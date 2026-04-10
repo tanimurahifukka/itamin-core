@@ -1,27 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
+import type { StaffConsecutiveInfo } from '../types/api';
 
-interface StaffStatus {
-  userId: string;
-  name: string;
-  role: string;
-  consecutiveDays: number;
-  level: 'danger' | 'warning' | 'normal';
-}
+type StaffStatus = StaffConsecutiveInfo;
 
 export default function ConsecutiveWorkPage() {
   const { selectedStore } = useAuth();
   const [staffStatus, setStaffStatus] = useState<StaffStatus[]>([]);
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     if (!selectedStore) return;
     api.getConsecutiveWork(selectedStore.id)
-      .then((data: any) => setStaffStatus(data.staffStatus))
+      .then((data) => setStaffStatus(data.staff))
       .catch(() => {});
-  };
+  }, [selectedStore]);
 
-  useEffect(() => { loadData(); }, [selectedStore]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const dangerCount = staffStatus.filter(s => s.level === 'danger').length;
   const warningCount = staffStatus.filter(s => s.level === 'warning').length;

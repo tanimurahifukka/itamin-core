@@ -1,29 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
-
-interface LeaveSummary {
-  id: string;
-  staffId: string;
-  staffName: string;
-  totalDays: number;
-  usedDays: number;
-  remainingDays: number;
-  fiscalYear: number;
-}
-
-interface LeaveRecord {
-  id: string;
-  staff_id: string;
-  date: string;
-  type: string;
-  note: string;
-}
+import type { PaidLeaveSummary, LeaveRecord, StaffMember } from '../types/api';
 
 export default function PaidLeavePage() {
   const { selectedStore } = useAuth();
-  const [summary, setSummary] = useState<LeaveSummary[]>([]);
+  const [summary, setSummary] = useState<PaidLeaveSummary[]>([]);
   const [records, setRecords] = useState<LeaveRecord[]>([]);
   const [fiscalYear, setFiscalYear] = useState(new Date().getFullYear());
   const [selectedStaffId, setSelectedStaffId] = useState<string>('');
@@ -39,31 +22,31 @@ export default function PaidLeavePage() {
   const [recordNote, setRecordNote] = useState('');
 
   // スタッフ一覧
-  const [staffList, setStaffList] = useState<any[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
 
   useEffect(() => {
     if (!selectedStore) return;
     api.getStoreStaff(selectedStore.id)
-      .then((data: any) => setStaffList(data.staff || []))
+      .then(data => setStaffList(data.staff || []))
       .catch(() => {});
   }, [selectedStore]);
 
-  const loadSummary = () => {
+  const loadSummary = useCallback(() => {
     if (!selectedStore) return;
     api.getPaidLeaveSummary(selectedStore.id, fiscalYear)
-      .then((data: any) => setSummary(data.summary))
+      .then(data => setSummary(data.summary))
       .catch(() => {});
-  };
+  }, [selectedStore, fiscalYear]);
 
-  const loadRecords = () => {
+  const loadRecords = useCallback(() => {
     if (!selectedStore) return;
     api.getLeaveRecords(selectedStore.id, selectedStaffId || undefined)
-      .then((data: any) => setRecords(data.records))
+      .then(data => setRecords(data.records))
       .catch(() => {});
-  };
+  }, [selectedStore, selectedStaffId]);
 
-  useEffect(() => { loadSummary(); }, [selectedStore, fiscalYear]);
-  useEffect(() => { loadRecords(); }, [selectedStore, selectedStaffId]);
+  useEffect(() => { loadSummary(); }, [loadSummary]);
+  useEffect(() => { loadRecords(); }, [loadRecords]);
 
   const handleGrant = async () => {
     if (!selectedStore || !grantStaffId) return;
@@ -72,8 +55,8 @@ export default function PaidLeavePage() {
       showToast('有給を付与しました', 'success');
       setGrantStaffId('');
       loadSummary();
-    } catch (e: any) {
-      showToast(e.message || '付与に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '付与に失敗しました', 'error');
     }
   };
 
@@ -90,8 +73,8 @@ export default function PaidLeavePage() {
       setRecordNote('');
       loadRecords();
       loadSummary();
-    } catch (e: any) {
-      showToast(e.message || '追加に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '追加に失敗しました', 'error');
     }
   };
 
@@ -103,8 +86,8 @@ export default function PaidLeavePage() {
       showToast('削除しました', 'info');
       loadRecords();
       loadSummary();
-    } catch (e: any) {
-      showToast(e.message || '削除に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '削除に失敗しました', 'error');
     }
   };
 
@@ -164,7 +147,7 @@ export default function PaidLeavePage() {
               style={{ width: '100%', padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
             >
               <option value="">選択してください</option>
-              {staffList.map((s: any) => (
+              {staffList.map((s) => (
                 <option key={s.userId} value={s.userId}>{s.userName || s.email}</option>
               ))}
             </select>
@@ -200,7 +183,7 @@ export default function PaidLeavePage() {
               style={{ width: '100%', padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
             >
               <option value="">選択してください</option>
-              {staffList.map((s: any) => (
+              {staffList.map((s) => (
                 <option key={s.userId} value={s.userId}>{s.userName || s.email}</option>
               ))}
             </select>
@@ -255,7 +238,7 @@ export default function PaidLeavePage() {
             style={{ padding: '6px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.85rem' }}
           >
             <option value="">全スタッフ</option>
-            {staffList.map((s: any) => (
+            {staffList.map((s) => (
               <option key={s.userId} value={s.userId}>{s.userName || s.email}</option>
             ))}
           </select>
@@ -273,7 +256,7 @@ export default function PaidLeavePage() {
               </tr>
             </thead>
             <tbody>
-              {records.map((r: any) => (
+              {records.map((r) => (
                 <tr key={r.id}>
                   <td>{new Date(r.date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' })}</td>
                   <td>{r.type}</td>

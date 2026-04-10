@@ -19,8 +19,8 @@ export default function KioskLoginPage({ storeId, onLogin }: Props) {
       const res = await kioskApi.login(storeId, pin);
       saveKioskSession(res.token, res.storeId, res.storeName);
       onLogin(res.storeId, res.storeName);
-    } catch (err: any) {
-      setError(err.message || 'ログインに失敗しました');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'ログインに失敗しました');
     } finally {
       setLoading(false);
     }

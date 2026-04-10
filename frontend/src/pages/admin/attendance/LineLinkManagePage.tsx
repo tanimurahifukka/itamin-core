@@ -1,28 +1,36 @@
 /**
  * A05 LINE 連携コード発行 / 連携状態画面
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
 
+interface StaffLineLinkItem {
+  userId: string;
+  staffName: string;
+  role: string;
+  lineLink?: { displayName?: string; linkedAt?: string };
+  activeToken?: { code: string; expiresAt: string };
+}
+
 export default function LineLinkManagePage() {
   const { selectedStore } = useAuth();
-  const [staff, setStaff] = useState<any[]>([]);
+  const [staff, setStaff] = useState<StaffLineLinkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [issuingFor, setIssuingFor] = useState<string | null>(null);
 
   const storeId = selectedStore?.id;
 
-  const load = () => {
+  const load = useCallback(() => {
     if (!storeId) return;
     setLoading(true);
     api.adminGetLineLinks(storeId)
-      .then(res => setStaff(res.staff || []))
+      .then(res => setStaff((res.staff || []) as unknown as StaffLineLinkItem[]))
       .catch(() => setStaff([]))
       .finally(() => setLoading(false));
-  };
+  }, [storeId]);
 
-  useEffect(() => { load(); }, [storeId]);
+  useEffect(() => { load(); }, [load]);
 
   const handleIssueCode = async (userId: string) => {
     if (!storeId) return;
@@ -30,8 +38,9 @@ export default function LineLinkManagePage() {
     try {
       await api.adminIssueLinkToken(storeId, userId);
       load();
-    } catch (e: any) {
-      alert(e.body?.error || 'エラーが発生しました');
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      alert(err.body?.error || 'エラーが発生しました');
     } finally {
       setIssuingFor(null);
     }
@@ -57,7 +66,7 @@ export default function LineLinkManagePage() {
             </tr>
           </thead>
           <tbody>
-            {staff.map((s: any) => (
+            {staff.map((s) => (
               <tr key={s.userId} data-testid="line-link-row">
                 <td>{s.staffName}</td>
                 <td>{s.role}</td>

@@ -5,6 +5,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
+/** Attendance today response shape as returned by the API. */
+interface AttendanceTodayData {
+  businessDate: string;
+  currentStatus: string;
+  activeSession: {
+    clockInAt: string;
+    breakMinutes: number;
+    status: string;
+  } | null;
+  recentEvents: RawAttendanceEvent[];
+  todayShift: { startTime: string; endTime: string } | null;
+}
+
+/** Raw event shape returned by the attendance today endpoint (snake_case fields). */
+interface RawAttendanceEvent {
+  event_type: string;
+  event_at: string;
+}
 
 const STATUS_LABELS: Record<string, string> = {
   not_clocked_in: '未出勤',
@@ -37,7 +55,7 @@ interface Props {
 
 export default function AttendanceHomePage({ onNavigate }: Props) {
   const { selectedStore } = useAuth();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<AttendanceTodayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
@@ -50,8 +68,8 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
     if (!storeId) return;
     try {
       const res = await api.getAttendanceToday(storeId);
-      setData(res);
-    } catch (e: any) {
+      setData(res as unknown as AttendanceTodayData);
+    } catch (e: unknown) {
       console.error('Failed to load attendance status:', e);
     } finally {
       setLoading(false);
@@ -78,15 +96,16 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
     return idempotencyRef.current;
   };
 
-  const doAction = async (action: () => Promise<any>, successMsg: string) => {
+  const doAction = async (action: () => Promise<unknown>, successMsg: string) => {
     if (actionLoading) return;
     setActionLoading(true);
     try {
       await action();
       setToast({ msg: successMsg, type: 'success' });
       await loadStatus();
-    } catch (e: any) {
-      setToast({ msg: e.body?.error || e.message || 'エラーが発生しました', type: 'error' });
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      setToast({ msg: err.body?.error || err.message || 'エラーが発生しました', type: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -200,7 +219,7 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
         <div className="attendance-events">
           <h3>今日の記録</h3>
           <ul className="attendance-event-list">
-            {recentEvents.map((ev: any, i: number) => (
+            {recentEvents.map((ev: RawAttendanceEvent, i: number) => (
               <li key={i} className="attendance-event-item">
                 <span className="attendance-event-time">{formatTime(ev.event_at)}</span>
                 <span className="attendance-event-label">{EVENT_LABELS[ev.event_type] || ev.event_type}</span>

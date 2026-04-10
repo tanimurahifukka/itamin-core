@@ -13,8 +13,15 @@ const REQUEST_TYPES = [
   { value: 'session_add', label: 'セッション追加' },
 ];
 
+interface CorrectionRecord {
+  id?: string;
+  businessDate?: string;
+  clockInAt?: string;
+  clockOutAt?: string;
+}
+
 interface Props {
-  record?: any;
+  record?: CorrectionRecord;
   onSubmitted: () => void;
 }
 
@@ -52,8 +59,9 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
         reason: reason.trim(),
       });
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.body?.error || err.message || 'エラーが発生しました');
+    } catch (err: unknown) {
+      const e = err as { body?: { error?: string }; message?: string };
+      setError(e.body?.error || e.message || 'エラーが発生しました');
     } finally {
       setLoading(false);
     }

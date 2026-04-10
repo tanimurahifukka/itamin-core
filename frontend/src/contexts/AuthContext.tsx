@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { supabase } from '../api/supabase';
 import { api } from '../api/client';
 import type { User } from '@supabase/supabase-js';
@@ -49,36 +49,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedStore]);
 
-  const refreshStores = async () => {
+  const refreshStores = useCallback(async () => {
     try {
       const data = await api.getStores();
       const nextStores: StoreInfo[] = data.stores;
       setStores(nextStores);
 
-      if (nextStores.length === 1 && !selectedStore) {
-        setSelectedStore(nextStores[0]);
-        return;
-      }
-
-      if (selectedStore) {
-        const refreshedSelected = nextStores.find((store: StoreInfo) => store.id === selectedStore.id);
-        if (!refreshedSelected) {
-          setSelectedStore(nextStores.length === 1 ? nextStores[0] : null);
-          return;
+      setSelectedStore(prev => {
+        if (nextStores.length === 1 && !prev) {
+          return nextStores[0];
         }
-
-        if (
-          refreshedSelected.name !== selectedStore.name ||
-          refreshedSelected.role !== selectedStore.role ||
-          refreshedSelected.address !== selectedStore.address
-        ) {
-          setSelectedStore(refreshedSelected);
+        if (prev) {
+          const refreshedSelected = nextStores.find((store: StoreInfo) => store.id === prev.id);
+          if (!refreshedSelected) {
+            return nextStores.length === 1 ? nextStores[0] : null;
+          }
+          if (
+            refreshedSelected.name !== prev.name ||
+            refreshedSelected.role !== prev.role ||
+            refreshedSelected.address !== prev.address
+          ) {
+            return refreshedSelected;
+          }
         }
-      }
+        return prev;
+      });
     } catch {
       setStores([]);
     }
-  };
+  }, []);
 
   useEffect(() => {
     // 初期セッション確認
@@ -104,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [refreshStores]);
 
   const signUp = async (email: string, password: string, name: string, storeName: string) => {
     const { data, error } = await supabase.auth.signUp({
@@ -119,8 +118,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await api.createStore(storeName);
         await refreshStores();
-      } catch (e: any) {
-        return { error: `アカウント作成済み。事業所登録に失敗: ${e.message}` };
+      } catch (e: unknown) {
+        return { error: `アカウント作成済み。事業所登録に失敗: ${e instanceof Error ? e.message : String(e)}` };
       }
     }
     return {};
@@ -146,8 +145,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       await refreshStores();
-    } catch (e: any) {
-      return { error: e.message };
+    } catch (e: unknown) {
+      return { error: e instanceof Error ? e.message : String(e) };
     }
 
     return {};

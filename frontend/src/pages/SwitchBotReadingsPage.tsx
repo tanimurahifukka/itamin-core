@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 
@@ -76,7 +76,7 @@ function LineChart({
   const xLabelStep = Math.ceil(sorted.length / 5);
   const xLabels = sorted
     .filter((_, i) => i % xLabelStep === 0 || i === sorted.length - 1)
-    .map((d, _, arr) => {
+    .map((d) => {
       const origIdx = sorted.indexOf(d);
       const x = PAD.left + (origIdx / Math.max(sorted.length - 1, 1)) * W;
       return { x, t: d.recorded_at };
@@ -125,6 +125,8 @@ function LineChart({
   );
 }
 
+const LIMIT_BY_RANGE: Record<string, number> = { '24h': 96, '48h': 192, '7d': 1000 };
+
 export default function SwitchBotReadingsPage() {
   const { selectedStore } = useAuth();
   const [readings, setReadings] = useState<Reading[]>([]);
@@ -134,14 +136,12 @@ export default function SwitchBotReadingsPage() {
   const [error, setError] = useState('');
   const [range, setRange] = useState<'24h' | '48h' | '7d'>('24h');
 
-  const limitByRange: Record<string, number> = { '24h': 96, '48h': 192, '7d': 1000 };
-
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!selectedStore) return;
     setLoading(true);
     setError('');
     try {
-      const res = await api.getSwitchBotReadings(selectedStore.id, undefined, limitByRange[range]);
+      const res = await api.getSwitchBotReadings(selectedStore.id, undefined, LIMIT_BY_RANGE[range]);
       const data = res.readings || [];
 
       // デバイス一覧を抽出
@@ -152,15 +152,15 @@ export default function SwitchBotReadingsPage() {
       const deviceIds = Array.from(deviceMap.keys());
       setDevices(deviceIds);
       setReadings(data);
-      if (!activeDevice && deviceIds.length > 0) setActiveDevice(deviceIds[0]);
-    } catch (e: any) {
-      setError(e.message || '取得失敗');
+      setActiveDevice(prev => (!prev && deviceIds.length > 0 ? deviceIds[0] : prev));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '取得失敗');
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedStore, range]);
 
-  useEffect(() => { load(); }, [selectedStore, range]);
+  useEffect(() => { load(); }, [load]);
 
   const deviceReadings = useMemo(
     () => readings.filter(r => r.device_id === activeDevice),

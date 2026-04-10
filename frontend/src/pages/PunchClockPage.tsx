@@ -3,16 +3,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import ChecklistGate from '../components/ChecklistGate';
 import { showToast } from '../components/Toast';
+import type { MenuItem, InventoryItem, DailyReportItem } from '../types/api';
 
 const WEATHER_OPTIONS = ['晴れ', '曇り', '雨', '雪'];
 const MANAGED_ROLES = ['manager', 'leader'];
-
-interface MenuItem {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-}
 
 export default function PunchClockPage() {
   const { selectedStore } = useAuth();
@@ -48,7 +42,7 @@ export default function PunchClockPage() {
   const [reportInputMode, setReportInputMode] = useState<'manual' | 'menu'>('manual');
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [menuQuantities, setMenuQuantities] = useState<Record<string, number>>({});
-  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [inventoryUpdates, setInventoryUpdates] = useState<Record<string, string>>({});
   const [submittingReport, setSubmittingReport] = useState(false);
 
@@ -96,10 +90,10 @@ export default function PunchClockPage() {
   useEffect(() => {
     if (!selectedStore || !isManagerRole) return;
     api.getMenuItems(selectedStore.id, true)
-      .then((data: any) => setMenuItems(data.items || []))
+      .then(data => setMenuItems(data.items || []))
       .catch(() => {});
     api.getInventory(selectedStore.id)
-      .then((data: any) => setInventoryItems(data.items || []))
+      .then(data => setInventoryItems(data.items || []))
       .catch(() => {});
   }, [selectedStore, isManagerRole]);
 
@@ -142,14 +136,14 @@ export default function PunchClockPage() {
         }
         if (data.items && data.items.length > 0) {
           const q: Record<string, number> = {};
-          data.items.forEach((item: any) => { q[item.menuItemId] = item.quantity; });
+          data.items.forEach((item: DailyReportItem) => { q[item.menuItemId] = item.quantity; });
           setMenuQuantities(q);
           setReportInputMode('menu');
         }
       } catch {}
       // 在庫データを再取得
       api.getInventory(selectedStore.id)
-        .then((d: any) => setInventoryItems(d.items || []))
+        .then(d => setInventoryItems(d.items || []))
         .catch(() => {});
       setShowClockOutReport(true);
       return;
@@ -206,8 +200,8 @@ export default function PunchClockPage() {
       resetReportForm();
       showToast('日報を保存し、退勤しました。お疲れさまでした！', 'success');
       setTimeout(() => setPunchSuccess(null), 2000);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSubmittingReport(false);
     }
@@ -246,8 +240,8 @@ export default function PunchClockPage() {
       setPunchSuccess('in');
       showToast('前回の退勤を修正し、出勤しました！', 'success');
       setTimeout(() => setPunchSuccess(null), 2000);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setCorrectingStale(false);
     }
@@ -275,12 +269,14 @@ export default function PunchClockPage() {
         showToast('出勤しました。今日もよろしくお願いします！', 'success');
       }
       setTimeout(() => setPunchSuccess(null), 2000);
-    } catch (e: any) {
+    } catch (e: unknown) {
       // 退勤押し忘れ検出: 409 + staleRecord
-      if (e.status === 409 && e.body?.staleRecord) {
-        setStaleRecord(e.body.staleRecord);
+      // ApiRequestError has .status and .body properties set by the API client
+      const apiErr = e as { status?: number; body?: { staleRecord?: { id: string; clockIn: string; breakMinutes: number } }; message?: string };
+      if (apiErr.status === 409 && apiErr.body?.staleRecord) {
+        setStaleRecord(apiErr.body.staleRecord);
         // デフォルト退勤時刻: 出勤から8時間後 or 前日23:00のうち早い方
-        const clockInDate = new Date(e.body.staleRecord.clockIn);
+        const clockInDate = new Date(apiErr.body.staleRecord.clockIn);
         const eightHoursLater = new Date(clockInDate.getTime() + 8 * 60 * 60 * 1000);
         const sameDay2300 = new Date(clockInDate);
         sameDay2300.setHours(23, 0, 0, 0);
@@ -289,10 +285,10 @@ export default function PunchClockPage() {
         const pad = (n: number) => String(n).padStart(2, '0');
         const localStr = `${defaultOut.getFullYear()}-${pad(defaultOut.getMonth() + 1)}-${pad(defaultOut.getDate())}T${pad(defaultOut.getHours())}:${pad(defaultOut.getMinutes())}`;
         setStaleClockOut(localStr);
-        setStaleBreakMinutes(e.body.staleRecord.breakMinutes || 0);
+        setStaleBreakMinutes(apiErr.body.staleRecord.breakMinutes || 0);
         setShowStaleModal(true);
       } else {
-        setError(e.message);
+        setError(e instanceof Error ? e.message : String(e));
       }
     } finally {
       setLoading(false);
@@ -563,7 +559,7 @@ export default function PunchClockPage() {
                 <div style={{ padding: 12, background: '#fefce8', borderRadius: 8, border: '1px solid #fde68a', maxHeight: 200, overflowY: 'auto' }}>
                   <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#92400e', marginBottom: 8 }}>在庫残量チェック</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {inventoryItems.map((inv: any) => (
+                    {inventoryItems.map((inv) => (
                       <div key={inv.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                         <span style={{ fontSize: '0.85rem', flex: 1 }}>
                           {inv.name}

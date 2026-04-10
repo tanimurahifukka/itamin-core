@@ -158,7 +158,7 @@ export default function App() {
   // モバイル判定（フックは早期returnより前に宣言）
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth <= 768);
 
-  const loadTabs = async (background = false) => {
+  const loadTabs = useCallback(async (background = false) => {
     if (!selectedStore) {
       setTabs([]);
       setActiveTab('');
@@ -175,7 +175,7 @@ export default function App() {
     try {
       const data = await api.getPluginSettings(selectedStore.id);
       const myRole = selectedStore.role;
-      const pluginMap = new Map<string, any>(data.plugins.map((p: any) => [p.name, p]));
+      const pluginMap = new Map<string, { config?: Record<string, unknown> }>(data.plugins.map((p: { name: string; config?: Record<string, unknown> }) => [p.name, p]));
       const allowStaffRequest = pluginMap.get('shift')?.config?.allow_staff_request ?? true;
       const visibleTabs: PluginTab[] = [];
 
@@ -205,12 +205,12 @@ export default function App() {
     } finally {
       setTabsLoading(false);
     }
-  };
+  }, [selectedStore]);
 
   // プラグイン権限からタブを動的生成
   useEffect(() => {
     loadTabs();
-  }, [selectedStore]);
+  }, [loadTabs]);
 
   useEffect(() => {
     const handlePluginUpdate = () => {
@@ -227,7 +227,7 @@ export default function App() {
       window.removeEventListener('plugins-updated', handlePluginUpdate);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [selectedStore]);
+  }, [loadTabs]);
 
   // モバイルリサイズ検知
   useEffect(() => {
@@ -323,12 +323,13 @@ export default function App() {
           displayName: callbackRes.displayName,
           pictureUrl: callbackRes.pictureUrl,
         });
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!cancelled) {
+          const err = e as { body?: { error?: string }; message?: string };
           setLiffMode({
             active: false,
             checked: true,
-            error: e.body?.error || e.message || 'LINEログインの処理に失敗しました',
+            error: err.body?.error || err.message || 'LINEログインの処理に失敗しました',
           });
         }
       }
@@ -366,12 +367,13 @@ export default function App() {
           }
           window.location.assign(loginRes.url);
           return;
-        } catch (e: any) {
+        } catch (e: unknown) {
+          const err = e as { body?: { error?: string }; message?: string };
           if (!cancelled) {
             setLiffMode({
               active: false,
               checked: true,
-              error: e.body?.error || e.message || 'LINEログインの開始に失敗しました',
+              error: err.body?.error || err.message || 'LINEログインの開始に失敗しました',
             });
           }
         }
@@ -388,6 +390,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // キオスクモード判定（フック呼び出し後に行う）

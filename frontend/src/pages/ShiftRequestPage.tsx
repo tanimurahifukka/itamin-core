@@ -2,20 +2,11 @@
  * シフト希望提出ページ（スタッフ用）
  * 月間カレンダービューで出勤可/希望/休みを登録
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import TimePicker15 from '../components/TimePicker15';
-
-interface ShiftRequest {
-  id: string;
-  staffId: string;
-  date: string;
-  requestType: 'available' | 'unavailable' | 'preferred';
-  startTime: string | null;
-  endTime: string | null;
-  note: string | null;
-}
+import type { ShiftRequest } from '../types/api';
 
 interface ExistingShift {
   id: string;
@@ -81,7 +72,7 @@ export default function ShiftRequestPage() {
   useEffect(() => {
     if (!selectedStore || !user) return;
     api.getStoreStaff(selectedStore.id).then(data => {
-      const me = data.staff.find((s: any) => s.userId === user.id);
+      const me = data.staff.find((s: { userId: string; id: string }) => s.userId === user.id);
       if (me) setStaffId(me.id);
     }).catch(() => {});
   }, [selectedStore, user]);
@@ -91,13 +82,13 @@ export default function ShiftRequestPage() {
   useEffect(() => {
     if (!selectedStore) return;
     api.getTemplates(selectedStore.id).then(data => {
-      setTemplates(data.templates.map((t: any) => ({
+      setTemplates(data.templates.map((t: { id: string; name: string; startTime: string; endTime: string }) => ({
         id: t.id, name: t.name, startTime: t.startTime, endTime: t.endTime,
       })));
     }).catch(() => {});
   }, [selectedStore]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!selectedStore || !staffId) return;
     try {
       // 月初〜月末の各週の月曜日を算出
@@ -129,8 +120,8 @@ export default function ShiftRequestPage() {
           allRequests.push(...reqData.requests.filter((r: ShiftRequest) => r.staffId === staffId));
           allShifts.push(
             ...shiftData.shifts
-              .filter((s: any) => s.staffId === staffId && s.status === 'published')
-              .map((s: any) => ({ id: s.id, date: s.date, startTime: s.startTime, endTime: s.endTime, status: s.status }))
+              .filter(s => s.staffId === staffId && s.status === 'published')
+              .map(s => ({ id: s.id, date: s.date, startTime: s.startTime, endTime: s.endTime, status: s.status as 'draft' | 'published' }))
           );
         })
       );
@@ -141,9 +132,12 @@ export default function ShiftRequestPage() {
       setRequests(Array.from(reqMap.values()));
       setConfirmedShifts(Array.from(shiftMap.values()));
     } catch {}
-  };
+  }, [selectedStore, staffId, currentMonth]);
 
-  useEffect(() => { if (staffId) loadData(); }, [selectedStore, currentMonth, staffId]);
+  useEffect(() => {
+    const run = async () => { await loadData(); };
+    void run();
+  }, [loadData]);
 
   const prevMonth = () => {
     setCurrentMonth(prev => {
@@ -164,7 +158,7 @@ export default function ShiftRequestPage() {
   const openEditor = (date: string) => {
     const existing = getRequest(date);
     setEditing(date);
-    setEditType(existing?.requestType || 'available');
+    setEditType((existing?.requestType as 'available' | 'unavailable' | 'preferred') || 'available');
     setEditStart(existing?.startTime?.slice(0, 5) || '');
     setEditEnd(existing?.endTime?.slice(0, 5) || '');
     setEditNote(existing?.note || '');

@@ -5,10 +5,20 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
 
+interface LineInfo {
+  displayName?: string;
+  status?: string;
+  linkedAt?: string;
+}
+
+interface UserProfile {
+  name?: string;
+}
+
 export default function AccountPage() {
   const { user, signOut } = useAuth();
-  const [lineInfo, setLineInfo] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [lineInfo, setLineInfo] = useState<LineInfo | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

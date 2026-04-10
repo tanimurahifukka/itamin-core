@@ -63,7 +63,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Template | null>(null);
   const [staffId, setStaffId] = useState(staff[0]?.id || '');
-  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [answers, setAnswers] = useState<Record<string, string | boolean>>({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [switchbotDevices, setSwitchbotDevices] = useState<Array<{ deviceId: string; deviceName: string; deviceType: string }>>([]);
@@ -110,8 +110,8 @@ export default function KioskHaccp({ storeId, staff }: Props) {
       setAnswers(a => ({ ...a, [itemId]: String(value) }));
       const device = switchbotDevices.find(d => d.deviceId === deviceId);
       showMsg(`${device?.deviceName || deviceId}: ${value}${unit} を入力しました`, true);
-    } catch (e: any) {
-      showMsg(e.message || 'SwitchBot取得失敗', false);
+    } catch (e: unknown) {
+      showMsg(e instanceof Error ? e.message : 'SwitchBot取得失敗', false);
     } finally {
       setFetchingDevice(null);
     }
@@ -120,7 +120,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
   const openTemplate = (tpl: Template) => {
     setSelected(tpl);
     // 初期値セット
-    const init: Record<string, any> = {};
+    const init: Record<string, string | boolean> = {};
     for (const item of tpl.items) {
       if (item.item_type === 'checkbox') init[item.id] = false;
       else if (item.item_type === 'numeric') init[item.id] = '';
@@ -167,8 +167,8 @@ export default function KioskHaccp({ storeId, staff }: Props) {
       showMsg(`「${selected.name}」を提出しました`, true);
       setSelected(null);
       await load();
-    } catch (e: any) {
-      showMsg(e.message || '提出に失敗しました', false);
+    } catch (e: unknown) {
+      showMsg(e instanceof Error ? e.message : '提出に失敗しました', false);
     } finally {
       setSaving(false);
     }
@@ -180,9 +180,9 @@ export default function KioskHaccp({ storeId, staff }: Props) {
   // SwitchBotデバイスの現在値を全台取得
   const [deviceStatus, setDeviceStatus] = useState<Record<string, { temperature: number | null; humidity: number | null; loading: boolean }>>({});
 
-  const refreshAllDevices = async () => {
+  const refreshAllDevices = useCallback(async () => {
     if (switchbotDevices.length === 0) return;
-    const init: typeof deviceStatus = {};
+    const init: Record<string, { temperature: number | null; humidity: number | null; loading: boolean }> = {};
     for (const d of switchbotDevices) init[d.deviceId] = { temperature: null, humidity: null, loading: true };
     setDeviceStatus(init);
     await Promise.all(switchbotDevices.map(async d => {
@@ -193,9 +193,9 @@ export default function KioskHaccp({ storeId, staff }: Props) {
         setDeviceStatus(prev => ({ ...prev, [d.deviceId]: { temperature: null, humidity: null, loading: false } }));
       }
     }));
-  };
+  }, [switchbotDevices, storeId]);
 
-  useEffect(() => { if (switchbotDevices.length > 0) refreshAllDevices(); }, [switchbotDevices]);
+  useEffect(() => { if (switchbotDevices.length > 0) refreshAllDevices(); }, [switchbotDevices, refreshAllDevices]);
 
   return (
     <div style={s.root}>
@@ -348,7 +348,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <input
                           type="number"
-                          value={answers[item.id]}
+                          value={answers[item.id] as string}
                           min={item.min_value}
                           max={item.max_value}
                           step="0.1"
@@ -384,7 +384,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
                     {item.item_type === 'text' && (
                       <input
                         type="text"
-                        value={answers[item.id] || ''}
+                        value={(answers[item.id] as string) || ''}
                         onChange={e => setAnswers(a => ({ ...a, [item.id]: e.target.value }))}
                         style={s.textInput}
                         data-testid={`haccp-item-${item.id}`}
@@ -392,7 +392,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
                     )}
                     {item.item_type === 'select' && item.options && (
                       <select
-                        value={answers[item.id] || ''}
+                        value={(answers[item.id] as string) || ''}
                         onChange={e => setAnswers(a => ({ ...a, [item.id]: e.target.value }))}
                         style={s.select}
                         data-testid={`haccp-item-${item.id}`}

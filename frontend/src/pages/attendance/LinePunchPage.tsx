@@ -2,7 +2,7 @@
  * LINE打刻ページ（Supabase Auth不要）
  * LINE Login で取得した lineUserId で打刻操作を行う。
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 const API_BASE = '/api';
 
@@ -26,7 +26,7 @@ function formatElapsed(startIso: string) {
   return `${Math.floor(ms / 3600000)}時間${Math.floor((ms % 3600000) / 60000)}分`;
 }
 
-async function linePunchApi(path: string, body: Record<string, any>) {
+async function linePunchApi(path: string, body: Record<string, unknown>) {
   const res = await fetch(`${API_BASE}/line-punch${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -37,6 +37,16 @@ async function linePunchApi(path: string, body: Record<string, any>) {
   return data;
 }
 
+interface LinePunchData {
+  businessDate: string;
+  currentStatus: string;
+  activeSession: {
+    clockInAt: string;
+    breakMinutes: number;
+  } | null;
+  recentEvents: { event_type: string; event_at: string }[];
+}
+
 interface Props {
   lineUserId: string;
   storeId: string;
@@ -45,25 +55,25 @@ interface Props {
 }
 
 export default function LinePunchPage({ lineUserId, storeId, displayName, pictureUrl }: Props) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<LinePunchData | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
   const [now, setNow] = useState(new Date());
   const idempotencyRef = useRef('');
 
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async () => {
     try {
       const res = await linePunchApi('/today', { lineUserId, storeId });
       setData(res);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to load:', e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [lineUserId, storeId]);
 
-  useEffect(() => { loadStatus(); }, []);
+  useEffect(() => { loadStatus(); }, [loadStatus]);
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
@@ -86,8 +96,9 @@ export default function LinePunchPage({ lineUserId, storeId, displayName, pictur
       await linePunchApi(path, { lineUserId, storeId, idempotencyKey: genKey() });
       setToast({ msg: successMsg, type: 'success' });
       await loadStatus();
-    } catch (e: any) {
-      setToast({ msg: e.body?.error || e.message || 'エラー', type: 'error' });
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      setToast({ msg: err.body?.error || err.message || 'エラー', type: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -169,7 +180,7 @@ export default function LinePunchPage({ lineUserId, storeId, displayName, pictur
         <div className="attendance-events">
           <h3>今日の記録</h3>
           <ul className="attendance-event-list">
-            {recentEvents.map((ev: any, i: number) => (
+            {recentEvents.map((ev, i: number) => (
               <li key={i} className="attendance-event-item">
                 <span className="attendance-event-time">{formatTime(ev.event_at)}</span>
                 <span>{EVENT_LABELS[ev.event_type] || ev.event_type}</span>

@@ -87,7 +87,7 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
         console.warn('[ChecklistGate] fetch error, skipping gate:', e.message);
         onComplete();
       });
-  }, [storeId, timing]);
+  }, [storeId, timing, onComplete]);
 
   const allComplete = items.length > 0 && items.every(item => isItemComplete(item, values[item.id] ?? emptyValues()));
 
@@ -124,10 +124,11 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
         });
       }
       onComplete();
-    } catch (e: any) {
+    } catch (e: unknown) {
       // 提出エラー時もゲートを通過させる（打刻フローを壊さない）
-      console.warn('[ChecklistGate] submission error (proceeding):', e.message);
-      setError(`記録に失敗しました: ${e.message}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn('[ChecklistGate] submission error (proceeding):', msg);
+      setError(`記録に失敗しました: ${msg}`);
       // 3 秒後に通過
       setTimeout(() => onComplete(), 3000);
     } finally {

@@ -1,9 +1,21 @@
 /**
  * A04 修正申請承認画面
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
+interface CorrectionItem {
+  id: string;
+  status: string;
+  user?: { name?: string };
+  user_id?: string;
+  requested_business_date: string;
+  request_type: string;
+  reason: string;
+  before_snapshot?: Record<string, unknown>;
+  after_snapshot?: Record<string, unknown>;
+  review_comment?: string;
+}
 
 const STATUS_LABELS: Record<string, string> = {
   pending: '申請中',
@@ -14,23 +26,27 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function CorrectionApprovalPage() {
   const { selectedStore } = useAuth();
-  const [corrections, setCorrections] = useState<any[]>([]);
+  const [corrections, setCorrections] = useState<CorrectionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
   const [comment, setComment] = useState('');
 
   const storeId = selectedStore?.id;
 
-  const load = () => {
+  const load = useCallback(async () => {
     if (!storeId) return;
     setLoading(true);
-    api.getAdminCorrections(storeId)
-      .then(res => setCorrections(res.corrections || []))
-      .catch(() => setCorrections([]))
-      .finally(() => setLoading(false));
-  };
+    try {
+      const res = await api.getAdminCorrections(storeId);
+      setCorrections((res.corrections || []) as unknown as CorrectionItem[]);
+    } catch {
+      setCorrections([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [storeId]);
 
-  useEffect(() => { load(); }, [storeId]);
+  useEffect(() => { load(); }, [load]);
 
   const handleApprove = async (id: string) => {
     if (!storeId) return;
@@ -39,8 +55,9 @@ export default function CorrectionApprovalPage() {
       setActionId(null);
       setComment('');
       load();
-    } catch (e: any) {
-      alert(e.body?.error || 'エラーが発生しました');
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      alert(err.body?.error || 'エラーが発生しました');
     }
   };
 
@@ -51,8 +68,9 @@ export default function CorrectionApprovalPage() {
       setActionId(null);
       setComment('');
       load();
-    } catch (e: any) {
-      alert(e.body?.error || 'エラーが発生しました');
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      alert(err.body?.error || 'エラーが発生しました');
     }
   };
 
@@ -66,7 +84,7 @@ export default function CorrectionApprovalPage() {
         <div className="admin-empty">申請はありません</div>
       ) : (
         <div className="admin-correction-list">
-          {corrections.map((c: any) => (
+          {corrections.map((c) => (
             <div key={c.id} className={`admin-correction-item status-${c.status}`} data-testid="correction-item">
               <div className="admin-correction-header">
                 <span className="admin-correction-applicant">{c.user?.name || c.user_id}</span>

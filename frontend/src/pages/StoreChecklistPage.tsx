@@ -118,8 +118,8 @@ function CheckForm({ template, items, timing, storeId, membershipId, onSubmitted
         items: subItems,
       });
       onSubmitted();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSubmitting(false);
     }
@@ -270,8 +270,8 @@ function MeasurementOnlyItem({ item, storeId }: { item: ActiveItem; storeId: str
       setValue('');
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
@@ -346,9 +346,9 @@ export default function StoreChecklistPage() {
   useEffect(() => {
     if (!selectedStore) return;
     api.getTimecardStatus(selectedStore.id)
-      .then((d: any) => { if (d.staffId) setMembershipId(d.staffId); })
+      .then((d) => { if (d.staffId) setMembershipId(d.staffId); })
       .catch(() => {});
-  }, [selectedStore?.id]);
+  }, [selectedStore]);
 
   const load = useCallback(async () => {
     if (!selectedStore) return;
@@ -367,8 +367,8 @@ export default function StoreChecklistPage() {
       setTemplates(activeData.templates);
       setItems(activeData.merged_items);
       setSubmissions(subData.submissions);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }

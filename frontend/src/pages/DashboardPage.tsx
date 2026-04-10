@@ -1,19 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
+import type { TimeRecord, MonthlySummaryStaff } from '../types/api';
 
 type ViewMode = 'daily' | 'monthly' | 'staff';
+
+// Shape of raw Supabase records returned in the monthly staff detail response.
+// The backend returns snake_case fields for the records array in the monthly endpoint.
+interface RawStaffRecord {
+  id: string;
+  staff_id: string;
+  clock_in: string;
+  clock_out: string | null;
+  break_minutes: number;
+  staff?: { hourly_wage?: number };
+}
+
+interface MonthlyData {
+  summary: MonthlySummaryStaff[];
+  records?: RawStaffRecord[];
+}
 
 export default function DashboardPage() {
   const { selectedStore } = useAuth();
   const isOwner = selectedStore?.role === 'owner';
   const isManager = selectedStore?.role === 'manager';
   const canEdit = isOwner || isManager;
-  const [records, setRecords] = useState<any[]>([]);
+  const [records, setRecords] = useState<TimeRecord[]>([]);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
-  const [monthlyData, setMonthlyData] = useState<any>(null);
+  const [monthlyData, setMonthlyData] = useState<MonthlyData | null>(null);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
@@ -21,10 +38,10 @@ export default function DashboardPage() {
   const [selectedStaff, setSelectedStaff] = useState<{ staffId: string; staffName: string } | null>(null);
 
   // 未退勤レコード（ペア不一致）
-  const [staleRecords, setStaleRecords] = useState<any[]>([]);
+  const [staleRecords, setStaleRecords] = useState<(TimeRecord & { date: string })[]>([]);
 
   // 編集モーダル
-  const [editRecord, setEditRecord] = useState<any>(null);
+  const [editRecord, setEditRecord] = useState<TimeRecord | null>(null);
   const [editClockIn, setEditClockIn] = useState('');
   const [editClockOut, setEditClockOut] = useState('');
   const [editBreakMinutes, setEditBreakMinutes] = useState(0);
@@ -32,20 +49,20 @@ export default function DashboardPage() {
   const [editError, setEditError] = useState('');
 
   // 日別データ取得
-  const loadDailyRecords = () => {
+  const loadDailyRecords = useCallback(() => {
     if (!selectedStore) return;
     api.getDailyRecords(selectedStore.id, date)
       .then(data => setRecords(data.records))
       .catch(() => {});
-  };
+  }, [selectedStore, date]);
 
-  useEffect(() => { loadDailyRecords(); }, [selectedStore, date]);
+  useEffect(() => { loadDailyRecords(); }, [loadDailyRecords]);
 
   // 月別データ取得
   useEffect(() => {
     if (!selectedStore || (viewMode !== 'monthly' && viewMode !== 'staff')) return;
     api.getMonthlyRecords(selectedStore.id, year, month)
-      .then(data => setMonthlyData(data))
+      .then(data => setMonthlyData(data as unknown as MonthlyData))
       .catch(() => setMonthlyData(null));
   }, [selectedStore, viewMode, year, month]);
 
@@ -55,7 +72,7 @@ export default function DashboardPage() {
     // 今日の日別データから未退勤を取得 + 過去分は別途チェック
     // 直近7日間をスキャンして未退勤を検出
     const checkStale = async () => {
-      const stale: any[] = [];
+      const stale: (TimeRecord & { date: string })[] = [];
       const today = new Date();
       for (let i = 0; i < 7; i++) {
         const d = new Date(today);
@@ -63,17 +80,17 @@ export default function DashboardPage() {
         const dateStr = d.toISOString().split('T')[0];
         try {
           const data = await api.getDailyRecords(selectedStore.id, dateStr);
-          const unpaired = (data.records || []).filter((r: any) => !r.clockOut);
+          const unpaired = (data.records || []).filter((r: TimeRecord) => !r.clockOut);
           // 今日の「勤務中」は除外（当日は正常な勤務中の可能性）
           if (i === 0) {
             // 当日でも出勤から12時間以上経過していたら異常とみなす
             const now = Date.now();
-            unpaired.forEach((r: any) => {
+            unpaired.forEach((r: TimeRecord) => {
               const elapsed = (now - new Date(r.clockIn).getTime()) / 3600000;
               if (elapsed > 12) stale.push({ ...r, date: dateStr });
             });
           } else {
-            unpaired.forEach((r: any) => stale.push({ ...r, date: dateStr }));
+            unpaired.forEach((r: TimeRecord) => stale.push({ ...r, date: dateStr }));
           }
         } catch {}
       }
@@ -91,20 +108,20 @@ export default function DashboardPage() {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
-  const calcHours = (record: any) => {
+  const calcHours = (record: TimeRecord) => {
     if (!record.clockOut) return null;
     const diff = (new Date(record.clockOut).getTime() - new Date(record.clockIn).getTime()) / 3600000;
     return diff - (record.breakMinutes || 0) / 60;
   };
 
-  const calcHoursStr = (record: any) => {
+  const calcHoursStr = (record: TimeRecord) => {
     const h = calcHours(record);
     if (h === null) return '勤務中';
     return `${h.toFixed(1)}h`;
   };
 
   // 編集モーダルを開く
-  const openEditModal = (record: any) => {
+  const openEditModal = (record: TimeRecord) => {
     if (!canEdit) return;
     setEditRecord(record);
     setEditClockIn(toLocalDatetimeStr(record.clockIn));
@@ -124,7 +141,8 @@ export default function DashboardPage() {
     setEditError('');
 
     try {
-      const updates: any = {};
+      // clockOut accepts null to explicitly clear the value (not supported by the API type, but handled server-side)
+      const updates: { clockIn?: string; clockOut?: string | null; breakMinutes?: number } = {};
       const newClockIn = new Date(editClockIn).toISOString();
       const newClockOut = editClockOut ? new Date(editClockOut).toISOString() : undefined;
 
@@ -138,32 +156,25 @@ export default function DashboardPage() {
         return;
       }
 
-      await api.updateTimeRecord(selectedStore.id, editRecord.id, updates);
+      await api.updateTimeRecord(selectedStore.id, editRecord.id, updates as { clockIn?: string; clockOut?: string; breakMinutes?: number });
       showToast('勤怠記録を修正しました', 'success');
       closeEditModal();
       // データ再読み込み
       loadDailyRecords();
       // 未退勤リストも更新
       setStaleRecords(prev => prev.filter(r => r.id !== editRecord.id));
-    } catch (e: any) {
-      setEditError(e.message);
+    } catch (e: unknown) {
+      setEditError(e instanceof Error ? e.message : String(e));
     } finally {
       setEditSubmitting(false);
     }
   };
 
   // 人件費計算
-  const calcLaborCost = (record: any) => {
+  const calcLaborCost = (record: TimeRecord) => {
     const h = calcHours(record);
     if (h === null || !record.hourlyWage) return null;
     return Math.round(h * record.hourlyWage);
-  };
-
-  // 1日コスト計算（人件費 + 交通費）
-  const calcDailyCost = (record: any) => {
-    const labor = calcLaborCost(record);
-    if (labor === null) return null;
-    return labor + (record.transportFee || 0);
   };
 
   // 今日のサマリー計算
@@ -173,10 +184,9 @@ export default function DashboardPage() {
   const totalHoursToday = finished.reduce((sum, r) => sum + (calcHours(r) || 0), 0);
   const totalLaborCost = finished.reduce((sum, r) => sum + (calcLaborCost(r) || 0), 0);
   // 出勤したスタッフのユニーク交通費合計
-  const uniqueStaffIds = new Set(records.map((r: any) => r.staffId));
   const totalTransportFee = records
-    .filter((r: any, i: number, arr: any[]) => arr.findIndex((a: any) => a.staffId === r.staffId) === i)
-    .reduce((sum: number, r: any) => sum + (r.transportFee || 0), 0);
+    .filter((r, i, arr) => arr.findIndex(a => a.staffId === r.staffId) === i)
+    .reduce((sum, r) => sum + (r.transportFee || 0), 0);
   const totalDailyCost = totalLaborCost + totalTransportFee;
 
   const handlePrevMonth = () => {
@@ -198,7 +208,7 @@ export default function DashboardPage() {
             <strong>退勤未打刻が {staleRecords.length} 件あります</strong>
           </div>
           <div className="stale-alert-list">
-            {staleRecords.map((r: any) => (
+            {staleRecords.map((r) => (
               <div key={r.id} className="stale-alert-item">
                 <span>{r.date} {r.staffName || '—'}</span>
                 <span className="stale-alert-time">出勤 {formatTime(r.clockIn)}〜</span>
@@ -315,7 +325,7 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {records.map((r: any) => {
+                  {records.map((r) => {
                     const cost = calcLaborCost(r);
                     return (
                       <tr key={r.id} className={!r.clockOut ? 'row-working row-unpaired' : ''}>
@@ -404,7 +414,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {monthlyData.summary.map((s: any, i: number) => (
+                {monthlyData.summary.map((s, i) => (
                   <tr key={i}>
                     <td>
                       <button
@@ -415,11 +425,11 @@ export default function DashboardPage() {
                         {s.staffName || '—'}
                       </button>
                     </td>
-                    <td>{s.workDays ?? s.totalDays ?? '—'}日</td>
+                    <td>{s.workDays ?? '—'}日</td>
                     <td>{s.totalWorkHours != null ? `${Number(s.totalWorkHours).toFixed(1)}h` : '—'}</td>
                     <td>
-                      {s.totalWorkHours != null && (s.workDays || s.totalDays)
-                        ? `${(Number(s.totalWorkHours) / (s.workDays || s.totalDays || 1)).toFixed(1)}h`
+                      {s.totalWorkHours != null && s.workDays
+                        ? `${(Number(s.totalWorkHours) / (s.workDays || 1)).toFixed(1)}h`
                         : '—'}
                     </td>
                     {isOwner && <td>{s.hourlyWage ? `¥${Number(s.hourlyWage).toLocaleString()}` : '—'}</td>}
@@ -438,12 +448,12 @@ export default function DashboardPage() {
                   <td>合計</td>
                   <td>—</td>
                   <td>
-                    {monthlyData.summary.reduce((sum: number, s: any) => sum + (Number(s.totalWorkHours) || 0), 0).toFixed(1)}h
+                    {monthlyData.summary.reduce((sum, s) => sum + (Number(s.totalWorkHours) || 0), 0).toFixed(1)}h
                   </td>
                   <td>—</td>
                   {isOwner && <td>—</td>}
                   {isOwner && <td style={{ color: '#2563eb' }}>
-                    ¥{monthlyData.summary.reduce((sum: number, s: any) => sum + (Number(s.estimatedSalary) || 0), 0).toLocaleString()}
+                    ¥{monthlyData.summary.reduce((sum, s) => sum + (Number(s.estimatedSalary) || 0), 0).toLocaleString()}
                   </td>}
                 </tr>
               </tbody>
@@ -477,7 +487,7 @@ export default function DashboardPage() {
           {/* スタッフ選択 */}
           {monthlyData?.summary && monthlyData.summary.length > 0 && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-              {monthlyData.summary.map((s: any) => (
+              {monthlyData.summary.map((s) => (
                 <button
                   key={s.staffId}
                   className={`staff-chip ${selectedStaff?.staffId === s.staffId ? 'active' : ''}`}
@@ -493,10 +503,10 @@ export default function DashboardPage() {
           {/* スタッフ別月間明細 */}
           {selectedStaff && monthlyData?.records ? (() => {
             const staffRecords = (monthlyData.records || [])
-              .filter((r: any) => r.staff_id === selectedStaff.staffId)
-              .sort((a: any, b: any) => new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime());
+              .filter((r) => r.staff_id === selectedStaff.staffId)
+              .sort((a, b) => new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime());
 
-            const staffSummary = monthlyData.summary?.find((s: any) => s.staffId === selectedStaff.staffId);
+            const staffSummary = monthlyData.summary?.find((s) => s.staffId === selectedStaff.staffId);
 
             if (staffRecords.length === 0) {
               return (
@@ -548,8 +558,8 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {staffRecords.map((r: any) => {
-                      const mapped = {
+                    {staffRecords.map((r) => {
+                      const mapped: TimeRecord = {
                         id: r.id,
                         clockIn: r.clock_in,
                         clockOut: r.clock_out,

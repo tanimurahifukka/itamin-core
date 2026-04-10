@@ -1,20 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  category: string;
-  unit: string;
-  quantity: number;
-  minQuantity: number;
-  cost: number;
-  note: string | null;
-  status: string;
-  lastCheckedAt: string | null;
-}
+import type { InventoryItem } from '../types/api';
 
 const STATUS_OPTIONS = [
   { value: '適正', color: '#22c55e', bg: '#f0fdf4' },
@@ -42,28 +30,28 @@ export default function InventoryPage() {
   const [newNote, setNewNote] = useState('');
   const [adding, setAdding] = useState(false);
 
-  const loadItems = () => {
+  const loadItems = useCallback(() => {
     if (!selectedStore) return;
     const category = activeCategory || undefined;
     api.getInventory(selectedStore.id, category)
       .then(data => setItems(data.items))
       .catch(() => {});
-  };
+  }, [selectedStore, activeCategory]);
 
-  useEffect(() => { loadItems(); }, [selectedStore, activeCategory]);
+  useEffect(() => { loadItems(); }, [loadItems]);
 
   // カテゴリ一覧はフィルタなし全件から算出
   const [allCategories, setAllCategories] = useState<string[]>([]);
-  const loadCategories = () => {
+  const loadCategories = useCallback(() => {
     if (!selectedStore) return;
     api.getInventory(selectedStore.id)
       .then(data => {
-        const cats = Array.from(new Set((data.items as InventoryItem[]).map(i => i.category).filter(Boolean)));
+        const cats = Array.from(new Set(data.items.map(i => i.category).filter((c): c is string => Boolean(c))));
         setAllCategories(cats);
       })
       .catch(() => {});
-  };
-  useEffect(() => { loadCategories(); }, [selectedStore]);
+  }, [selectedStore]);
+  useEffect(() => { loadCategories(); }, [loadCategories]);
 
   const categories = allCategories;
 
@@ -90,8 +78,8 @@ export default function InventoryPage() {
       showToast('商品を追加しました', 'success');
       loadItems();
       loadCategories();
-    } catch (e: any) {
-      showToast(e.message || '追加に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '追加に失敗しました', 'error');
     } finally {
       setAdding(false);
     }
@@ -105,15 +93,15 @@ export default function InventoryPage() {
       showToast('削除しました', 'info');
       loadItems();
       loadCategories();
-    } catch (e: any) {
-      showToast(e.message || '削除に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '削除に失敗しました', 'error');
     }
   };
 
   const startEdit = (item: InventoryItem, field: string) => {
     setEditingId(item.id);
     setEditingField(field);
-    setEditingValue(String((item as any)[field] ?? ''));
+    setEditingValue(String((item as unknown as Record<string, unknown>)[field] ?? ''));
   };
 
   const cancelEdit = () => {
@@ -134,8 +122,8 @@ export default function InventoryPage() {
       showToast('更新しました', 'success');
       cancelEdit();
       loadItems();
-    } catch (e: any) {
-      showToast(e.message || '更新に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '更新に失敗しました', 'error');
     }
   };
 
@@ -330,7 +318,7 @@ export default function InventoryPage() {
                   <td style={isLowStock(item) ? { color: '#dc2626', fontWeight: 700 } : {}}>
                     {renderEditableCell(item, 'quantity', String(item.quantity))}
                   </td>
-                  <td>{renderEditableCell(item, 'unit', item.unit)}</td>
+                  <td>{renderEditableCell(item, 'unit', item.unit ?? '')}</td>
                   <td>{renderEditableCell(item, 'minQuantity', String(item.minQuantity))}</td>
                   <td>{renderEditableCell(item, 'cost', `¥${Number(item.cost).toLocaleString()}`)}</td>
                   <td>

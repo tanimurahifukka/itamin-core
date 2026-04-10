@@ -12,13 +12,14 @@ type SubPage = 'home' | 'history' | 'correction' | 'account';
 
 export default function AttendanceStaffPage() {
   const [subPage, setSubPage] = useState<SubPage>('home');
-  const [correctionRecord, setCorrectionRecord] = useState<any>(null);
+  const [correctionRecord, setCorrectionRecord] = useState<{ id?: string; businessDate?: string; clockInAt?: string; clockOutAt?: string } | undefined>(undefined);
 
-  const handleNavigate = useCallback((page: string, data?: any) => {
+  const handleNavigate = useCallback((page: string, data?: { record?: { id?: string; businessDate?: string; clockInAt?: string; clockOutAt?: string | null } }) => {
     if (page === 'correction' && data?.record) {
-      setCorrectionRecord(data.record);
+      const { clockOutAt, ...rest } = data.record;
+      setCorrectionRecord({ ...rest, clockOutAt: clockOutAt ?? undefined });
     } else {
-      setCorrectionRecord(null);
+      setCorrectionRecord(undefined);
     }
     setSubPage(page as SubPage);
   }, []);

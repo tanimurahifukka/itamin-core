@@ -1,17 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
-
-interface FeedbackItem {
-  id: string;
-  date: string;
-  type: string;
-  content: string;
-  response: string;
-  status: string;
-  createdAt: string;
-}
+import type { FeedbackItem } from '../types/api';
 
 const TYPE_OPTIONS = [
   { value: 'praise', label: 'お褒め', color: '#22c55e', bg: '#f0fdf4' },
@@ -39,22 +30,22 @@ export default function FeedbackPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editResponse, setEditResponse] = useState('');
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     if (!selectedStore) return;
     api.getFeedback(selectedStore.id, filterStatus || undefined, filterType || undefined)
-      .then((data: any) => setItems(data.items))
+      .then((data) => setItems(data.items))
       .catch(() => {});
-  };
+  }, [selectedStore, filterStatus, filterType]);
 
-  const loadAllItems = () => {
+  const loadAllItems = useCallback(() => {
     if (!selectedStore) return;
     api.getFeedback(selectedStore.id)
-      .then((data: any) => setAllItems(data.items))
+      .then((data) => setAllItems(data.items))
       .catch(() => {});
-  };
+  }, [selectedStore]);
 
-  useEffect(() => { loadData(); }, [selectedStore, filterStatus, filterType]);
-  useEffect(() => { loadAllItems(); }, [selectedStore]);
+  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { loadAllItems(); }, [loadAllItems]);
 
   const handleAdd = async () => {
     if (!selectedStore || !newContent.trim() || adding) return;
@@ -71,8 +62,8 @@ export default function FeedbackPage() {
       showToast('追加しました', 'success');
       loadData();
       loadAllItems();
-    } catch (e: any) {
-      showToast(e.message || '追加に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '追加に失敗しました', 'error');
     } finally {
       setAdding(false);
     }
@@ -84,8 +75,8 @@ export default function FeedbackPage() {
       await api.updateFeedback(selectedStore.id, item.id, { status: newStatus });
       loadData();
       loadAllItems();
-    } catch (e: any) {
-      showToast(e.message || '更新に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '更新に失敗しました', 'error');
     }
   };
 
@@ -96,8 +87,8 @@ export default function FeedbackPage() {
       showToast('対応記録を更新しました', 'success');
       setEditingId(null);
       loadData();
-    } catch (e: any) {
-      showToast(e.message || '更新に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '更新に失敗しました', 'error');
     }
   };
 
@@ -109,8 +100,8 @@ export default function FeedbackPage() {
       showToast('削除しました', 'info');
       loadData();
       loadAllItems();
-    } catch (e: any) {
-      showToast(e.message || '削除に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '削除に失敗しました', 'error');
     }
   };
 

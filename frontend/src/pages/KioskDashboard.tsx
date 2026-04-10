@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { kioskApi, clearKioskSession } from '../api/kioskClient';
 import KioskShiftManager from './KioskShiftManager';
 import KioskHaccp from './KioskHaccp';
+import type { Shift } from '../types/api';
 
 interface Staff {
   id: string;
@@ -10,14 +11,6 @@ interface Staff {
   clockedIn: boolean;
   openRecordId: string | null;
   clockInTime: string | null;
-}
-
-interface Shift {
-  id: string;
-  staffId: string;
-  startTime: string;
-  endTime: string;
-  staffName: string;
 }
 
 interface Props {
@@ -36,7 +29,7 @@ function addDays(dateStr: string, n: number) {
   return toDateStr(d);
 }
 
-function formatTime(iso: string | null): string {
+function formatTime(iso: string | null | undefined): string {
   if (!iso) return '';
   return new Date(iso).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 }
@@ -94,8 +87,10 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
       setStaff(staffRes.staff);
       setShifts(shiftRes.shifts);
       setEnabledPlugins(pluginsRes.plugins);
-    } catch (e: any) {
-      if (e.status === 401) { clearKioskSession(); onLogout(); }
+    } catch (e: unknown) {
+      if (typeof e === 'object' && e !== null && 'status' in e && (e as { status: number }).status === 401) {
+        clearKioskSession(); onLogout();
+      }
     } finally {
       setLoading(false);
     }
@@ -119,8 +114,8 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
         'success'
       );
       await load();
-    } catch (e: any) {
-      showMsg(e.message || '打刻に失敗しました', 'error');
+    } catch (e: unknown) {
+      showMsg(e instanceof Error ? e.message : '打刻に失敗しました', 'error');
     } finally {
       setPunching(null);
     }
@@ -154,8 +149,8 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
       setShowForm(false);
       setForm(EMPTY_FORM);
       await load(shiftDate);
-    } catch (e: any) {
-      showMsg(e.message || 'シフトの登録に失敗しました', 'error');
+    } catch (e: unknown) {
+      showMsg(e instanceof Error ? e.message : 'シフトの登録に失敗しました', 'error');
     } finally {
       setSaving(false);
     }
@@ -168,8 +163,8 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
       await kioskApi.deleteShift(storeId, shiftId);
       showMsg('シフトを削除しました', 'success');
       await load(shiftDate);
-    } catch (e: any) {
-      showMsg(e.message || 'シフトの削除に失敗しました', 'error');
+    } catch (e: unknown) {
+      showMsg(e instanceof Error ? e.message : 'シフトの削除に失敗しました', 'error');
     } finally {
       setDeleting(null);
     }

@@ -1,9 +1,10 @@
 /**
  * A02 月次勤怠一覧
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
+import type { AdminMonthlySummary } from '../../../types/api';
 
 interface Props {
   onSelectStaff: (userId: string) => void;
@@ -11,7 +12,7 @@ interface Props {
 
 export default function MonthlyListPage({ onSelectStaff }: Props) {
   const { selectedStore } = useAuth();
-  const [summary, setSummary] = useState<any[]>([]);
+  const [summary, setSummary] = useState<AdminMonthlySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -19,15 +20,21 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
 
   const storeId = selectedStore?.id;
 
-  useEffect(() => {
+  const loadSummary = useCallback(async () => {
     if (!storeId) return;
     setLoading(true);
     const m = `${year}-${String(month).padStart(2, '0')}`;
-    api.getAdminAttendanceMonthly(storeId, m)
-      .then(res => setSummary(res.summary || []))
-      .catch(() => setSummary([]))
-      .finally(() => setLoading(false));
+    try {
+      const res = await api.getAdminAttendanceMonthly(storeId, m);
+      setSummary(res.summary || []);
+    } catch {
+      setSummary([]);
+    } finally {
+      setLoading(false);
+    }
   }, [storeId, year, month]);
+
+  useEffect(() => { loadSummary(); }, [loadSummary]);
 
   const prevMonth = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
@@ -64,14 +71,14 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
             </tr>
           </thead>
           <tbody>
-            {summary.map((s: any) => (
+            {summary.map((s) => (
               <tr key={s.userId} data-testid="monthly-row">
                 <td>{s.staffName}</td>
                 <td>{s.workDays}日</td>
                 <td>{s.totalWorkHours}h</td>
                 <td>{s.totalBreakMinutes}分</td>
                 <td>{s.correctionCount > 0 ? <span className="badge badge-pending">{s.correctionCount}件</span> : '—'}</td>
-                <td>¥{s.estimatedSalary.toLocaleString()}</td>
+                <td>{s.estimatedSalary != null ? `¥${s.estimatedSalary.toLocaleString()}` : '—'}</td>
                 <td>
                   <button
                     className="button button-small"

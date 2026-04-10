@@ -1,21 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
+import type { ExpenseSummary } from '../types/api';
 
+// Local Expense omits server-only fields (storeId, createdBy, createdAt)
 interface Expense {
   id: string;
   date: string;
   category: string;
   description: string;
   amount: number;
-  receiptNote: string;
-}
-
-interface ExpenseSummary {
-  totalAmount: number;
-  categorySummary: Record<string, number>;
-  count: number;
+  receiptNote?: string;
 }
 
 const CATEGORIES = ['仕入れ', '消耗品', '光熱費', '家賃', '人件費', '広告費', '修繕費', 'その他'];
@@ -36,17 +32,17 @@ export default function ExpensePage() {
   const [newReceiptNote, setNewReceiptNote] = useState('');
   const [adding, setAdding] = useState(false);
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     if (!selectedStore) return;
     api.getExpenses(selectedStore.id, year, month, filterCategory || undefined)
-      .then((data: any) => {
-        setExpenses(data.expenses);
+      .then((data) => {
+        setExpenses(data.items);
         setSummary(data.summary);
       })
       .catch(() => {});
-  };
+  }, [selectedStore, year, month, filterCategory]);
 
-  useEffect(() => { loadData(); }, [selectedStore, year, month, filterCategory]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   const handleAdd = async () => {
     if (!selectedStore || !newDescription.trim() || !newAmount || adding) return;
@@ -64,8 +60,8 @@ export default function ExpensePage() {
       setNewReceiptNote('');
       showToast('経費を追加しました', 'success');
       loadData();
-    } catch (e: any) {
-      showToast(e.message || '追加に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '追加に失敗しました', 'error');
     } finally {
       setAdding(false);
     }
@@ -78,8 +74,8 @@ export default function ExpensePage() {
       await api.deleteExpense(selectedStore.id, expense.id);
       showToast('削除しました', 'info');
       loadData();
-    } catch (e: any) {
-      showToast(e.message || '削除に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '削除に失敗しました', 'error');
     }
   };
 

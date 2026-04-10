@@ -209,8 +209,8 @@ export default function KioskShiftManager({ storeId, staff }: Props) {
       showMsg('保存しました', true);
       setEditing(null);
       await load();
-    } catch (e: any) {
-      showMsg(e.message || '保存失敗', false);
+    } catch (e: unknown) {
+      showMsg(e instanceof Error ? e.message : '保存失敗', false);
     } finally {
       setSaving(false);
     }
@@ -224,8 +224,8 @@ export default function KioskShiftManager({ storeId, staff }: Props) {
       showMsg('削除しました', true);
       setEditing(null);
       await load();
-    } catch (e: any) {
-      showMsg(e.message || '削除失敗', false);
+    } catch (e: unknown) {
+      showMsg(e instanceof Error ? e.message : '削除失敗', false);
     } finally {
       setSaving(false);
     }
@@ -478,8 +478,8 @@ export default function KioskShiftManager({ storeId, staff }: Props) {
                             showMsg('希望をシフトに確定しました', true);
                             setEditing(null);
                             await load();
-                          } catch (e: any) {
-                            showMsg(e.message || '確定失敗', false);
+                          } catch (e: unknown) {
+                            showMsg(e instanceof Error ? e.message : '確定失敗', false);
                           } finally {
                             setSaving(false);
                           }

@@ -1,9 +1,22 @@
 /**
  * A01 今日の出勤ボード
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
+interface AdminTodayStaff {
+  userId: string;
+  staffId: string;
+  staffName: string;
+  staffPicture?: string;
+  role: string;
+  currentStatus: string;
+  clockInAt?: string;
+  clockOutAt?: string;
+  breakMinutes?: number;
+  shift?: { startTime: string; endTime: string };
+  checklist?: { clockIn?: boolean; clockOut?: boolean };
+}
 
 const STATUS_LABELS: Record<string, string> = {
   not_clocked_in: '未出勤',
@@ -12,7 +25,7 @@ const STATUS_LABELS: Record<string, string> = {
   completed: '退勤済み',
 };
 
-function formatTime(iso: string | null) {
+function formatTime(iso: string | null | undefined) {
   if (!iso) return '—';
   return new Date(iso).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 }
@@ -46,21 +59,27 @@ interface Props {
 
 export default function TodayBoardPage({ onSelectStaff }: Props) {
   const { selectedStore } = useAuth();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<{ businessDate?: string; staff?: AdminTodayStaff[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
 
   const storeId = selectedStore?.id;
 
-  useEffect(() => {
+  const loadBoard = useCallback(async () => {
     if (!storeId) return;
     setLoading(true);
-    api.getAdminAttendanceToday(storeId, statusFilter || undefined, search || undefined)
-      .then(res => setData(res))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    try {
+      const res = await api.getAdminAttendanceToday(storeId, statusFilter || undefined, search || undefined);
+      setData(res as unknown as { businessDate?: string; staff?: AdminTodayStaff[] });
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
   }, [storeId, statusFilter, search]);
+
+  useEffect(() => { loadBoard(); }, [loadBoard]);
 
   const statuses = ['', 'not_clocked_in', 'working', 'on_break', 'completed'];
 
@@ -106,7 +125,7 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
             </tr>
           </thead>
           <tbody>
-            {(data?.staff || []).map((s: any) => (
+            {(data?.staff || []).map((s) => (
               <tr key={s.userId} data-testid="today-board-row">
                 <td className="admin-staff-name">{s.staffName}</td>
                 <td>

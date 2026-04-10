@@ -1,16 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
-
-interface MenuItem {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  displayOrder: number;
-  isActive: boolean;
-}
+import type { MenuItem } from '../types/api';
 
 const CATEGORIES = ['ドリンク', 'フード', '物販', 'その他'];
 
@@ -26,15 +18,15 @@ export default function MenuPage() {
   const [price, setPrice] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const loadItems = () => {
+  const loadItems = useCallback(() => {
     if (!selectedStore) return;
     const active = showInactive ? undefined : true;
     api.getMenuItems(selectedStore.id, active)
-      .then((data: any) => setItems(data.items))
+      .then((data) => setItems(data.items))
       .catch(() => {});
-  };
+  }, [selectedStore, showInactive]);
 
-  useEffect(() => { loadItems(); }, [selectedStore, showInactive]);
+  useEffect(() => { loadItems(); }, [loadItems]);
 
   const resetForm = () => {
     setName('');
@@ -72,8 +64,8 @@ export default function MenuPage() {
       }
       resetForm();
       loadItems();
-    } catch (e: any) {
-      showToast(e.message || '保存に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '保存に失敗しました', 'error');
     } finally {
       setSaving(false);
     }
@@ -85,8 +77,8 @@ export default function MenuPage() {
       await api.deleteMenuItem(selectedStore.id, item.id);
       showToast('販売終了にしました', 'info');
       loadItems();
-    } catch (e: any) {
-      showToast(e.message || '操作に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '操作に失敗しました', 'error');
     }
   };
 
@@ -96,8 +88,8 @@ export default function MenuPage() {
       await api.updateMenuItem(selectedStore.id, item.id, { is_active: true });
       showToast('再販売にしました', 'success');
       loadItems();
-    } catch (e: any) {
-      showToast(e.message || '操作に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '操作に失敗しました', 'error');
     }
   };
 

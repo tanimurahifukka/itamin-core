@@ -121,8 +121,8 @@ function TemplatesTab({ storeId }: { storeId: string }) {
     try {
       const data = await checkApi.getTemplates(storeId, { scope: scopeTab });
       setTemplates(data.templates);
-    } catch (e: any) {
-      setMessage(`エラー: ${e.message}`);
+    } catch (e: unknown) {
+      setMessage(`エラー: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setLoading(false);
     }
@@ -153,8 +153,8 @@ function TemplatesTab({ storeId }: { storeId: string }) {
       }
       setForm(emptyTemplateForm());
       await load();
-    } catch (e: any) {
-      setMessage(`エラー: ${e.message}`);
+    } catch (e: unknown) {
+      setMessage(`エラー: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSaving(false);
     }
@@ -166,8 +166,8 @@ function TemplatesTab({ storeId }: { storeId: string }) {
       await checkApi.fromSystemTemplate(storeId, sysId);
       setMessage('システムテンプレートからコピーしました');
       await load();
-    } catch (e: any) {
-      setMessage(`エラー: ${e.message}`);
+    } catch (e: unknown) {
+      setMessage(`エラー: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setFromSystemLoading(false);
     }
@@ -180,8 +180,8 @@ function TemplatesTab({ storeId }: { storeId: string }) {
       setMessage('削除しました');
       if (selectedTpl?.id === tplId) { setSelectedTpl(null); setEditItems([]); }
       await load();
-    } catch (e: any) {
-      setMessage(`エラー: ${e.message}`);
+    } catch (e: unknown) {
+      setMessage(`エラー: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -191,8 +191,8 @@ function TemplatesTab({ storeId }: { storeId: string }) {
     try {
       const data = await checkApi.getTemplate(storeId, tpl.id);
       setEditItems(data.template.items ?? []);
-    } catch (e: any) {
-      setMessage(`エラー: ${e.message}`);
+    } catch (e: unknown) {
+      setMessage(`エラー: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -215,8 +215,8 @@ function TemplatesTab({ storeId }: { storeId: string }) {
       });
       setItemForm(emptyItemForm());
       await openTemplateItems(selectedTpl);
-    } catch (e: any) {
-      setMessage(`エラー: ${e.message}`);
+    } catch (e: unknown) {
+      setMessage(`エラー: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setItemSaving(false);
     }
@@ -227,8 +227,8 @@ function TemplatesTab({ storeId }: { storeId: string }) {
     try {
       await checkApi.deleteItem(storeId, itemId);
       await openTemplateItems(selectedTpl);
-    } catch (e: any) {
-      setMessage(`エラー: ${e.message}`);
+    } catch (e: unknown) {
+      setMessage(`エラー: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -450,7 +450,7 @@ function TemplatesTab({ storeId }: { storeId: string }) {
 // ── 割当管理タブ ──────────────────────────────────────────────────────────────
 
 function AssignmentsTab({ storeId }: { storeId: string }) {
-  const [assignments, setAssignments]   = useState<Assignment[]>([]);
+  const [, setAssignments]   = useState<Assignment[]>([]);
   const [templates, setTemplates]       = useState<ChecklistTemplate[]>([]);
   const [loading, setLoading]           = useState(false);
   const [saving, setSaving]             = useState(false);
@@ -460,7 +460,7 @@ function AssignmentsTab({ storeId }: { storeId: string }) {
   type MapKey = `${CheckTiming}:${CheckScope}`;
   const [mappingMap, setMappingMap] = useState<Partial<Record<MapKey, string[]>>>({});
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [aData, tData] = await Promise.all([
@@ -478,14 +478,14 @@ function AssignmentsTab({ storeId }: { storeId: string }) {
         map[key].push(a.template_id);
       }
       setMappingMap(map);
-    } catch (e: any) {
-      setMessage(`エラー: ${e.message}`);
+    } catch (e: unknown) {
+      setMessage(`エラー: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, [storeId]);
 
-  useEffect(() => { load(); }, [storeId]);
+  useEffect(() => { load(); }, [load]);
 
   const toggle = (timing: CheckTiming, scope: CheckScope, templateId: string) => {
     const key = `${timing}:${scope}` as MapKey;
@@ -510,8 +510,8 @@ function AssignmentsTab({ storeId }: { storeId: string }) {
       await checkApi.updateAssignments(storeId, mappings);
       setMessage('割当を保存しました');
       await load();
-    } catch (e: any) {
-      setMessage(`エラー: ${e.message}`);
+    } catch (e: unknown) {
+      setMessage(`エラー: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSaving(false);
     }

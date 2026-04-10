@@ -2,7 +2,7 @@
  * LINEチェックリストページ（Supabase Auth不要）
  * 出勤時・退勤時のチェックリストを閲覧・提出する。
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Props {
   lineUserId: string;
@@ -17,7 +17,7 @@ interface CheckItem {
   templateId?: string;
 }
 
-async function lineStaffApi(path: string, body: Record<string, any>) {
+async function lineStaffApi(path: string, body: Record<string, unknown>) {
   const res = await fetch(`/api/line-staff${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -28,7 +28,7 @@ async function lineStaffApi(path: string, body: Record<string, any>) {
   return data;
 }
 
-export default function LineChecklistPage({ lineUserId, storeId, displayName }: Props) {
+export default function LineChecklistPage({ lineUserId, storeId }: Props) {
   const [timing, setTiming] = useState<'clock_in' | 'clock_out'>('clock_in');
   const [items, setItems] = useState<CheckItem[]>([]);
   const [checked, setChecked] = useState<boolean[]>([]);
@@ -38,27 +38,28 @@ export default function LineChecklistPage({ lineUserId, storeId, displayName }: 
   const [error, setError] = useState('');
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
-  const load = async (t: 'clock_in' | 'clock_out') => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const res = await lineStaffApi('/checklist', { lineUserId, storeId, timing: t });
+      const res = await lineStaffApi('/checklist', { lineUserId, storeId, timing });
       setItems(res.items || []);
       setAlreadySubmitted(!!res.latestRecord);
 
       if (res.latestRecord && Array.isArray(res.latestRecord.results)) {
-        setChecked(res.latestRecord.results.map((r: any) => !!r.checked));
+        setChecked(res.latestRecord.results.map((r: { checked?: boolean }) => !!r.checked));
       } else {
         setChecked(new Array(res.items?.length || 0).fill(false));
       }
-    } catch (e: any) {
-      setError(e.body?.error || e.message || 'エラーが発生しました');
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      setError(err.body?.error || err.message || 'エラーが発生しました');
     } finally {
       setLoading(false);
     }
-  };
+  }, [lineUserId, storeId, timing]);
 
-  useEffect(() => { load(timing); }, [timing]);
+  useEffect(() => { load(); }, [load]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 3000);
@@ -82,8 +83,9 @@ export default function LineChecklistPage({ lineUserId, storeId, displayName }: 
       await lineStaffApi('/checklist/submit', { lineUserId, storeId, timing, results });
       setToast({ msg: '提出しました', type: 'success' });
       setAlreadySubmitted(true);
-    } catch (e: any) {
-      setToast({ msg: e.body?.error || e.message || 'エラー', type: 'error' });
+    } catch (e: unknown) {
+      const err = e as { body?: { error?: string }; message?: string };
+      setToast({ msg: err.body?.error || err.message || 'エラー', type: 'error' });
     } finally {
       setSubmitting(false);
     }

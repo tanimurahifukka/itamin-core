@@ -1,30 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { supabase } from '../api/supabase';
 import { showToast } from '../components/Toast';
-
-interface Notice {
-  id: string;
-  authorId: string;
-  authorName: string;
-  title: string;
-  body: string;
-  pinned: boolean;
-  imageUrls: string[];
-  commentCount: number;
-  createdAt: string;
-  isRead: boolean;
-  readAt: string | null;
-}
-
-interface Comment {
-  id: string;
-  authorId: string;
-  authorName: string;
-  body: string;
-  createdAt: string;
-}
+import type { Notice, NoticeComment } from '../types/api';
 
 function linkifyText(text: string) {
   const parts = text.split(/(https?:\/\/[^\s]+)/g);
@@ -56,20 +35,20 @@ export default function NoticePage() {
   const [editSaving, setEditSaving] = useState(false);
 
   // コメント
-  const [comments, setComments] = useState<Record<string, Comment[]>>({});
+  const [comments, setComments] = useState<Record<string, NoticeComment[]>>({});
   const [commentText, setCommentText] = useState<Record<string, string>>({});
   const [commentPosting, setCommentPosting] = useState(false);
 
   const isAdmin = selectedStore && ['owner', 'manager'].includes(selectedStore.role);
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     if (!selectedStore) return;
     api.getNotices(selectedStore.id)
-      .then((data: any) => setNotices(data.notices))
+      .then((data) => setNotices(data.notices))
       .catch(() => {});
-  };
+  }, [selectedStore]);
 
-  useEffect(() => { loadData(); }, [selectedStore]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   // コメント読み込み
   const loadComments = async (noticeId: string) => {
@@ -112,8 +91,8 @@ export default function NoticePage() {
       setSelectedFiles([]);
       showToast('投稿しました', 'success');
       loadData();
-    } catch (e: any) {
-      showToast(e.message || '投稿に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '投稿に失敗しました', 'error');
     } finally {
       setPosting(false);
     }
@@ -143,8 +122,8 @@ export default function NoticePage() {
       await api.deleteNotice(selectedStore.id, notice.id);
       showToast('削除しました', 'info');
       loadData();
-    } catch (e: any) {
-      showToast(e.message || '削除に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '削除に失敗しました', 'error');
     }
   };
 
@@ -172,8 +151,8 @@ export default function NoticePage() {
       showToast('更新しました', 'success');
       cancelEdit();
       loadData();
-    } catch (e: any) {
-      showToast(e.message || '更新に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '更新に失敗しました', 'error');
     } finally {
       setEditSaving(false);
     }
@@ -190,8 +169,8 @@ export default function NoticePage() {
       setCommentText(prev => ({ ...prev, [noticeId]: '' }));
       await loadComments(noticeId);
       loadData(); // コメント数更新
-    } catch (e: any) {
-      showToast(e.message || 'コメント投稿に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'コメント投稿に失敗しました', 'error');
     } finally {
       setCommentPosting(false);
     }
