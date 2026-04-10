@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { supabaseAdmin } from '../../config/supabase';
 import { requireAuth } from '../../middleware/auth';
+import { checkOrgLimits } from '../../lib/billing';
 
 export const platformRouter = Router();
 
@@ -68,8 +69,6 @@ platformRouter.get('/organizations/:orgId', async (req: Request, res: Response) 
     .select('status, started_at, ends_at, plans:plan_id(*)')
     .eq('org_id', orgId)
     .maybeSingle();
-
-  const { checkOrgLimits } = await import('../../lib/billing');
   const usage = await checkOrgLimits(orgId);
 
   res.json({ organization: org, subscription: sub || null, usage });

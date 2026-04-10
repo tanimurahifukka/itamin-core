@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { supabaseAdmin } from '../../config/supabase';
 import { requireAuth } from '../../middleware/auth';
+import { checkOrgLimits } from '../../lib/billing';
 
 export const organizationsRouter = Router();
 
@@ -424,7 +425,6 @@ organizationsRouter.post('/:orgId/stores/:storeId/assign', async (req: Request, 
   }
 
   // 課金チェック: 組織の max_stores を超えないか
-  const { checkOrgLimits } = await import('../../lib/billing');
   const limits = await checkOrgLimits(orgId);
   if (!limits.canAddStore) {
     res.status(403).json({
@@ -462,8 +462,6 @@ organizationsRouter.get('/:orgId/usage', async (req: Request, res: Response) => 
     res.status(403).json({ error: 'この組織へのアクセス権限がありません' });
     return;
   }
-
-  const { checkOrgLimits } = await import('../../lib/billing');
   const check = await checkOrgLimits(orgId);
 
   res.json({
