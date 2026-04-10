@@ -6,17 +6,47 @@ import { supabaseAdmin } from '../config/supabase';
 export const VALID_STAFF_ROLES: StaffRole[] = ['owner', 'manager', 'leader', 'full_time', 'part_time'];
 const MANAGED_ROLES: StaffRole[] = ['owner', 'manager', 'leader'];
 
+export type OrgRole = 'owner' | 'admin' | 'viewer';
+export type PlatformRole = 'super_admin' | 'admin' | 'support' | 'viewer';
+export type MembershipSource = 'store_staff' | 'organization' | 'platform';
+
 interface StoreMembership {
   id: string;
   role: StaffRole;
+  source: MembershipSource;
 }
 
 export function isManagedRole(role: string): role is StaffRole {
   return MANAGED_ROLES.includes(role as StaffRole);
 }
 
-async function getStoreMembership(_accessToken: string, storeId: string, userId: string): Promise<StoreMembership | null> {
-  // supabaseAdmin を使用（requireAuth で認証済み、RLS不要で高速）
+// org_role → staff_role マッピング
+function mapOrgRoleToStaffRole(orgRole: OrgRole): StaffRole {
+  switch (orgRole) {
+    case 'owner':
+    case 'admin':
+      return 'manager';
+    case 'viewer':
+    default:
+      return 'full_time';
+  }
+}
+
+// platform_role → staff_role マッピング
+function mapPlatformRoleToStaffRole(platformRole: PlatformRole): StaffRole {
+  switch (platformRole) {
+    case 'super_admin':
+    case 'admin':
+      return 'owner';
+    case 'support':
+      return 'manager';
+    case 'viewer':
+    default:
+      return 'full_time';
+  }
+}
+
+async function getStoreStaffMembership(storeId: string, userId: string): Promise<StoreMembership | null> {
   const { data, error } = await supabaseAdmin
     .from('store_staff')
     .select('id, role')
@@ -25,21 +55,74 @@ async function getStoreMembership(_accessToken: string, storeId: string, userId:
     .maybeSingle();
 
   if (error) {
-    console.error('[authz] store membership lookup failed', {
-      storeId,
-      userId,
-      code: error.code,
-      message: error.message,
-      details: error.details,
+    console.error('[authz] store_staff lookup failed', {
+      storeId, userId, code: error.code, message: error.message,
     });
     return null;
   }
+  if (!data) return null;
+  return { id: (data as any).id, role: (data as any).role, source: 'store_staff' };
+}
 
-  if (!data) {
-    return null;
-  }
+async function getOrgMembershipForStore(storeId: string, userId: string): Promise<StoreMembership | null> {
+  // 店舗の org_id を取得
+  const { data: store, error: storeErr } = await supabaseAdmin
+    .from('stores')
+    .select('id, org_id')
+    .eq('id', storeId)
+    .maybeSingle();
 
-  return data as StoreMembership;
+  if (storeErr || !store || !(store as any).org_id) return null;
+
+  const { data: member, error: memberErr } = await supabaseAdmin
+    .from('organization_members')
+    .select('id, role')
+    .eq('org_id', (store as any).org_id)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (memberErr || !member) return null;
+
+  const orgRole = (member as any).role as OrgRole;
+  return {
+    id: (member as any).id,
+    role: mapOrgRoleToStaffRole(orgRole),
+    source: 'organization',
+  };
+}
+
+async function getPlatformMembership(userId: string): Promise<StoreMembership | null> {
+  const { data, error } = await supabaseAdmin
+    .from('platform_team')
+    .select('id, role')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const platformRole = (data as any).role as PlatformRole;
+  return {
+    id: (data as any).id,
+    role: mapPlatformRoleToStaffRole(platformRole),
+    source: 'platform',
+  };
+}
+
+// 3層フォールバック: store_staff → organization_members → platform_team
+async function getStoreMembership(_accessToken: string, storeId: string, userId: string): Promise<StoreMembership | null> {
+  // Layer 1: store_staff (既存)
+  const staff = await getStoreStaffMembership(storeId, userId);
+  if (staff) return staff;
+
+  // Layer 2: organization_members
+  const org = await getOrgMembershipForStore(storeId, userId);
+  if (org) return org;
+
+  // Layer 3: platform_team
+  const platform = await getPlatformMembership(userId);
+  if (platform) return platform;
+
+  return null;
 }
 
 export async function requireStoreMembership(req: Request, res: Response, storeId: string): Promise<StoreMembership | null> {

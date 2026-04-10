@@ -32,6 +32,8 @@ import AttendanceAdminPage from './pages/AttendanceAdminPage';
 import KioskLinkPage from './pages/KioskLinkPage';
 import SwitchBotReadingsPage from './pages/SwitchBotReadingsPage';
 import CustomersPage from './pages/CustomersPage';
+import OrganizationsPage from './pages/OrganizationsPage';
+import PlatformDashboard from './pages/PlatformDashboard';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -398,6 +400,34 @@ export default function App() {
   // キオスクモード判定（フック呼び出し後に行う）
   if (window.location.pathname === '/kiosk') {
     return <KioskApp />;
+  }
+
+  // 組織管理・プラットフォーム管理ルート
+  const pathname = window.location.pathname;
+  if (pathname === '/organizations' || pathname === '/platform') {
+    if (loading) {
+      return <div className="loading">読み込み中...</div>;
+    }
+    if (!user) {
+      return <LoginPage />;
+    }
+    const displayName = user.user_metadata?.full_name || user.email || '';
+    return (
+      <div className="app">
+        <header className="header">
+          <div className="header-logo" style={{ cursor: 'pointer' }} onClick={() => { window.location.href = '/'; }}>
+            ITA<span>MIN</span>
+          </div>
+          <div className="header-user">
+            <span style={{ color: '#666', marginRight: 12 }}>{displayName}</span>
+            <button className="btn-secondary" onClick={signOut}>ログアウト</button>
+          </div>
+        </header>
+        <main className="main-content">
+          {pathname === '/organizations' ? <OrganizationsPage /> : <PlatformDashboard />}
+        </main>
+      </div>
+    );
   }
 
   if (loading || !liffMode.checked) {

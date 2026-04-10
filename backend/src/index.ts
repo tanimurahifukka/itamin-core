@@ -35,6 +35,8 @@ import { customersPlugin } from './plugins/customers';
 import { switchbotRouter } from './services/switchbot/routes';
 import { collectSwitchBotReadings } from './services/switchbot/cron';
 import { lineAttendancePlugin, attendanceAdminPlugin } from './plugins/line_attendance';
+import { organizationsRouter } from './services/organizations/routes';
+import { platformRouter } from './services/platform/routes';
 
 const app = express();
 
@@ -57,6 +59,8 @@ app.use('/api/auth/line', lineRouter);
 app.use('/api/line-punch', linePunchRouter);
 app.use('/api/line-staff', lineStaffRouter);
 app.use('/api/webhooks/line', lineWebhookRouter);
+app.use('/api/organizations', organizationsRouter);
+app.use('/api/platform', platformRouter);
 
 // Core plugins（無効化不可）
 pluginRegistry.register(punchPlugin);
