@@ -70,8 +70,8 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
     }
 
     // 既存ユーザーチェック
-    const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-    let authUser = users.find(u => u.email === email);
+    const { data: { users: authUsers } } = await supabaseAdmin.auth.admin.listUsers();
+    let authUser = (authUsers as { id: string; email?: string }[]).find(u => u.email === email);
 
     if (authUser) {
       // 既にアカウントがある場合、この店舗に所属しているかチェック
@@ -752,8 +752,8 @@ router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) =
     const lastSignInMap = new Map<string, string | null>();
 
     if (userIds.length > 0) {
-      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-      for (const user of users) {
+      const { data: { users: allUsers } } = await supabaseAdmin.auth.admin.listUsers();
+      for (const user of allUsers as { id: string; last_sign_in_at?: string }[]) {
         if (userIds.includes(user.id)) {
           lastSignInMap.set(user.id, user.last_sign_in_at || null);
         }
@@ -814,13 +814,13 @@ router.post('/:storeId/staff/rehire', requireAuth, async (req: Request, res: Res
     }
 
     // auth.usersからユーザーを探す
-    const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
+    const { data: { users: resetUsers }, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
     if (listErr) {
       res.status(500).json({ error: listErr.message });
       return;
     }
 
-    const authUser = users.find(user => user.email === email);
+    const authUser = (resetUsers as { id: string; email?: string; user_metadata?: Record<string, unknown> }[]).find(user => user.email === email);
     if (!authUser) {
       res.status(404).json({ error: 'このメールアドレスのアカウントが見つかりません。新規招待してください。' });
       return;
