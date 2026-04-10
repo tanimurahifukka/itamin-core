@@ -127,6 +127,12 @@ function LineChart({
 
 const LIMIT_BY_RANGE: Record<string, number> = { '24h': 96, '48h': 192, '7d': 1000 };
 
+interface DeviceInfo {
+  deviceId: string;
+  deviceName: string;
+  deviceType: string;
+}
+
 export default function SwitchBotReadingsPage() {
   const { selectedStore } = useAuth();
   const [readings, setReadings] = useState<Reading[]>([]);
@@ -135,6 +141,14 @@ export default function SwitchBotReadingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [range, setRange] = useState<'24h' | '48h' | '7d'>('24h');
+
+  // 記録デバイス選択
+  const [allDevices, setAllDevices] = useState<DeviceInfo[]>([]);
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
+  const [deviceSelectLoading, setDeviceSelectLoading] = useState(false);
+  const [deviceSelectSaving, setDeviceSelectSaving] = useState(false);
+  const [deviceSelectError, setDeviceSelectError] = useState('');
+  const [deviceSelectSaved, setDeviceSelectSaved] = useState(false);
 
   const load = useCallback(async () => {
     if (!selectedStore) return;
@@ -161,6 +175,59 @@ export default function SwitchBotReadingsPage() {
   }, [selectedStore, range]);
 
   useEffect(() => { load(); }, [load]);
+
+  // 記録デバイス選択データのロード
+  const loadDeviceSelection = useCallback(async () => {
+    if (!selectedStore) return;
+    setDeviceSelectLoading(true);
+    setDeviceSelectError('');
+    try {
+      const [devicesRes, monitoredRes] = await Promise.all([
+        api.getSwitchBotDevices(selectedStore.id),
+        api.getSwitchBotMonitoredDevices(selectedStore.id),
+      ]);
+      setAllDevices(devicesRes.devices || []);
+      const monitored = monitoredRes.monitoredDevices || [];
+      setSelectedDeviceIds(monitored);
+    } catch (e: unknown) {
+      setDeviceSelectError(e instanceof Error ? e.message : 'デバイス一覧の取得に失敗しました');
+    } finally {
+      setDeviceSelectLoading(false);
+    }
+  }, [selectedStore]);
+
+  useEffect(() => { loadDeviceSelection(); }, [loadDeviceSelection]);
+
+  const handleToggleDevice = (deviceId: string) => {
+    setSelectedDeviceIds(prev =>
+      prev.includes(deviceId) ? prev.filter(id => id !== deviceId) : [...prev, deviceId]
+    );
+    setDeviceSelectSaved(false);
+  };
+
+  const handleSelectAll = () => {
+    setSelectedDeviceIds(allDevices.map(d => d.deviceId));
+    setDeviceSelectSaved(false);
+  };
+
+  const handleSelectNone = () => {
+    setSelectedDeviceIds([]);
+    setDeviceSelectSaved(false);
+  };
+
+  const handleSaveMonitored = async () => {
+    if (!selectedStore) return;
+    setDeviceSelectSaving(true);
+    setDeviceSelectError('');
+    try {
+      await api.setSwitchBotMonitoredDevices(selectedStore.id, selectedDeviceIds);
+      setDeviceSelectSaved(true);
+    } catch (e: unknown) {
+      setDeviceSelectError(e instanceof Error ? e.message : '保存に失敗しました');
+    } finally {
+      setDeviceSelectSaving(false);
+    }
+  };
 
   const deviceReadings = useMemo(
     () => readings.filter(r => r.device_id === activeDevice),
@@ -198,6 +265,52 @@ export default function SwitchBotReadingsPage() {
           ))}
           <button style={s.refreshBtn} onClick={load}>↻ 更新</button>
         </div>
+      </div>
+
+      {/* 記録デバイス選択 */}
+      <div style={s.deviceSelectSection}>
+        <div style={s.chartTitle}>記録デバイス選択</div>
+        {deviceSelectError && <div style={{ ...s.errorMsg, marginBottom: 8 }}>{deviceSelectError}</div>}
+        {deviceSelectLoading ? (
+          <div style={{ color: '#aaa', fontSize: 13 }}>デバイス一覧を読み込み中...</div>
+        ) : allDevices.length === 0 ? (
+          <div style={{ color: '#aaa', fontSize: 13 }}>デバイスが見つかりません。APIトークンを設定してください。</div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+              {allDevices.map(device => (
+                <label key={device.deviceId} style={s.deviceCheckLabel}>
+                  <input
+                    type="checkbox"
+                    checked={selectedDeviceIds.includes(device.deviceId)}
+                    onChange={() => handleToggleDevice(device.deviceId)}
+                    style={{ marginRight: 6 }}
+                  />
+                  <span style={{ fontWeight: 600 }}>{device.deviceName}</span>
+                  <span style={{ color: '#64748b', fontSize: 11, marginLeft: 4 }}>({device.deviceType})</span>
+                  <span style={{ color: '#aaa', fontSize: 10, marginLeft: 4 }}>{device.deviceId}</span>
+                </label>
+              ))}
+            </div>
+            {selectedDeviceIds.length === 0 && (
+              <div style={{ fontSize: 12, color: '#0891b2', marginBottom: 8, padding: '6px 10px', background: '#f0f9ff', borderRadius: 6 }}>
+                未選択の場合、全温度計デバイスが自動的に記録されます
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button style={s.selectAllBtn} onClick={handleSelectAll}>全選択</button>
+              <button style={s.selectAllBtn} onClick={handleSelectNone}>全解除</button>
+              <button
+                style={{ ...s.saveBtn, opacity: deviceSelectSaving ? 0.6 : 1 }}
+                onClick={handleSaveMonitored}
+                disabled={deviceSelectSaving}
+              >
+                {deviceSelectSaving ? '保存中...' : '保存'}
+              </button>
+              {deviceSelectSaved && <span style={{ fontSize: 12, color: '#16a34a' }}>保存しました</span>}
+            </div>
+          </>
+        )}
       </div>
 
       {error && <div style={s.errorMsg}>{error}</div>}
@@ -337,4 +450,8 @@ const s: Record<string, React.CSSProperties> = {
   th: { padding: '8px 12px', borderBottom: '2px solid #e2e8f0', textAlign: 'left' as const, fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' as const },
   td: { padding: '7px 12px', borderBottom: '1px solid #f1f5f9', color: '#334155' },
   tr: { transition: 'background 0.15s' },
+  deviceSelectSection: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 20px' },
+  deviceCheckLabel: { display: 'flex', alignItems: 'center', fontSize: 13, color: '#334155', cursor: 'pointer', padding: '5px 10px', border: '1px solid #e2e8f0', borderRadius: 6, background: '#f8fafc' },
+  selectAllBtn: { padding: '5px 14px', border: '1px solid #d0d7e2', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 12, color: '#555', fontFamily: 'sans-serif' },
+  saveBtn: { padding: '5px 20px', border: 'none', borderRadius: 6, background: '#1e40af', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'sans-serif' },
 };

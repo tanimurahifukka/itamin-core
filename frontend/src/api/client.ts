@@ -437,6 +437,13 @@ export const api = {
     request<{ devices: Array<{ deviceId: string; deviceName: string; deviceType: string }> }>(`/switchbot/${storeId}/devices`),
   getSwitchBotDeviceStatus: (storeId: string, deviceId: string) =>
     request<{ deviceId: string; deviceName: string; temperature: number | null; humidity: number | null; battery: number | null }>(`/switchbot/${storeId}/devices/${deviceId}/status`),
+  getSwitchBotMonitoredDevices: (storeId: string) =>
+    request<{ monitoredDevices: string[] }>(`/switchbot/${storeId}/devices/monitored`),
+  setSwitchBotMonitoredDevices: (storeId: string, deviceIds: string[]) =>
+    request<{ ok: boolean }>(`/switchbot/${storeId}/devices/monitored`, {
+      method: 'PUT',
+      body: JSON.stringify({ deviceIds }),
+    }),
 
   // HACCP テンプレート管理
   getHaccpTemplates: (storeId: string) =>

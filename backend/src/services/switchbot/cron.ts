@@ -31,6 +31,7 @@ interface StoreCredentials {
   storeId: string;
   token: string;
   secret: string;
+  monitoredDevices?: string[];
 }
 
 /** SwitchBot プラグインが有効な全店舗の認証情報を取得 */
@@ -49,6 +50,7 @@ async function getAllEnabledStores(): Promise<StoreCredentials[]> {
       storeId: row.store_id,
       token: row.config.token,
       secret: row.config.secret,
+      monitoredDevices: Array.isArray(row.config?.monitoredDevices) ? row.config.monitoredDevices : undefined,
     }));
 }
 
@@ -112,7 +114,13 @@ export async function collectSwitchBotReadings(): Promise<CronResult> {
 
   await Promise.all(
     stores.map(async (creds) => {
-      const devices = await fetchDevices(creds);
+      let devices = await fetchDevices(creds);
+
+      // monitoredDevices が設定されている場合は該当デバイスのみに絞り込む
+      if (creds.monitoredDevices && creds.monitoredDevices.length > 0) {
+        const monitoredSet = new Set(creds.monitoredDevices);
+        devices = devices.filter(d => monitoredSet.has(d.deviceId));
+      }
 
       const rows = (
         await Promise.all(

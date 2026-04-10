@@ -74,6 +74,68 @@ router.get('/:storeId/devices', requireAuth, async (req: Request, res: Response)
   }
 });
 
+// GET /:storeId/devices/monitored - 監視対象デバイス一覧取得
+router.get('/:storeId/devices/monitored', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const { data } = await supabaseAdmin
+      .from('store_plugins')
+      .select('config')
+      .eq('store_id', storeId)
+      .eq('plugin_name', 'switchbot')
+      .maybeSingle();
+
+    const monitoredDevices: string[] = Array.isArray(data?.config?.monitoredDevices)
+      ? data.config.monitoredDevices
+      : [];
+
+    res.json({ monitoredDevices });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// PUT /:storeId/devices/monitored - 監視対象デバイス更新
+router.put('/:storeId/devices/monitored', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const { deviceIds } = req.body as { deviceIds: string[] };
+    if (!Array.isArray(deviceIds)) {
+      res.status(400).json({ error: 'deviceIds must be an array' });
+      return;
+    }
+
+    // 既存の config を取得してマージ
+    const { data } = await supabaseAdmin
+      .from('store_plugins')
+      .select('config')
+      .eq('store_id', storeId)
+      .eq('plugin_name', 'switchbot')
+      .maybeSingle();
+
+    const existingConfig: Record<string, unknown> = data?.config ?? {};
+    const updatedConfig = { ...existingConfig, monitoredDevices: deviceIds };
+
+    const { error } = await supabaseAdmin
+      .from('store_plugins')
+      .update({ config: updatedConfig })
+      .eq('store_id', storeId)
+      .eq('plugin_name', 'switchbot');
+
+    if (error) throw error;
+
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
 // GET /:storeId/devices/:deviceId/status - デバイスステータス（温度・湿度）
 router.get('/:storeId/devices/:deviceId/status', requireAuth, async (req: Request, res: Response) => {
   try {
