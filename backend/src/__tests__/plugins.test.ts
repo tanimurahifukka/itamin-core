@@ -129,6 +129,14 @@ describe('Plugin interface compliance', () => {
     }
   });
 
+  it('line_attendance and attendance_admin are defaultEnabled', () => {
+    // スタッフの出勤画面 (AttendanceStaffPage) と
+    // 管理者の今日の出勤ボード (AttendanceAdminPage) は
+    // store_plugins 未登録のときも既定で有効化されている必要がある
+    expect(lineAttendancePlugin.defaultEnabled).toBe(true);
+    expect(attendanceAdminPlugin.defaultEnabled).toBe(true);
+  });
+
   it('each plugin has at least one defaultRole', () => {
     for (const plugin of ALL_PLUGINS) {
       expect(Array.isArray(plugin.defaultRoles)).toBe(true);

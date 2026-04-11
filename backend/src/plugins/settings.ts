@@ -33,6 +33,7 @@ router.get('/:storeId', requireAuth, async (req: Request, res: Response) => {
       label: p.label,
       icon: p.icon,
       core: p.core || false,
+      defaultEnabled: p.defaultEnabled || false,
       defaultRoles: p.defaultRoles,
       settingsSchema: p.settingsSchema || [],
     }));
@@ -70,9 +71,10 @@ router.get('/:storeId', requireAuth, async (req: Request, res: Response) => {
       const config = { ...defaults, ...(s?.config || {}) };
       // 権限: DB に保存済みがあればそれ、なければ defaultRoles
       const allowedRoles = normalizeAllowedRoles(p.name, permMap.get(p.name) || p.defaultRoles);
+      // store_plugins に未登録の場合は p.defaultEnabled を既定値として扱う
       return {
         ...p,
-        enabled: p.core ? true : (s?.enabled ?? false),
+        enabled: p.core ? true : (s?.enabled ?? p.defaultEnabled),
         config,
         allowedRoles,
         displayOrder: config.display_order ?? index,

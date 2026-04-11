@@ -64,6 +64,31 @@ describe('Plugin interface required fields', () => {
     expect(plugin.core).toBeUndefined();
   });
 
+  it('Plugin.defaultEnabled is optional and accepts boolean', () => {
+    const pluginWithDefault: Plugin = {
+      name: 'default-on',
+      version: '1.0.0',
+      description: 'Enabled by default',
+      label: 'Default On',
+      icon: '✅',
+      defaultEnabled: true,
+      defaultRoles: ['manager'],
+      initialize: () => {},
+    };
+    expect(pluginWithDefault.defaultEnabled).toBe(true);
+
+    const pluginWithoutDefault: Plugin = {
+      name: 'default-off',
+      version: '1.0.0',
+      description: 'Disabled by default',
+      label: 'Default Off',
+      icon: '⬜',
+      defaultRoles: ['manager'],
+      initialize: () => {},
+    };
+    expect(pluginWithoutDefault.defaultEnabled).toBeUndefined();
+  });
+
   it('Plugin.settingsSchema is optional', () => {
     const pluginWithoutSchema: Plugin = {
       name: 'no-schema',
