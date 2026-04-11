@@ -6,6 +6,18 @@ import { normalizePhone } from '../../lib/phone';
 
 const router = Router();
 
+// PostgREST の .or() フィルタ文字列に埋め込む値をサニタイズする。
+// - `,` `(` `)` はフィルタ構文の区切り文字なので、含まれていた場合は別フィルタを注入される恐れがあるため除去する
+// - `%` `_` `\` は ILIKE のワイルドカード/エスケープ文字なので、検索語として文字通り扱うためバックスラッシュでエスケープする
+// - 長さを 64 文字に制限してリソース消費攻撃を抑える
+function sanitizeSearchTerm(raw: string): string {
+  return raw
+    .slice(0, 64)
+    .replace(/[,()]/g, '')
+    .replace(/([\\%_])/g, '\\$1')
+    .trim();
+}
+
 // ============================================================
 // 顧客一覧取得
 // ============================================================
@@ -37,14 +49,17 @@ router.get('/:storeId', requireAuth, async (req: Request, res: Response) => {
       countQuery = countQuery.is('deleted_at', null);
     }
 
-    if (q) {
-      const normalizedQ = normalizePhone(q);
-      if (normalizedQ) {
+    const safeQ = q ? sanitizeSearchTerm(q) : '';
+    const normalizedQ = q ? normalizePhone(q) : '';
+    const safePhone = normalizedQ ? normalizedQ.replace(/[^0-9]/g, '').slice(0, 32) : '';
+
+    if (safeQ) {
+      if (safePhone) {
         countQuery = countQuery.or(
-          `name.ilike.%${q}%,name_kana.ilike.%${q}%,phone_normalized.like.${normalizedQ}%`
+          `name.ilike.%${safeQ}%,name_kana.ilike.%${safeQ}%,phone_normalized.like.${safePhone}%`
         );
       } else {
-        countQuery = countQuery.or(`name.ilike.%${q}%,name_kana.ilike.%${q}%`);
+        countQuery = countQuery.or(`name.ilike.%${safeQ}%,name_kana.ilike.%${safeQ}%`);
       }
     }
 
@@ -68,14 +83,13 @@ router.get('/:storeId', requireAuth, async (req: Request, res: Response) => {
       dataQuery = dataQuery.is('deleted_at', null);
     }
 
-    if (q) {
-      const normalizedQ = normalizePhone(q);
-      if (normalizedQ) {
+    if (safeQ) {
+      if (safePhone) {
         dataQuery = dataQuery.or(
-          `name.ilike.%${q}%,name_kana.ilike.%${q}%,phone_normalized.like.${normalizedQ}%`
+          `name.ilike.%${safeQ}%,name_kana.ilike.%${safeQ}%,phone_normalized.like.${safePhone}%`
         );
       } else {
-        dataQuery = dataQuery.or(`name.ilike.%${q}%,name_kana.ilike.%${q}%`);
+        dataQuery = dataQuery.or(`name.ilike.%${safeQ}%,name_kana.ilike.%${safeQ}%`);
       }
     }
 

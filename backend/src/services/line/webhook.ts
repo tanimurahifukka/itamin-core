@@ -21,10 +21,15 @@ const router = Router();
 
 // ================================================================
 // Webhook 署名検証
+// LINE は受信した生バイト列に対して HMAC-SHA256(base64) を計算する。
+// JSON を再シリアライズすると空白や順序が変わり検証に失敗するため、
+// express.json({ verify }) で保持した req.rawBody を使うこと。
 // ================================================================
-function verifySignature(body: string, signature: string, channelSecret: string): boolean {
-  const hash = crypto.createHmac('SHA256', channelSecret).update(body).digest('base64');
-  return hash === signature;
+function verifySignature(body: Buffer, signature: string, channelSecret: string): boolean {
+  const hash = crypto.createHmac('SHA256', channelSecret).update(body).digest();
+  const given = Buffer.from(signature, 'base64');
+  if (hash.length !== given.length) return false;
+  return crypto.timingSafeEqual(hash, given);
 }
 
 // ================================================================
@@ -142,10 +147,11 @@ async function executePunch(action: PunchAction, userId: string, storeId: string
   if (action === 'clock_in') {
     const { data: open } = await supabaseAdmin
       .from('attendance_records').select('id')
+      .eq('store_id', storeId)
       .eq('user_id', userId).in('status', ['working', 'on_break']).maybeSingle();
     if (open) return '既に勤務中です';
 
-    const sessionNo = await nextSessionNo(supabaseAdmin, userId, businessDate);
+    const sessionNo = await nextSessionNo(supabaseAdmin, storeId, userId, businessDate);
     const { data: record, error } = await supabaseAdmin
       .from('attendance_records')
       .insert({
@@ -283,15 +289,19 @@ router.post('/', async (req: Request, res: Response) => {
   }
   const { channelSecret, accessToken } = botConfig;
 
-  // 署名検証（簡易版: req.body が JSON parse 済みなので再 stringify）
-  const signature = req.headers['x-line-signature'] as string;
-  if (signature) {
-    const rawBody = JSON.stringify(req.body);
-    if (!verifySignature(rawBody, signature, channelSecret)) {
-      console.error('[webhook] signature verification failed');
-      res.status(200).json({ ok: true });
-      return;
-    }
+  // 署名検証: 必ず生バイト列に対して HMAC を計算する。
+  // 署名が無い、または rawBody が取得できない場合は安全側に倒して拒否する。
+  const signature = req.headers['x-line-signature'];
+  const rawBody = (req as any).rawBody as Buffer | undefined;
+  if (typeof signature !== 'string' || !signature || !rawBody) {
+    console.error('[webhook] missing signature or raw body');
+    res.status(200).json({ ok: true });
+    return;
+  }
+  if (!verifySignature(rawBody, signature, channelSecret)) {
+    console.error('[webhook] signature verification failed');
+    res.status(200).json({ ok: true });
+    return;
   }
 
   const events = req.body?.events || [];

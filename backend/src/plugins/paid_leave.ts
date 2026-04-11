@@ -3,7 +3,7 @@ import { requireAuth } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
 import type { Express } from 'express';
 import type { Plugin } from '../types';
-import { requireManagedStore, requireStoreMembership } from '../auth/authorization';
+import { requireManagedStore, requireStoreMembership, staffBelongsToStore } from '../auth/authorization';
 
 const router = Router();
 
@@ -85,6 +85,12 @@ router.post('/:storeId/grant', requireAuth, async (req: Request, res: Response) 
 
     if (!staffId || totalDays === undefined) {
       res.status(400).json({ error: 'スタッフIDと付与日数は必須です' });
+      return;
+    }
+
+    // テナント越境防止: 対象スタッフがこの店舗に所属していることを確認する
+    if (!(await staffBelongsToStore(storeId, staffId))) {
+      res.status(403).json({ error: '対象スタッフはこの店舗に所属していません' });
       return;
     }
 
@@ -188,6 +194,11 @@ router.post('/:storeId/records', requireAuth, async (req: Request, res: Response
 
     if (!staffId || !date) {
       res.status(400).json({ error: 'スタッフIDと日付は必須です' });
+      return;
+    }
+
+    if (!(await staffBelongsToStore(storeId, staffId))) {
+      res.status(403).json({ error: '対象スタッフはこの店舗に所属していません' });
       return;
     }
 

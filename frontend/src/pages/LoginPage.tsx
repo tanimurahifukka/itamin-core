@@ -10,9 +10,10 @@ export default function LoginPage() {
   const invitedName = searchParams.get('name') || '';
   const invitedStoreName = searchParams.get('storeName') || '';
 
-  // リンク共有登録フロー
+  // リンク共有登録フロー（招待トークン必須）
   if (joinStoreId) {
-    return <JoinStorePage storeId={joinStoreId} />;
+    const inviteToken = searchParams.get('token') || '';
+    return <JoinStorePage storeId={joinStoreId} inviteToken={inviteToken} />;
   }
 
   // 招待フロー → 専用画面
@@ -236,7 +237,7 @@ function InviteRegisterPage({ email, defaultName, storeName, onComplete }: {
 // ============================================================
 // リンク共有スタッフ登録画面
 // ============================================================
-function JoinStorePage({ storeId }: { storeId: string }) {
+function JoinStorePage({ storeId, inviteToken }: { storeId: string; inviteToken: string }) {
   const [storeName, setStoreName] = useState('');
   const [storeLoading, setStoreLoading] = useState(true);
   const [storeError, setStoreError] = useState('');
@@ -250,6 +251,11 @@ function JoinStorePage({ storeId }: { storeId: string }) {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
+    if (!inviteToken) {
+      setStoreError('招待URLが不正です。オーナーから招待URLを受け取ってください。');
+      setStoreLoading(false);
+      return;
+    }
     fetch(`/api/stores/${storeId}/info`)
       .then(r => r.json())
       .then(data => {
@@ -261,20 +267,21 @@ function JoinStorePage({ storeId }: { storeId: string }) {
       })
       .catch(() => setStoreError('読み込みに失敗しました'))
       .finally(() => setStoreLoading(false));
-  }, [storeId]);
+  }, [storeId, inviteToken]);
 
-  const passwordMatch = password === confirmPassword && password.length >= 6;
+  const passwordMatch = password === confirmPassword && password.length >= 8;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!passwordMatch) { setError('パスワードが一致しないか、6文字未満です'); return; }
+    if (!passwordMatch) { setError('パスワードが一致しないか、8文字未満です'); return; }
+    if (!inviteToken) { setError('招待トークンがありません'); return; }
     setError('');
     setLoading(true);
     try {
       const res = await fetch(`/api/stores/${storeId}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password, inviteToken }),
       });
       const data = await res.json();
       if (!res.ok) {

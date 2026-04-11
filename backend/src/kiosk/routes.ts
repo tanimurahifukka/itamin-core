@@ -6,6 +6,7 @@ import { config } from '../config';
 import { requireAuth } from '../middleware/auth';
 import { requireKiosk } from '../middleware/kiosk';
 import { requireManagedStore } from '../auth/authorization';
+import { checkAndLogRateLimit, getClientIp } from '../services/reservation/rate_limit';
 
 const SWITCHBOT_BASE = 'https://api.switch-bot.com/v1.1';
 
@@ -69,6 +70,29 @@ router.post('/:storeId/login', async (req: Request, res: Response) => {
       return;
     }
 
+    // キオスク PIN は店舗共通なので、総当たりを防ぐため IP + store の二重制限を掛ける。
+    const ip = getClientIp(req);
+    const ipRate = await checkAndLogRateLimit(ip, storeId, {
+      action: 'kiosk.login.ip',
+      windowSec: 15 * 60,
+      max: 10,
+    });
+    if (!ipRate.allowed) {
+      res.setHeader('Retry-After', String(ipRate.retryAfterSec || 900));
+      res.status(429).json({ error: '試行回数が多すぎます。しばらくしてから再度お試しください。' });
+      return;
+    }
+    const storeRate = await checkAndLogRateLimit(`store:${storeId}`, storeId, {
+      action: 'kiosk.login.store',
+      windowSec: 15 * 60,
+      max: 50,
+    });
+    if (!storeRate.allowed) {
+      res.setHeader('Retry-After', String(storeRate.retryAfterSec || 900));
+      res.status(429).json({ error: '試行回数が多すぎます。しばらくしてから再度お試しください。' });
+      return;
+    }
+
     const { data: store, error } = await supabaseAdmin
       .from('stores')
       .select('id, name, settings')
@@ -109,7 +133,7 @@ router.post('/:storeId/login', async (req: Request, res: Response) => {
 router.get('/:storeId/staff', requireKiosk, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    const kioskStoreId = (req as any).kioskStoreId as string;
+    const kioskStoreId = req.kioskStoreId!;
     if (storeId !== kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' });
       return;
@@ -161,7 +185,7 @@ router.get('/:storeId/staff', requireKiosk, async (req: Request, res: Response) 
 router.get('/:storeId/shifts', requireKiosk, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    const kioskStoreId = (req as any).kioskStoreId as string;
+    const kioskStoreId = req.kioskStoreId!;
     if (storeId !== kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' });
       return;
@@ -232,7 +256,7 @@ router.get('/:storeId/shifts', requireKiosk, async (req: Request, res: Response)
 router.get('/:storeId/shift-requests', requireKiosk, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    const kioskStoreId = (req as any).kioskStoreId as string;
+    const kioskStoreId = req.kioskStoreId!;
     if (storeId !== kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' });
       return;
@@ -275,7 +299,7 @@ router.get('/:storeId/shift-requests', requireKiosk, async (req: Request, res: R
 router.post('/:storeId/shifts', requireKiosk, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    const kioskStoreId = (req as any).kioskStoreId as string;
+    const kioskStoreId = req.kioskStoreId!;
     if (storeId !== kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' });
       return;
@@ -343,7 +367,7 @@ router.delete('/:storeId/shifts/:shiftId', requireKiosk, async (req: Request, re
   try {
     const storeId = req.params.storeId as string;
     const shiftId = req.params.shiftId as string;
-    const kioskStoreId = (req as any).kioskStoreId as string;
+    const kioskStoreId = req.kioskStoreId!;
     if (storeId !== kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' });
       return;
@@ -372,7 +396,7 @@ router.delete('/:storeId/shifts/:shiftId', requireKiosk, async (req: Request, re
 router.post('/:storeId/punch', requireKiosk, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    const kioskStoreId = (req as any).kioskStoreId as string;
+    const kioskStoreId = req.kioskStoreId!;
     if (storeId !== kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' });
       return;
@@ -479,7 +503,7 @@ router.post('/:storeId/punch', requireKiosk, async (req: Request, res: Response)
 router.get('/:storeId/enabled-plugins', requireKiosk, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    if (storeId !== (req as any).kioskStoreId) {
+    if (storeId !== req.kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' });
       return;
     }
@@ -501,7 +525,7 @@ router.get('/:storeId/enabled-plugins', requireKiosk, async (req: Request, res: 
 router.get('/:storeId/haccp/templates', requireKiosk, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    if (storeId !== (req as any).kioskStoreId) {
+    if (storeId !== req.kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
 
@@ -553,7 +577,7 @@ router.get('/:storeId/haccp/templates', requireKiosk, async (req: Request, res: 
 router.post('/:storeId/haccp/submissions', requireKiosk, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    if (storeId !== (req as any).kioskStoreId) {
+    if (storeId !== req.kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
 
@@ -621,7 +645,7 @@ router.post('/:storeId/haccp/submissions', requireKiosk, async (req: Request, re
 router.get('/:storeId/haccp/submissions', requireKiosk, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    if (storeId !== (req as any).kioskStoreId) {
+    if (storeId !== req.kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
 
@@ -666,7 +690,7 @@ router.get('/:storeId/haccp/submissions', requireKiosk, async (req: Request, res
 router.get('/:storeId/switchbot', requireKiosk, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    if (storeId !== (req as any).kioskStoreId) {
+    if (storeId !== req.kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
     const { data } = await supabaseAdmin
@@ -701,7 +725,7 @@ router.get('/:storeId/switchbot', requireKiosk, async (req: Request, res: Respon
 router.get('/:storeId/switchbot/readings', requireKiosk, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
-    if (storeId !== (req as any).kioskStoreId) {
+    if (storeId !== req.kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
 
@@ -753,7 +777,7 @@ router.get('/:storeId/switchbot/:deviceId', requireKiosk, async (req: Request, r
   try {
     const storeId = req.params.storeId as string;
     const deviceId = req.params.deviceId as string;
-    if (storeId !== (req as any).kioskStoreId) {
+    if (storeId !== req.kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
 

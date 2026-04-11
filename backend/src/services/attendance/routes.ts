@@ -8,6 +8,7 @@ import { requireStoreMembership, requireManagedStore } from '../../auth/authoriz
 import {
   calcBusinessDate, nextSessionNo, calcBreakMinutes,
   checkIdempotency, writeEvent, getPolicy,
+  formatAttendanceSession as formatSession,
 } from './helpers';
 
 const router = Router();
@@ -105,27 +106,6 @@ router.get('/me/today', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
-function formatSession(s: any) {
-  const breaks = s.breaks || [];
-  return {
-    id: s.id,
-    businessDate: s.business_date,
-    sessionNo: s.session_no,
-    status: s.status,
-    clockInAt: s.clock_in_at,
-    clockOutAt: s.clock_out_at,
-    source: s.source,
-    note: s.note,
-    breaks: breaks.map((b: any) => ({
-      id: b.id,
-      startedAt: b.started_at,
-      endedAt: b.ended_at,
-      reason: b.reason,
-    })),
-    breakMinutes: calcBreakMinutes(breaks),
-  };
-}
-
 // ================================================================
 // スタッフ向け: 出勤
 // ================================================================
@@ -139,7 +119,7 @@ router.post('/clock-in', requireAuth, async (req: Request, res: Response) => {
     const userId = req.user!.id;
 
     // 冪等チェック
-    const idem = await checkIdempotency(supabaseAdmin, idempotencyKey);
+    const idem = await checkIdempotency(supabaseAdmin, storeId, userId, idempotencyKey);
     if (idem.duplicate) {
       const { data: existing } = await supabaseAdmin
         .from('attendance_records').select('*').eq('id', idem.existingRecordId).single();
@@ -147,10 +127,11 @@ router.post('/clock-in', requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    // open session チェック
+    // open session チェック (store_id スコープ必須: テナント越境防止)
     const { data: open } = await supabaseAdmin
       .from('attendance_records')
       .select('id')
+      .eq('store_id', storeId)
       .eq('user_id', userId)
       .in('status', ['working', 'on_break'])
       .maybeSingle();
@@ -162,7 +143,7 @@ router.post('/clock-in', requireAuth, async (req: Request, res: Response) => {
     const policy = await getPolicy(supabaseAdmin, storeId);
     const now = new Date();
     const businessDate = calcBusinessDate(now, policy.timezone, policy.business_day_cutoff_hour);
-    const sessionNo = await nextSessionNo(supabaseAdmin, userId, businessDate);
+    const sessionNo = await nextSessionNo(supabaseAdmin, storeId, userId, businessDate);
 
     const { data: record, error } = await supabaseAdmin
       .from('attendance_records')
@@ -213,7 +194,7 @@ router.post('/break-start', requireAuth, async (req: Request, res: Response) => 
     if (!membership) return;
     const userId = req.user!.id;
 
-    const idem = await checkIdempotency(supabaseAdmin, idempotencyKey);
+    const idem = await checkIdempotency(supabaseAdmin, storeId, userId, idempotencyKey);
     if (idem.duplicate) { res.json({ message: '休憩開始済み（重複リクエスト）' }); return; }
 
     // working セッション取得
@@ -280,7 +261,7 @@ router.post('/break-end', requireAuth, async (req: Request, res: Response) => {
     if (!membership) return;
     const userId = req.user!.id;
 
-    const idem = await checkIdempotency(supabaseAdmin, idempotencyKey);
+    const idem = await checkIdempotency(supabaseAdmin, storeId, userId, idempotencyKey);
     if (idem.duplicate) { res.json({ message: '休憩終了済み（重複リクエスト）' }); return; }
 
     const { data: session } = await supabaseAdmin
@@ -341,7 +322,7 @@ router.post('/clock-out', requireAuth, async (req: Request, res: Response) => {
     if (!membership) return;
     const userId = req.user!.id;
 
-    const idem = await checkIdempotency(supabaseAdmin, idempotencyKey);
+    const idem = await checkIdempotency(supabaseAdmin, storeId, userId, idempotencyKey);
     if (idem.duplicate) { res.json({ message: '退勤済み（重複リクエスト）' }); return; }
 
     // working or on_break セッション

@@ -18,15 +18,18 @@ export function calcBusinessDate(at: Date, timezone: string, cutoffHour: number)
 
 /**
  * 次の session_no を決定する。
+ * store_id + user_id + business_date でスコープ (複数店舗勤務時の衝突防止)。
  */
 export async function nextSessionNo(
   supabase: any,
+  storeId: string,
   userId: string,
   businessDate: string
 ): Promise<number> {
   const { data } = await supabase
     .from('attendance_records')
     .select('session_no')
+    .eq('store_id', storeId)
     .eq('user_id', userId)
     .eq('business_date', businessDate)
     .order('session_no', { ascending: false })
@@ -53,12 +56,16 @@ export function calcBreakMinutes(breaks: { started_at: string; ended_at: string 
  */
 export async function checkIdempotency(
   supabase: any,
+  storeId: string,
+  userId: string,
   idempotencyKey: string | undefined
 ): Promise<{ duplicate: boolean; existingRecordId?: string }> {
   if (!idempotencyKey) return { duplicate: false };
   const { data } = await supabase
     .from('attendance_events')
     .select('attendance_record_id')
+    .eq('store_id', storeId)
+    .eq('user_id', userId)
     .eq('idempotency_key', idempotencyKey)
     .maybeSingle();
   if (data) return { duplicate: true, existingRecordId: data.attendance_record_id };
@@ -92,6 +99,54 @@ export async function writeEvent(
     payload: params.payload || {},
     created_by: params.createdBy || params.userId,
   });
+}
+
+// ─────────────────────────────────────────────────────────────
+// 共通 DTO: 勤怠セッション
+// ─────────────────────────────────────────────────────────────
+// attendance_records + attendance_breaks の結合結果を API レスポンス用に
+// 正規化する。Web (attendance/routes.ts) / LINE (line/punch.ts) /
+// NFC (nfc/punch.ts) の3系統で同じ形を返すために共通化している。
+// 各系統で微妙にフィールドが違っていたため、ここで一元定義する。
+export interface AttendanceBreakDTO {
+  id: string;
+  startedAt: string;
+  endedAt: string | null;
+  reason?: string | null;
+}
+
+export interface AttendanceSessionDTO {
+  id: string;
+  businessDate: string;
+  sessionNo: number;
+  status: string;
+  clockInAt: string | null;
+  clockOutAt: string | null;
+  source?: string | null;
+  note?: string | null;
+  breaks: AttendanceBreakDTO[];
+  breakMinutes: number;
+}
+
+export function formatAttendanceSession(s: any): AttendanceSessionDTO {
+  const breaks = (s.breaks || []) as any[];
+  return {
+    id: s.id,
+    businessDate: s.business_date,
+    sessionNo: s.session_no,
+    status: s.status,
+    clockInAt: s.clock_in_at ?? null,
+    clockOutAt: s.clock_out_at ?? null,
+    source: s.source ?? null,
+    note: s.note ?? null,
+    breaks: breaks.map((b) => ({
+      id: b.id,
+      startedAt: b.started_at,
+      endedAt: b.ended_at ?? null,
+      reason: b.reason ?? null,
+    })),
+    breakMinutes: calcBreakMinutes(breaks),
+  };
 }
 
 /**

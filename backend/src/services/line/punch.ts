@@ -6,9 +6,11 @@
 import { Router, Request, Response } from 'express';
 import { supabaseAdmin } from '../../config/supabase';
 import {
-  calcBusinessDate, nextSessionNo, calcBreakMinutes,
+  calcBusinessDate, nextSessionNo,
   checkIdempotency, writeEvent, getPolicy,
+  formatAttendanceSession as formatSession,
 } from '../attendance/helpers';
+import { getLineConfig, verifyLineIdToken } from './config';
 
 const router = Router();
 
@@ -21,12 +23,42 @@ async function requireLineUser(req: Request, res: Response): Promise<{
   storeId: string;
   staffId: string;
 } | null> {
-  const lineUserId = req.body?.lineUserId || req.query?.lineUserId;
   const storeId = req.body?.storeId || req.query?.storeId;
+  const idToken = (req.body?.idToken || req.query?.idToken) as string | undefined;
+  const rawLineUserId = (req.body?.lineUserId || req.query?.lineUserId) as string | undefined;
 
-  if (!lineUserId || !storeId) {
-    res.status(400).json({ error: 'lineUserId and storeId are required' });
+  if (!storeId || typeof storeId !== 'string') {
+    res.status(400).json({ error: 'storeId is required' });
     return null;
+  }
+
+  // LIFF から渡される ID トークンを検証し、LINE 公式に sub を返してもらう。
+  // 検証できなかった場合は lineUserId を信用せずに 401 を返す。
+  // 旧クライアント互換のため idToken 未送信時のみ lineUserId に fallback するが、
+  // 本番では idToken 必須にすべき (フロントのリリースが揃ったら fallback を削除)。
+  let lineUserId: string | undefined;
+  if (idToken && typeof idToken === 'string') {
+    const lineCfg = await getLineConfig(storeId);
+    if (!lineCfg.channelId) {
+      res.status(500).json({ error: 'LINE Login が設定されていません' });
+      return null;
+    }
+    const verified = await verifyLineIdToken(idToken, lineCfg.channelId);
+    if (!verified) {
+      res.status(401).json({ error: 'LINE ID トークンの検証に失敗しました' });
+      return null;
+    }
+    lineUserId = verified.sub;
+  } else {
+    // 後方互換: idToken を送らない旧クライアントからのリクエストは
+    // 警告ログを出した上で一時的に lineUserId をそのまま使う。
+    // フロントの更新後は この分岐を削除すること。
+    if (!rawLineUserId || typeof rawLineUserId !== 'string') {
+      res.status(400).json({ error: 'idToken or lineUserId is required' });
+      return null;
+    }
+    console.warn('[line/punch] legacy request without idToken, lineUserId=', rawLineUserId);
+    lineUserId = rawLineUserId;
   }
 
   // LINE連携テーブルからユーザーを解決
@@ -61,22 +93,6 @@ async function requireLineUser(req: Request, res: Response): Promise<{
     .eq('line_user_id', lineUserId);
 
   return { userId: link.user_id, lineUserId, storeId, staffId: staff.id };
-}
-
-function formatSession(s: any) {
-  const breaks = s.breaks || [];
-  return {
-    id: s.id,
-    businessDate: s.business_date,
-    sessionNo: s.session_no,
-    status: s.status,
-    clockInAt: s.clock_in_at,
-    clockOutAt: s.clock_out_at,
-    breaks: breaks.map((b: any) => ({
-      id: b.id, startedAt: b.started_at, endedAt: b.ended_at,
-    })),
-    breakMinutes: calcBreakMinutes(breaks),
-  };
 }
 
 // ================================================================
@@ -141,7 +157,7 @@ router.post('/clock-in', async (req: Request, res: Response) => {
     if (!auth) return;
     const { idempotencyKey } = req.body;
 
-    const idem = await checkIdempotency(supabaseAdmin, idempotencyKey);
+    const idem = await checkIdempotency(supabaseAdmin, auth.storeId, auth.userId, idempotencyKey);
     if (idem.duplicate) { res.json({ message: '出勤済み（重複リクエスト）' }); return; }
 
     const { data: open } = await supabaseAdmin
@@ -156,7 +172,7 @@ router.post('/clock-in', async (req: Request, res: Response) => {
     const policy = await getPolicy(supabaseAdmin, auth.storeId);
     const now = new Date();
     const businessDate = calcBusinessDate(now, policy.timezone, policy.business_day_cutoff_hour);
-    const sessionNo = await nextSessionNo(supabaseAdmin, auth.userId, businessDate);
+    const sessionNo = await nextSessionNo(supabaseAdmin, auth.storeId, auth.userId, businessDate);
 
     const { data: record, error } = await supabaseAdmin
       .from('attendance_records')
@@ -189,7 +205,7 @@ router.post('/break-start', async (req: Request, res: Response) => {
     if (!auth) return;
     const { idempotencyKey } = req.body;
 
-    const idem = await checkIdempotency(supabaseAdmin, idempotencyKey);
+    const idem = await checkIdempotency(supabaseAdmin, auth.storeId, auth.userId, idempotencyKey);
     if (idem.duplicate) { res.json({ message: '休憩開始済み' }); return; }
 
     const { data: session } = await supabaseAdmin
@@ -220,7 +236,7 @@ router.post('/break-end', async (req: Request, res: Response) => {
     if (!auth) return;
     const { idempotencyKey } = req.body;
 
-    const idem = await checkIdempotency(supabaseAdmin, idempotencyKey);
+    const idem = await checkIdempotency(supabaseAdmin, auth.storeId, auth.userId, idempotencyKey);
     if (idem.duplicate) { res.json({ message: '休憩終了済み' }); return; }
 
     const { data: session } = await supabaseAdmin
@@ -249,7 +265,7 @@ router.post('/clock-out', async (req: Request, res: Response) => {
     if (!auth) return;
     const { idempotencyKey } = req.body;
 
-    const idem = await checkIdempotency(supabaseAdmin, idempotencyKey);
+    const idem = await checkIdempotency(supabaseAdmin, auth.storeId, auth.userId, idempotencyKey);
     if (idem.duplicate) { res.json({ message: '退勤済み' }); return; }
 
     const { data: session } = await supabaseAdmin

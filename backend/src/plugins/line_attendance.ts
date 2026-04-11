@@ -1,14 +1,14 @@
 /**
- * LINE打刻プラグイン定義
- * スタッフ向け打刻 + 管理者向け勤怠管理
+ * スタッフ向け LINE 打刻プラグイン
  *
- * LINE チャネル情報は施設（store）単位で store_plugins.config に保存する。
+ * LINE チャネル情報は施設 (store) 単位で store_plugins.config に保存する。
  * 各施設が自分の LINE Official Account を紐づける設計。
+ *
+ * 注: 管理者向け勤怠管理プラグインは `attendance_admin.ts` に分離している (鉄則1)。
  */
 import type { Plugin } from '../types';
 import type { Express } from 'express';
 
-// スタッフ向け LINE打刻
 export const lineAttendancePlugin: Plugin = {
   name: 'line_attendance',
   version: '1.1.0',
@@ -59,17 +59,4 @@ export const lineAttendancePlugin: Plugin = {
   initialize: (_app: Express) => {
     // ルーティングは attendanceApiRouter / lineRouter で登録済み
   },
-};
-
-// 管理者向け 勤怠管理（LINE対応版）
-export const attendanceAdminPlugin: Plugin = {
-  name: 'attendance_admin',
-  version: '1.0.0',
-  description: '勤怠管理（LINE打刻対応）',
-  label: '勤怠管理(LINE)',
-  icon: '📋',
-  core: false,
-  defaultEnabled: true,
-  defaultRoles: ['owner', 'manager'],
-  initialize: (_app: Express) => {},
 };

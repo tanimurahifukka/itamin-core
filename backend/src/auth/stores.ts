@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import { requireAuth } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
 import { requireManagedStore, requireStoreMembership, canResetStaffPassword, VALID_STAFF_ROLES } from './authorization';
@@ -7,12 +8,25 @@ import { writeAuditLog, revokeUserSessions } from '../lib/audit';
 const router = Router();
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
+const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,62}$/;
+
+const INVITE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
+const DEFAULT_INVITE_TTL_HOURS = 72;
+
+function constantTimeEquals(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  return timingSafeEqual(bufA, bufB);
+}
+
 function serializeStoreAccount(store: any) {
   return {
     id: store.id,
     name: store.name || '',
     address: store.address || '',
     phone: store.phone || '',
+    slug: store.slug || '',
     openTime: store.settings?.open_time || '',
     closeTime: store.settings?.close_time || '',
   };
@@ -21,6 +35,38 @@ function serializeStoreAccount(store: any) {
 function normalizeNullableText(value: string): string | null {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+// ============================================================
+// 初期パスワード管理 (storeId / 'itamin1234' フォールバック禁止 — C1/H6)
+// ============================================================
+// 英数字 + 記号 で12文字以上の安全なランダムパスワードを生成する
+function generateInitialPassword(): string {
+  const bytes = randomBytes(18);
+  // URL-safe base64 → 24 文字, 先頭 16 文字を使用し末尾に記号を付与
+  const base = bytes.toString('base64url').slice(0, 16);
+  return `${base}!A1`;
+}
+
+// 店舗の初期パスワードを取得。未設定なら安全なランダム値を生成して保存する。
+// 既存の 'itamin1234' / storeId フォールバックは完全に廃止。
+async function getOrCreateInitialPassword(storeId: string): Promise<string> {
+  const { data: storeData } = await supabaseAdmin
+    .from('stores')
+    .select('settings')
+    .eq('id', storeId)
+    .maybeSingle();
+
+  const existing = (storeData as any)?.settings?.initial_password as string | undefined;
+  if (existing && existing.length >= 12) return existing;
+
+  const generated = generateInitialPassword();
+  const nextSettings = { ...((storeData as any)?.settings || {}), initial_password: generated };
+  await supabaseAdmin
+    .from('stores')
+    .update({ settings: nextSettings })
+    .eq('id', storeId);
+  return generated;
 }
 
 // ============================================================
@@ -92,7 +138,146 @@ async function getInvitationRedirectUrl(params: {
 }
 
 // ============================================================
-// 公開：リンク経由のスタッフ登録（認証不要）
+// 招待トークン発行 (owner/manager 認証必須)
+// ============================================================
+router.post('/:storeId/invitations', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const intendedEmail = typeof req.body?.intendedEmail === 'string'
+      ? req.body.intendedEmail.trim().toLowerCase()
+      : null;
+    const intendedRole = typeof req.body?.intendedRole === 'string'
+      ? req.body.intendedRole.trim()
+      : 'part_time';
+    const maxUsesRaw = Number(req.body?.maxUses);
+    const maxUses = Number.isFinite(maxUsesRaw) && maxUsesRaw >= 1 ? Math.floor(maxUsesRaw) : 1;
+    const ttlHoursRaw = Number(req.body?.ttlHours);
+    const ttlHours = Number.isFinite(ttlHoursRaw) && ttlHoursRaw > 0
+      ? Math.min(Math.floor(ttlHoursRaw), 24 * 30)
+      : DEFAULT_INVITE_TTL_HOURS;
+
+    if (!VALID_STAFF_ROLES.includes(intendedRole as typeof VALID_STAFF_ROLES[number])) {
+      res.status(400).json({ error: 'ロール指定が不正です' });
+      return;
+    }
+    if (intendedRole === 'owner') {
+      res.status(400).json({ error: 'owner ロールは招待経路では付与できません' });
+      return;
+    }
+
+    const token = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + ttlHours * 3600_000).toISOString();
+
+    const { data: invitation, error: insertErr } = await supabaseAdmin
+      .from('store_invitations')
+      .insert({
+        store_id: storeId,
+        token,
+        intended_email: intendedEmail,
+        intended_role: intendedRole,
+        max_uses: maxUses,
+        created_by: req.user!.id,
+        expires_at: expiresAt,
+      })
+      .select('id, token, expires_at, max_uses, intended_email, intended_role')
+      .single();
+
+    if (insertErr) {
+      res.status(500).json({ error: insertErr.message });
+      return;
+    }
+
+    await writeAuditLog({
+      storeId,
+      actorId: req.user!.id,
+      action: 'store_invitation_create',
+      targetType: 'store_invitation',
+      targetId: (invitation as any).id,
+      metadata: { intendedEmail, intendedRole, maxUses, ttlHours },
+    });
+
+    res.status(201).json({
+      invitation: {
+        id: (invitation as any).id,
+        token: (invitation as any).token,
+        expiresAt: (invitation as any).expires_at,
+        maxUses: (invitation as any).max_uses,
+        intendedEmail: (invitation as any).intended_email,
+        intendedRole: (invitation as any).intended_role,
+      },
+    });
+  } catch (e: any) {
+    console.error('[stores POST /:storeId/invitations] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 招待一覧 (owner/manager)
+router.get('/:storeId/invitations', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const { data, error } = await supabaseAdmin
+      .from('store_invitations')
+      .select('id, intended_email, intended_role, max_uses, used_count, created_at, expires_at, revoked_at')
+      .eq('store_id', storeId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json({ invitations: data || [] });
+  } catch (e: any) {
+    console.error('[stores GET /:storeId/invitations] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 招待の失効 (owner/manager)
+router.delete('/:storeId/invitations/:invitationId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const invitationId = req.params.invitationId as string;
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const { error } = await supabaseAdmin
+      .from('store_invitations')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('id', invitationId)
+      .eq('store_id', storeId)
+      .is('revoked_at', null);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    await writeAuditLog({
+      storeId,
+      actorId: req.user!.id,
+      action: 'store_invitation_revoke',
+      targetType: 'store_invitation',
+      targetId: invitationId,
+    });
+
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error('[stores DELETE /:storeId/invitations/:invitationId] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// 公開：招待トークン経由のスタッフ登録
+// （認証不要だが有効な招待トークン必須。C1 対策 2026-04-11）
 // ============================================================
 router.post('/:storeId/join', async (req: Request, res: Response) => {
   try {
@@ -100,10 +285,56 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
     const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    const inviteToken = typeof req.body?.inviteToken === 'string' ? req.body.inviteToken.trim() : '';
 
+    if (!inviteToken || !INVITE_TOKEN_PATTERN.test(inviteToken)) {
+      res.status(403).json({ error: '招待トークンが必要です。オーナーから招待URLを受け取ってください。' });
+      return;
+    }
     if (!name) { res.status(400).json({ error: '名前は必須です' }); return; }
     if (!email) { res.status(400).json({ error: 'メールアドレスは必須です' }); return; }
-    if (password.length < 6) { res.status(400).json({ error: 'パスワードは6文字以上で入力してください' }); return; }
+    if (password.length < 8) { res.status(400).json({ error: 'パスワードは8文字以上で入力してください' }); return; }
+
+    // 招待トークン検証
+    const { data: invitation } = await supabaseAdmin
+      .from('store_invitations')
+      .select('id, store_id, token, intended_email, intended_role, max_uses, used_count, expires_at, revoked_at')
+      .eq('store_id', storeId)
+      .eq('token', inviteToken)
+      .maybeSingle();
+
+    if (!invitation) {
+      res.status(403).json({ error: '招待トークンが無効です' });
+      return;
+    }
+    // timing-safe 比較 (DB 一致後の保険)
+    if (!constantTimeEquals((invitation as any).token, inviteToken)) {
+      res.status(403).json({ error: '招待トークンが無効です' });
+      return;
+    }
+    if ((invitation as any).revoked_at) {
+      res.status(403).json({ error: 'この招待は失効しています' });
+      return;
+    }
+    if (new Date((invitation as any).expires_at).getTime() < Date.now()) {
+      res.status(403).json({ error: 'この招待は期限切れです' });
+      return;
+    }
+    if ((invitation as any).used_count >= (invitation as any).max_uses) {
+      res.status(403).json({ error: 'この招待は使用上限に達しています' });
+      return;
+    }
+    if ((invitation as any).intended_email && (invitation as any).intended_email !== email) {
+      res.status(403).json({ error: 'この招待は別のメールアドレス用です' });
+      return;
+    }
+
+    const intendedRole = (invitation as any).intended_role || 'part_time';
+    if (intendedRole === 'owner') {
+      // 安全ネット: owner 昇格は招待経路では許可しない
+      res.status(403).json({ error: '招待経路で owner ロールは付与できません' });
+      return;
+    }
 
     // 店舗の存在確認
     const { data: store, error: storeErr } = await supabaseAdmin
@@ -122,7 +353,6 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
     let authUser = (authUsers as { id: string; email?: string }[]).find(u => u.email === email);
 
     if (authUser) {
-      // 既にアカウントがある場合、この店舗に所属しているかチェック
       const { data: existing } = await supabaseAdmin
         .from('store_staff')
         .select('id')
@@ -135,7 +365,6 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
         return;
       }
     } else {
-      // 新規ユーザー作成
       const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
@@ -149,7 +378,6 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
       }
       authUser = newUser.user;
 
-      // profiles に追加
       await supabaseAdmin
         .from('profiles')
         .upsert({
@@ -159,13 +387,12 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
         }, { onConflict: 'id' });
     }
 
-    // store_staff に追加（デフォルト: part_time）
     const { data: newMembership, error: staffErr } = await supabaseAdmin
       .from('store_staff')
       .insert({
         store_id: storeId,
         user_id: authUser!.id,
-        role: 'part_time',
+        role: intendedRole,
       })
       .select('id')
       .single();
@@ -178,6 +405,21 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
     if (newMembership?.id) {
       await ensureStaffPin(storeId, newMembership.id);
     }
+
+    // 招待トークンの使用回数を増やす
+    await supabaseAdmin
+      .from('store_invitations')
+      .update({ used_count: ((invitation as any).used_count || 0) + 1 })
+      .eq('id', (invitation as any).id);
+
+    await writeAuditLog({
+      storeId,
+      actorId: authUser!.id,
+      action: 'store_join_via_invitation',
+      targetType: 'store_staff',
+      targetId: newMembership?.id ?? undefined,
+      metadata: { invitationId: (invitation as any).id, email, intendedRole },
+    });
 
     res.status(201).json({
       ok: true,
@@ -220,7 +462,7 @@ router.get('/:storeId/account', requireAuth, async (req: Request, res: Response)
 
     const { data: store, error } = await supabaseAdmin
       .from('stores')
-      .select('id, name, address, phone, settings')
+      .select('id, name, address, phone, slug, settings')
       .eq('id', storeId)
       .maybeSingle();
 
@@ -251,6 +493,7 @@ router.put('/:storeId/account', requireAuth, async (req: Request, res: Response)
     const name = req.body?.name;
     const address = req.body?.address;
     const phone = req.body?.phone;
+    const slug = req.body?.slug;
     const openTime = req.body?.openTime;
     const closeTime = req.body?.closeTime;
 
@@ -267,6 +510,23 @@ router.put('/:storeId/account', requireAuth, async (req: Request, res: Response)
     if (phone !== undefined && typeof phone !== 'string') {
       res.status(400).json({ error: '電話番号は文字列で指定してください' });
       return;
+    }
+
+    if (slug !== undefined && slug !== null && typeof slug !== 'string') {
+      res.status(400).json({ error: '公開URL は文字列で指定してください' });
+      return;
+    }
+    let normalizedSlug: string | null | undefined = undefined;
+    if (typeof slug === 'string') {
+      const trimmed = slug.trim().toLowerCase();
+      if (trimmed === '') {
+        normalizedSlug = null;
+      } else if (!SLUG_PATTERN.test(trimmed)) {
+        res.status(400).json({ error: '公開URL は英小文字・数字・ハイフンで 2〜63 文字にしてください' });
+        return;
+      } else {
+        normalizedSlug = trimmed;
+      }
     }
 
     if (openTime !== undefined && (typeof openTime !== 'string' || (openTime.trim() && !TIME_PATTERN.test(openTime.trim())))) {
@@ -314,15 +574,20 @@ router.put('/:storeId/account', requireAuth, async (req: Request, res: Response)
 
     if (typeof address === 'string') updates.address = normalizeNullableText(address);
     if (typeof phone === 'string') updates.phone = normalizeNullableText(phone);
+    if (normalizedSlug !== undefined) updates.slug = normalizedSlug;
 
     const { data: updatedStore, error: updateError } = await supabaseAdmin
       .from('stores')
       .update(updates)
       .eq('id', storeId)
-      .select('id, name, address, phone, settings')
+      .select('id, name, address, phone, slug, settings')
       .single();
 
     if (updateError) {
+      if (updateError.code === '23505' || /duplicate/i.test(updateError.message)) {
+        res.status(409).json({ error: 'この公開URL は既に使用されています' });
+        return;
+      }
       res.status(500).json({ error: updateError.message });
       return;
     }
@@ -419,13 +684,7 @@ router.get('/:storeId/initial-password', requireAuth, async (req: Request, res: 
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
-    const { data } = await supabaseAdmin
-      .from('stores')
-      .select('settings')
-      .eq('id', storeId)
-      .single();
-
-    const initialPassword = data?.settings?.initial_password || storeId;
+    const initialPassword = await getOrCreateInitialPassword(storeId);
     res.json({ initialPassword });
   } catch (e: any) {
     console.error('[stores GET /:storeId/initial-password] error:', e);
@@ -441,8 +700,8 @@ router.put('/:storeId/initial-password', requireAuth, async (req: Request, res: 
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
-    if (!password || password.length < 6) {
-      res.status(400).json({ error: '6文字以上で設定してください' });
+    if (!password || password.length < 12) {
+      res.status(400).json({ error: '初期パスワードは12文字以上で設定してください' });
       return;
     }
 
@@ -533,12 +792,8 @@ router.post('/:storeId/staff', requireAuth, async (req: Request, res: Response) 
       res.status(201).json({ staff, invited: false });
     } else {
       // 未登録ユーザー → 初期パスワードでユーザー作成 + 即スタッフ追加
-      const { data: storeData } = await supabaseAdmin
-        .from('stores')
-        .select('settings')
-        .eq('id', storeId)
-        .single();
-      const initialPassword = storeData?.settings?.initial_password || storeId;
+      // 初期パスワード未設定時は安全なランダム値を自動生成(storeId/固定値禁止)
+      const initialPassword = await getOrCreateInitialPassword(storeId);
 
       const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -843,16 +1098,11 @@ router.post('/:storeId/staff/:staffId/reset-password', requireAuth, async (req: 
 
     let newPassword = customPassword;
     if (!newPassword) {
-      const { data: storeData } = await supabaseAdmin
-        .from('stores')
-        .select('settings')
-        .eq('id', storeId)
-        .maybeSingle();
-      newPassword = (storeData as any)?.settings?.initial_password || 'itamin1234';
+      newPassword = await getOrCreateInitialPassword(storeId);
     }
 
-    if (newPassword.length < 6) {
-      res.status(400).json({ error: 'パスワードは6文字以上にしてください' });
+    if (newPassword.length < 8) {
+      res.status(400).json({ error: 'パスワードは8文字以上にしてください' });
       return;
     }
 

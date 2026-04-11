@@ -12,7 +12,8 @@ import { lineWebhookRouter } from './services/line/webhook';
 import { lineStaffRouter } from './services/line/staff';
 import { pluginRegistry } from './plugins/registry';
 import { pluginSettingsRouter } from './plugins/settings';
-import { shiftPlugin, shiftRequestPlugin } from './plugins/shift';
+import { shiftPlugin } from './plugins/shift';
+import { shiftRequestPlugin } from './plugins/shift_request';
 import { checkPlugin } from './plugins/check';
 import { inventoryPlugin } from './plugins/inventory';
 import { overtimeAlertPlugin } from './plugins/overtime_alert';
@@ -34,8 +35,8 @@ import { settingsPlugin } from './plugins/settings_plugin';
 import { salesCapturePlugin } from './plugins/sales_capture';
 import { customersPlugin } from './plugins/customers';
 import { switchbotRouter } from './services/switchbot/routes';
-import { collectSwitchBotReadings } from './services/switchbot/cron';
-import { lineAttendancePlugin, attendanceAdminPlugin } from './plugins/line_attendance';
+import { lineAttendancePlugin } from './plugins/line_attendance';
+import { attendanceAdminPlugin } from './plugins/attendance_admin';
 import { organizationsRouter } from './services/organizations/routes';
 import { platformRouter } from './services/platform/routes';
 import { nfcRouter } from './nfc/routes';
@@ -48,7 +49,6 @@ import { publicReservationRouter } from './services/reservation/table_routes';
 import { timeslotPublicRouter } from './services/reservation/timeslot_routes';
 import { schoolPublicRouter } from './services/reservation/school_routes';
 import { eventPublicRouter } from './services/reservation/event_routes';
-import { dispatchPendingNotifications } from './services/reservation/email';
 
 const app = express();
 
@@ -60,7 +60,16 @@ app.use(cors({
     : config.frontendUrl,
   credentials: true,
 }));
-app.use(express.json());
+// JSON パース時に生の body を保持する。LINE Webhook の HMAC 署名検証は
+// JSON 再シリアライズだとホワイトスペースの有無で不一致になるため、必ず
+// 受信した生バイト列で HMAC を計算する必要がある。
+app.use(express.json({
+  verify: (req: any, _res, buf) => {
+    if (buf && buf.length) {
+      req.rawBody = Buffer.from(buf);
+    }
+  },
+}));
 
 // Core routes（認証はSupabase Auth JWT）
 app.use('/api/stores', storesRouter);
@@ -121,45 +130,7 @@ pluginRegistry.register(settingsPlugin);
 app.use('/api/plugin-settings', pluginSettingsRouter);
 app.use('/api/switchbot', switchbotRouter);
 
-// Vercel Cron: SwitchBot 定期収集（30分ごと）
-app.post('/api/cron/switchbot-readings', async (req, res) => {
-  // Vercel Cron は Authorization: Bearer <CRON_SECRET> ヘッダーを付与する
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = req.headers.authorization;
-    if (auth !== `Bearer ${cronSecret}`) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-  }
-  try {
-    const result = await collectSwitchBotReadings();
-    console.log('[cron] switchbot-readings:', result);
-    res.json({ ok: true, ...result });
-  } catch (e: any) {
-    console.error('[cron] switchbot-readings error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-// Vercel Cron: 予約通知メール送出（5分ごと想定）
-app.post('/api/cron/reservation-notifications', async (req, res) => {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = req.headers.authorization;
-    if (auth !== `Bearer ${cronSecret}`) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-  }
-  try {
-    const result = await dispatchPendingNotifications(50);
-    console.log('[cron] reservation-notifications:', result);
-    res.json({ ok: true, ...result });
-  } catch (e: any) {
-    console.error('[cron] reservation-notifications error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
+// Vercel Cron のハンドラは各プラグイン側 (switchbot / reservation_table) に移管した (鉄則3)。
 
 app.get('/api/plugins', (_req, res) => {
   const plugins = pluginRegistry.list().map(p => ({

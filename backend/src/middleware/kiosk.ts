@@ -21,7 +21,7 @@ export function requireKiosk(req: Request, res: Response, next: NextFunction) {
       res.status(401).json({ error: '無効なキオストークンです' });
       return;
     }
-    (req as any).kioskStoreId = payload.storeId;
+    req.kioskStoreId = payload.storeId;
     next();
   } catch {
     res.status(401).json({ error: 'キオストークンが無効または期限切れです' });

@@ -1,8 +1,30 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
 import type { PluginInfo as ApiPluginInfo, StoreAccount as ApiStoreAccount } from '../types/api';
+
+// プラグイン設定画面でプラグイン固有の追加 UI を差し込みたい場合は、
+// このマップに renderer を登録する。hardcoded な plugin.name === 'X' 判定を
+// 本体 render から追い出すため (鉄則2: 1 Plugin = 1 Settings Panel)。
+interface PluginExtraContext {
+  storeId: string;
+  kioskUrl: string;
+  // switchbot
+  switchbotDevices: { deviceId: string; deviceName?: string; deviceType?: string }[];
+  loadingDevices: boolean;
+  fetchSwitchBotDevices: () => void;
+  // kiosk
+  kioskPinDraft: string;
+  setKioskPinDraft: (v: string) => void;
+  editingKioskPin: boolean;
+  setEditingKioskPin: (v: boolean) => void;
+  savingKioskPin: boolean;
+  saveKioskPin: () => void;
+  copyText: (value: string, label: string) => void;
+}
+
+type PluginExtraRenderer = (ctx: PluginExtraContext) => ReactNode;
 
 // Use shared API types; re-export as local aliases for convenience
 type SettingField = ApiPluginInfo['settingsSchema'][number];
@@ -13,6 +35,7 @@ interface StoreAccount {
   name: string;
   address: string;
   phone: string;
+  slug: string;
   openTime: string;
   closeTime: string;
 }
@@ -23,6 +46,7 @@ const EMPTY_ACCOUNT_FORM: StoreAccountForm = {
   name: '',
   address: '',
   phone: '',
+  slug: '',
   openTime: '',
   closeTime: '',
 };
@@ -41,6 +65,7 @@ function normalizeAccount(account: ApiStoreAccount | null | undefined): StoreAcc
     name: String(account?.name ?? ''),
     address: String(account?.address ?? ''),
     phone: String(account?.phone ?? ''),
+    slug: String(account?.slug ?? ''),
     openTime: String(account?.openTime ?? ''),
     closeTime: String(account?.closeTime ?? ''),
   };
@@ -51,6 +76,7 @@ function toFormState(account: StoreAccount): StoreAccountForm {
     name: account.name,
     address: account.address,
     phone: account.phone,
+    slug: account.slug,
     openTime: account.openTime,
     closeTime: account.closeTime,
   };
@@ -221,6 +247,7 @@ export default function PluginSettingsPage() {
         name: trimmedName,
         address: accountForm.address.trim(),
         phone: accountForm.phone.trim(),
+        slug: accountForm.slug.trim().toLowerCase(),
         openTime: accountForm.openTime,
         closeTime: accountForm.closeTime,
       });
@@ -412,6 +439,19 @@ export default function PluginSettingsPage() {
               placeholder="例: 大阪府寝屋川市池田中町1-1"
               style={inputStyle}
             />
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <div style={fieldLabelStyle}>公開URL (予約ページ用 slug)</div>
+            <input
+              type="text"
+              value={accountForm.slug}
+              onChange={e => updateAccountField('slug', e.target.value.toLowerCase())}
+              placeholder="例: sofe (英小文字・数字・ハイフン、2〜63文字)"
+              style={inputStyle}
+            />
+            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4 }}>
+              予約ページURL: {accountForm.slug ? `${window.location.origin}/r/${accountForm.slug}` : '未設定'}
+            </div>
           </div>
           <div>
             <div style={fieldLabelStyle}>営業開始</div>
@@ -638,92 +678,20 @@ export default function PluginSettingsPage() {
                     </div>
                   </div>
 
-                  {plugin.name === 'switchbot' && (
-                    <div style={{ marginBottom: 16, padding: '14px', background: '#fff7ed', borderRadius: 8, border: '1px solid #fed7aa' }}>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 8, color: '#92400e' }}>デバイス確認</div>
-                      <div style={{ fontSize: '0.8rem', color: '#78350f', marginBottom: 10 }}>
-                        APIトークン・シークレットを保存後、デバイス一覧を取得できます。
-                      </div>
-                      <button
-                        style={{ ...primaryButtonStyle, background: '#ea580c' }}
-                        onClick={fetchSwitchBotDevices}
-                        disabled={loadingDevices}
-                      >
-                        {loadingDevices ? '取得中...' : '🌡️ デバイス一覧を取得'}
-                      </button>
-                      {switchbotDevices.length > 0 && (
-                        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {switchbotDevices.map((d) => (
-                            <div key={d.deviceId} style={{ background: '#fff', border: '1px solid #fed7aa', borderRadius: 6, padding: '8px 12px', fontSize: '0.82rem' }}>
-                              <span style={{ fontWeight: 600 }}>{d.deviceName || d.deviceId}</span>
-                              <span style={{ color: '#888', marginLeft: 8 }}>{d.deviceType}</span>
-                              <code style={{ marginLeft: 8, fontSize: '0.75rem', color: '#555' }}>{d.deviceId}</code>
-                            </div>
-                          ))}
-                          <div style={{ fontSize: '0.78rem', color: '#78350f', marginTop: 4 }}>
-                            デバイスIDをコピーしてHACCP項目に割り当てるには、キオスクの設定でマッピングを行ってください。
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {plugin.name === 'kiosk' && (
-                    <div style={{ marginBottom: 16, padding: '14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 12, color: '#555' }}>キオスク設定</div>
-
-                      <div style={{ marginBottom: 12 }}>
-                        <div style={metaLabelStyle}>キオスクURL（タブレットでブックマーク）</div>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
-                          <code style={{ ...metaValueStyle, flex: 1, fontSize: '0.75rem' }}>{kioskUrl}</code>
-                          <button onClick={() => copyText(kioskUrl, 'キオスクURL')} style={secondaryButtonStyle}>コピー</button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <div style={metaLabelStyle}>キオスクPIN（4〜8桁の数字）</div>
-                        {!editingKioskPin ? (
-                          <button
-                            onClick={() => { setEditingKioskPin(true); setKioskPinDraft(''); }}
-                            style={{ ...secondaryButtonStyle, marginTop: 6 }}
-                            data-testid="kiosk-pin-edit-button"
-                          >
-                            PINを設定・変更
-                          </button>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-                            <input
-                              type="password"
-                              inputMode="numeric"
-                              pattern="\d*"
-                              value={kioskPinDraft}
-                              onChange={e => setKioskPinDraft(e.target.value.replace(/\D/g, ''))}
-                              placeholder="例: 1234"
-                              maxLength={8}
-                              style={{ ...inputStyle, width: 140 }}
-                              autoFocus
-                              data-testid="kiosk-pin-setting-input"
-                            />
-                            <button
-                              onClick={saveKioskPin}
-                              style={primaryButtonStyle}
-                              disabled={savingKioskPin || !/^\d{4,8}$/.test(kioskPinDraft)}
-                              data-testid="kiosk-pin-save-button"
-                            >
-                              {savingKioskPin ? '設定中...' : '設定'}
-                            </button>
-                            <button
-                              onClick={() => { setEditingKioskPin(false); setKioskPinDraft(''); }}
-                              style={secondaryButtonStyle}
-                              disabled={savingKioskPin}
-                            >
-                              取消
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  {PLUGIN_EXTRAS[plugin.name]?.({
+                    storeId: selectedStore?.id || '',
+                    kioskUrl,
+                    switchbotDevices,
+                    loadingDevices,
+                    fetchSwitchBotDevices,
+                    kioskPinDraft,
+                    setKioskPinDraft,
+                    editingKioskPin,
+                    setEditingKioskPin,
+                    savingKioskPin,
+                    saveKioskPin,
+                    copyText,
+                  })}
 
                   {plugin.settingsSchema.length > 0 && (
                     <div style={{ marginBottom: 12 }}>
@@ -866,4 +834,94 @@ const inlineCodeStyle: React.CSSProperties = {
   border: '1px solid #dbe2ea',
   background: '#f8fafc',
   fontSize: '0.82rem',
+};
+
+// プラグイン固有 extras レンダラー。新規プラグインで追加 UI が必要になったら
+// ここへ登録するだけで PluginSettingsPage 本体の render を変更せずに済む。
+const PLUGIN_EXTRAS: Record<string, PluginExtraRenderer> = {
+  switchbot: (ctx) => (
+    <div style={{ marginBottom: 16, padding: '14px', background: '#fff7ed', borderRadius: 8, border: '1px solid #fed7aa' }}>
+      <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 8, color: '#92400e' }}>デバイス確認</div>
+      <div style={{ fontSize: '0.8rem', color: '#78350f', marginBottom: 10 }}>
+        APIトークン・シークレットを保存後、デバイス一覧を取得できます。
+      </div>
+      <button
+        style={{ ...primaryButtonStyle, background: '#ea580c' }}
+        onClick={ctx.fetchSwitchBotDevices}
+        disabled={ctx.loadingDevices}
+      >
+        {ctx.loadingDevices ? '取得中...' : '🌡️ デバイス一覧を取得'}
+      </button>
+      {ctx.switchbotDevices.length > 0 && (
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {ctx.switchbotDevices.map((d) => (
+            <div key={d.deviceId} style={{ background: '#fff', border: '1px solid #fed7aa', borderRadius: 6, padding: '8px 12px', fontSize: '0.82rem' }}>
+              <span style={{ fontWeight: 600 }}>{d.deviceName || d.deviceId}</span>
+              <span style={{ color: '#888', marginLeft: 8 }}>{d.deviceType}</span>
+              <code style={{ marginLeft: 8, fontSize: '0.75rem', color: '#555' }}>{d.deviceId}</code>
+            </div>
+          ))}
+          <div style={{ fontSize: '0.78rem', color: '#78350f', marginTop: 4 }}>
+            デバイスIDをコピーしてHACCP項目に割り当てるには、キオスクの設定でマッピングを行ってください。
+          </div>
+        </div>
+      )}
+    </div>
+  ),
+  kiosk: (ctx) => (
+    <div style={{ marginBottom: 16, padding: '14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+      <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 12, color: '#555' }}>キオスク設定</div>
+
+      <div style={{ marginBottom: 12 }}>
+        <div style={metaLabelStyle}>キオスクURL（タブレットでブックマーク）</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
+          <code style={{ ...metaValueStyle, flex: 1, fontSize: '0.75rem' }}>{ctx.kioskUrl}</code>
+          <button onClick={() => ctx.copyText(ctx.kioskUrl, 'キオスクURL')} style={secondaryButtonStyle}>コピー</button>
+        </div>
+      </div>
+
+      <div>
+        <div style={metaLabelStyle}>キオスクPIN（4〜8桁の数字）</div>
+        {!ctx.editingKioskPin ? (
+          <button
+            onClick={() => { ctx.setEditingKioskPin(true); ctx.setKioskPinDraft(''); }}
+            style={{ ...secondaryButtonStyle, marginTop: 6 }}
+            data-testid="kiosk-pin-edit-button"
+          >
+            PINを設定・変更
+          </button>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="\d*"
+              value={ctx.kioskPinDraft}
+              onChange={e => ctx.setKioskPinDraft(e.target.value.replace(/\D/g, ''))}
+              placeholder="例: 1234"
+              maxLength={8}
+              style={{ ...inputStyle, width: 140 }}
+              autoFocus
+              data-testid="kiosk-pin-setting-input"
+            />
+            <button
+              onClick={ctx.saveKioskPin}
+              style={primaryButtonStyle}
+              disabled={ctx.savingKioskPin || !/^\d{4,8}$/.test(ctx.kioskPinDraft)}
+              data-testid="kiosk-pin-save-button"
+            >
+              {ctx.savingKioskPin ? '設定中...' : '設定'}
+            </button>
+            <button
+              onClick={() => { ctx.setEditingKioskPin(false); ctx.setKioskPinDraft(''); }}
+              style={secondaryButtonStyle}
+              disabled={ctx.savingKioskPin}
+            >
+              取消
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  ),
 };

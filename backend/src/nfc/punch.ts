@@ -11,9 +11,11 @@
 import { Router, Request, Response } from 'express';
 import { supabaseAdmin } from '../config/supabase';
 import {
-  calcBusinessDate, nextSessionNo, calcBreakMinutes,
+  calcBusinessDate, nextSessionNo,
   checkIdempotency, writeEvent, getPolicy,
+  formatAttendanceSession as formatSession,
 } from '../services/attendance/helpers';
+import { checkAndLogRateLimit, getClientIp } from '../services/reservation/rate_limit';
 
 export const nfcPunchRouter = Router();
 
@@ -35,6 +37,31 @@ async function requirePinUser(req: Request, res: Response): Promise<{
   }
   if (!pin || typeof pin !== 'string' || !/^\d{4}$/.test(pin)) {
     res.status(400).json({ error: 'PIN は4桁の数字で入力してください' });
+    return null;
+  }
+
+  // PIN は 4 桁 = 1 万通りしかないので、IP + store_id で厳しくレート制限する。
+  // 15分窓で 15 回まで (正常利用は連打しない前提)。超過したら 429。
+  const ip = getClientIp(req);
+  const ipRate = await checkAndLogRateLimit(ip, storeId, {
+    action: 'nfc.pin.ip',
+    windowSec: 15 * 60,
+    max: 15,
+  });
+  if (!ipRate.allowed) {
+    res.setHeader('Retry-After', String(ipRate.retryAfterSec || 900));
+    res.status(429).json({ error: '試行回数が多すぎます。しばらくしてから再度お試しください。' });
+    return null;
+  }
+  // store 単位でも制限 (同一店舗で何万回も試行されるのを防ぐ)
+  const storeRate = await checkAndLogRateLimit(`store:${storeId}`, storeId, {
+    action: 'nfc.pin.store',
+    windowSec: 15 * 60,
+    max: 100,
+  });
+  if (!storeRate.allowed) {
+    res.setHeader('Retry-After', String(storeRate.retryAfterSec || 900));
+    res.status(429).json({ error: '試行回数が多すぎます。しばらくしてから再度お試しください。' });
     return null;
   }
 
@@ -68,20 +95,6 @@ async function requirePinUser(req: Request, res: Response): Promise<{
     storeId,
     staffId: (staff as any).id,
     userName: (staff as any).user?.name ?? null,
-  };
-}
-
-function formatSession(s: any) {
-  const breaks = s.breaks || [];
-  return {
-    id: s.id,
-    businessDate: s.business_date,
-    sessionNo: s.session_no,
-    status: s.status,
-    clockInAt: s.clock_in_at,
-    clockOutAt: s.clock_out_at,
-    breaks: breaks.map((b: any) => ({ id: b.id, startedAt: b.started_at, endedAt: b.ended_at })),
-    breakMinutes: calcBreakMinutes(breaks),
   };
 }
 
@@ -150,7 +163,7 @@ nfcPunchRouter.post('/clock-in', async (req: Request, res: Response) => {
     if (!auth) return;
     const { idempotencyKey } = req.body ?? {};
 
-    const idem = await checkIdempotency(supabaseAdmin, idempotencyKey);
+    const idem = await checkIdempotency(supabaseAdmin, auth.storeId, auth.userId, idempotencyKey);
     if (idem.duplicate) { res.json({ message: '出勤済み（重複リクエスト）' }); return; }
 
     const { data: open } = await supabaseAdmin
@@ -165,7 +178,7 @@ nfcPunchRouter.post('/clock-in', async (req: Request, res: Response) => {
     const policy = await getPolicy(supabaseAdmin, auth.storeId);
     const now = new Date();
     const businessDate = calcBusinessDate(now, policy.timezone, policy.business_day_cutoff_hour);
-    const sessionNo = await nextSessionNo(supabaseAdmin, auth.userId, businessDate);
+    const sessionNo = await nextSessionNo(supabaseAdmin, auth.storeId, auth.userId, businessDate);
 
     const { data: record, error } = await supabaseAdmin
       .from('attendance_records')
@@ -209,7 +222,7 @@ nfcPunchRouter.post('/break-start', async (req: Request, res: Response) => {
     if (!auth) return;
     const { idempotencyKey } = req.body ?? {};
 
-    const idem = await checkIdempotency(supabaseAdmin, idempotencyKey);
+    const idem = await checkIdempotency(supabaseAdmin, auth.storeId, auth.userId, idempotencyKey);
     if (idem.duplicate) { res.json({ message: '休憩開始済み' }); return; }
 
     const { data: session } = await supabaseAdmin
@@ -257,7 +270,7 @@ nfcPunchRouter.post('/break-end', async (req: Request, res: Response) => {
     if (!auth) return;
     const { idempotencyKey } = req.body ?? {};
 
-    const idem = await checkIdempotency(supabaseAdmin, idempotencyKey);
+    const idem = await checkIdempotency(supabaseAdmin, auth.storeId, auth.userId, idempotencyKey);
     if (idem.duplicate) { res.json({ message: '休憩終了済み' }); return; }
 
     const { data: session } = await supabaseAdmin
@@ -304,7 +317,7 @@ nfcPunchRouter.post('/clock-out', async (req: Request, res: Response) => {
     if (!auth) return;
     const { idempotencyKey } = req.body ?? {};
 
-    const idem = await checkIdempotency(supabaseAdmin, idempotencyKey);
+    const idem = await checkIdempotency(supabaseAdmin, auth.storeId, auth.userId, idempotencyKey);
     if (idem.duplicate) { res.json({ message: '退勤済み' }); return; }
 
     const { data: session } = await supabaseAdmin

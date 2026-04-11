@@ -7,3 +7,4 @@ dist/
 .env.remote
 .env.vercel
 .env.local
+.mcp.json

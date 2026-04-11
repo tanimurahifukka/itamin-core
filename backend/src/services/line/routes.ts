@@ -12,39 +12,20 @@ import { requireAuth } from '../../middleware/auth';
 import { supabaseAdmin } from '../../config/supabase';
 import { requireManagedStore, requireStoreMembership } from '../../auth/authorization';
 import { writeEvent } from '../attendance/helpers';
+import { checkAndLogRateLimit, getClientIp } from '../reservation/rate_limit';
+import { getLineConfig } from './config';
 import crypto from 'crypto';
 
 const router = Router();
+
+// 連携コードは 6 桁数字。形式外は DB を叩くまでもなく弾く。
+const LINK_CODE_PATTERN = /^[0-9]{6}$/;
 
 function createLineLoginState(storeId: string) {
   return `itamin:${Buffer.from(JSON.stringify({
     storeId,
     ts: Date.now(),
   })).toString('base64url')}`;
-}
-
-/**
- * 施設のLINE設定を取得する。
- * store_plugins.config → process.env の優先順でフォールバック。
- */
-async function getLineConfig(storeId: string): Promise<{
-  channelId: string | undefined;
-  channelSecret: string | undefined;
-  callbackUrl: string | undefined;
-}> {
-  const { data } = await supabaseAdmin
-    .from('store_plugins')
-    .select('config')
-    .eq('store_id', storeId)
-    .eq('plugin_name', 'line_attendance')
-    .maybeSingle();
-
-  const cfg = data?.config || {};
-  return {
-    channelId: cfg.line_login_channel_id || process.env.LINE_LOGIN_CHANNEL_ID,
-    channelSecret: cfg.line_login_channel_secret || process.env.LINE_LOGIN_CHANNEL_SECRET,
-    callbackUrl: cfg.line_login_callback_url || process.env.LINE_LOGIN_CALLBACK_URL,
-  };
 }
 
 // ================================================================
@@ -145,6 +126,41 @@ router.post('/link-with-code', async (req: Request, res: Response) => {
     if (!code || !lineUserId) {
       res.status(400).json({ error: 'code and lineUserId are required' });
       return;
+    }
+
+    // コード形式検証: 6桁数字以外は DB を叩かずに即 400 にする。
+    // 正規表現でフィルタしてから可能な攻撃空間を 10^6 に固定する。
+    if (typeof code !== 'string' || !LINK_CODE_PATTERN.test(code)) {
+      res.status(400).json({ error: '連携コードが正しくありません', code: 'INVALID_LINK_CODE' });
+      return;
+    }
+
+    // IP ベースのレート制限 (ブルートフォース対策)
+    // 15分窓で 10回まで。10^6 の空間に対して十分な防御線。
+    const ip = getClientIp(req);
+    const ipRate = await checkAndLogRateLimit(ip, null, {
+      action: 'line.link_with_code.ip',
+      windowSec: 15 * 60,
+      max: 10,
+    });
+    if (!ipRate.allowed) {
+      res.setHeader('Retry-After', String(ipRate.retryAfterSec || 900));
+      res.status(429).json({ error: '試行回数が多すぎます。しばらくしてから再度お試しください。' });
+      return;
+    }
+
+    // lineUserId ベースのレート制限 (分散 IP 攻撃対策)
+    if (typeof lineUserId === 'string' && lineUserId.length > 0) {
+      const userRate = await checkAndLogRateLimit(`line:${lineUserId}`, null, {
+        action: 'line.link_with_code.user',
+        windowSec: 60 * 60,
+        max: 20,
+      });
+      if (!userRate.allowed) {
+        res.setHeader('Retry-After', String(userRate.retryAfterSec || 3600));
+        res.status(429).json({ error: '試行回数が多すぎます。しばらくしてから再度お試しください。' });
+        return;
+      }
     }
 
     // 既に他アカウントにリンク済みチェック

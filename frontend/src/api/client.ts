@@ -100,7 +100,7 @@ export const api = {
   getStoreAccount: (storeId: string) => request<{ account: StoreAccount }>(`/stores/${storeId}/account`),
   updateStoreAccount: (
     storeId: string,
-    updates: { name: string; address?: string; phone?: string; openTime?: string; closeTime?: string }
+    updates: { name: string; address?: string; phone?: string; slug?: string; openTime?: string; closeTime?: string }
   ) => request<{ account: StoreAccount }>(`/stores/${storeId}/account`, {
     method: 'PUT',
     body: JSON.stringify(updates),

@@ -30,6 +30,7 @@ export interface StoreAccount {
   name: string;
   address?: string;
   phone?: string;
+  slug?: string;
   openTime?: string;
   closeTime?: string;
 }

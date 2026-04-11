@@ -25,11 +25,15 @@ export interface Plugin {
 }
 
 // ===== Express Request 拡張 =====
+// any キャストを避けるため、ミドルウェアが Request に付与する拡張プロパティを
+// ここで一元的に宣言する。利用箇所では `req.kioskStoreId` のように直接アクセスできる。
 declare global {
   namespace Express {
     interface Request {
       user?: import('@supabase/supabase-js').User;
       accessToken?: string;
+      kioskStoreId?: string;
+      rawBody?: Buffer;
     }
   }
 }
