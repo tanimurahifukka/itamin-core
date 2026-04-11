@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
-import type { TimeRecord, MonthlySummaryStaff } from '../types/api';
+import type { TimeRecord, MonthlySummaryStaff, StaffMember } from '../types/api';
 
 type ViewMode = 'daily' | 'monthly' | 'staff';
 
@@ -40,13 +40,16 @@ export default function DashboardPage() {
   // 未退勤レコード（ペア不一致）
   const [staleRecords, setStaleRecords] = useState<(TimeRecord & { date: string })[]>([]);
 
-  // 編集モーダル
+  // 編集モーダル (edit mode は editRecord!=null、create mode は isCreating=true)
   const [editRecord, setEditRecord] = useState<TimeRecord | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [editClockIn, setEditClockIn] = useState('');
   const [editClockOut, setEditClockOut] = useState('');
   const [editBreakMinutes, setEditBreakMinutes] = useState(0);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState('');
+  const [editStaffId, setEditStaffId] = useState('');
+  const [storeStaff, setStoreStaff] = useState<StaffMember[]>([]);
 
   // 日別データ取得
   const loadDailyRecords = useCallback(() => {
@@ -123,24 +126,77 @@ export default function DashboardPage() {
   // 編集モーダルを開く
   const openEditModal = (record: TimeRecord) => {
     if (!canEdit) return;
+    setIsCreating(false);
     setEditRecord(record);
+    setEditStaffId(record.staffId || '');
     setEditClockIn(toLocalDatetimeStr(record.clockIn));
     setEditClockOut(record.clockOut ? toLocalDatetimeStr(record.clockOut) : '');
     setEditBreakMinutes(record.breakMinutes || 0);
     setEditError('');
   };
 
+  // 新規作成モーダルを開く
+  const openCreateModal = async () => {
+    if (!canEdit || !selectedStore) return;
+    // デフォルト値: 表示中の日付の 09:00-17:00
+    const baseDate = date;
+    setIsCreating(true);
+    setEditRecord(null);
+    setEditStaffId('');
+    setEditClockIn(`${baseDate}T09:00`);
+    setEditClockOut(`${baseDate}T17:00`);
+    setEditBreakMinutes(60);
+    setEditError('');
+    // スタッフ一覧を読み込み (既に読み込み済みならスキップ)
+    if (storeStaff.length === 0) {
+      try {
+        const data = await api.getStoreStaff(selectedStore.id);
+        setStoreStaff(data.staff);
+      } catch {
+        setEditError('スタッフ一覧の取得に失敗しました');
+      }
+    }
+  };
+
   const closeEditModal = () => {
     setEditRecord(null);
+    setIsCreating(false);
     setEditError('');
   };
 
   const handleEditSubmit = async () => {
-    if (!selectedStore || !editRecord || editSubmitting) return;
+    if (!selectedStore || editSubmitting) return;
     setEditSubmitting(true);
     setEditError('');
 
     try {
+      if (isCreating) {
+        if (!editStaffId) {
+          setEditError('スタッフを選択してください');
+          setEditSubmitting(false);
+          return;
+        }
+        if (!editClockIn) {
+          setEditError('出勤時刻は必須です');
+          setEditSubmitting(false);
+          return;
+        }
+        const newClockIn = new Date(editClockIn).toISOString();
+        const newClockOut = editClockOut ? new Date(editClockOut).toISOString() : null;
+        await api.createTimeRecord(selectedStore.id, {
+          staffId: editStaffId,
+          clockIn: newClockIn,
+          clockOut: newClockOut,
+          breakMinutes: editBreakMinutes,
+        });
+        showToast('勤怠記録を作成しました', 'success');
+        closeEditModal();
+        loadDailyRecords();
+        return;
+      }
+
+      if (!editRecord) return;
+
       // clockOut accepts null to explicitly clear the value (not supported by the API type, but handled server-side)
       const updates: { clockIn?: string; clockOut?: string | null; breakMinutes?: number } = {};
       const newClockIn = new Date(editClockIn).toISOString();
@@ -163,6 +219,26 @@ export default function DashboardPage() {
       loadDailyRecords();
       // 未退勤リストも更新
       setStaleRecords(prev => prev.filter(r => r.id !== editRecord.id));
+    } catch (e: unknown) {
+      setEditError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const handleEditDelete = async () => {
+    if (!selectedStore || !editRecord || editSubmitting) return;
+    const name = editRecord.staffName || 'このスタッフ';
+    if (!window.confirm(`${name}さんのこの勤怠記録を削除します。よろしいですか？`)) return;
+    setEditSubmitting(true);
+    setEditError('');
+    try {
+      await api.deleteTimeRecord(selectedStore.id, editRecord.id);
+      showToast('勤怠記録を削除しました', 'success');
+      const deletedId = editRecord.id;
+      closeEditModal();
+      loadDailyRecords();
+      setStaleRecords(prev => prev.filter(r => r.id !== deletedId));
     } catch (e: unknown) {
       setEditError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -290,14 +366,26 @@ export default function DashboardPage() {
 
           {/* 日別タイムカード */}
           <div className="records-section">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8, flexWrap: 'wrap' }}>
               <h3>日別タイムカード</h3>
-              <input
-                type="date"
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                className="date-picker"
-              />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={e => setDate(e.target.value)}
+                  className="date-picker"
+                />
+                {canEdit && (
+                  <button
+                    className="edit-record-btn"
+                    onClick={openCreateModal}
+                    data-testid="create-record-btn"
+                    style={{ whiteSpace: 'nowrap' }}
+                  >
+                    ＋ 新規追加
+                  </button>
+                )}
+              </div>
             </div>
 
             {records.length === 0 ? (
@@ -625,16 +713,39 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 勤怠編集モーダル */}
-      {editRecord && (
+      {/* 勤怠編集モーダル (create / edit 兼用) */}
+      {(editRecord || isCreating) && (
         <div className="break-modal-overlay" onClick={closeEditModal}>
           <div className="break-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }} data-testid="edit-record-modal">
-            <h3>勤怠記録の修正</h3>
+            <h3>{isCreating ? '勤怠記録の新規作成' : '勤怠記録の修正'}</h3>
             <p className="break-modal-desc">
-              {editRecord.staffName || '—'} さんの記録を修正します
+              {isCreating
+                ? 'スタッフと時刻を選択して作成します'
+                : `${editRecord?.staffName || '—'} さんの記録を修正します`}
             </p>
 
             {editError && <div className="error-msg" style={{ marginBottom: 8 }}>{editError}</div>}
+
+            {isCreating && (
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>スタッフ</label>
+                <select
+                  value={editStaffId}
+                  onChange={e => setEditStaffId(e.target.value)}
+                  data-testid="edit-staff-select"
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontSize: '1rem', background: 'white' }}
+                >
+                  <option value="">選択してください</option>
+                  {storeStaff
+                    .filter(s => s.role !== 'owner')
+                    .map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.userName}（{s.role}）
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
 
             <div style={{ marginBottom: 12 }}>
               <label style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>出勤時刻</label>
@@ -688,17 +799,28 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="break-modal-actions">
+            <div className="break-modal-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="break-cancel" onClick={closeEditModal} data-testid="edit-cancel-btn">
                 キャンセル
               </button>
+              {!isCreating && editRecord && (
+                <button
+                  className="break-cancel"
+                  onClick={handleEditDelete}
+                  disabled={editSubmitting}
+                  data-testid="edit-delete-btn"
+                  style={{ color: '#ef4444', borderColor: '#ef4444' }}
+                >
+                  削除
+                </button>
+              )}
               <button
                 className="break-confirm"
                 onClick={handleEditSubmit}
                 disabled={editSubmitting}
                 data-testid="edit-save-btn"
               >
-                {editSubmitting ? '保存中...' : '保存'}
+                {editSubmitting ? (isCreating ? '作成中...' : '保存中...') : (isCreating ? '作成' : '保存')}
               </button>
             </div>
           </div>

@@ -209,6 +209,15 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(updates),
     }),
+  deleteTimeRecord: (storeId: string, recordId: string) =>
+    request<OkResponse>(`/timecard/${storeId}/records/${recordId}`, {
+      method: 'DELETE',
+    }),
+  createTimeRecord: (storeId: string, body: { staffId: string; clockIn: string; clockOut?: string | null; breakMinutes?: number }) =>
+    request<{ record: TimeRecord }>(`/timecard/${storeId}/records`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   getDailyRecords: (storeId: string, date?: string) =>
     request<{ records: TimeRecord[] }>(`/timecard/${storeId}/daily${date ? `?date=${date}` : ''}`),
   getMonthlyRecords: (storeId: string, year?: number, month?: number) => {

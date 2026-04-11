@@ -466,4 +466,129 @@ router.put('/:storeId/records/:recordId', requireAuth, async (req: Request, res:
   }
 });
 
+// オーナー/マネージャーによる勤怠レコード削除
+router.delete('/:storeId/records/:recordId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const recordId = req.params.recordId as string;
+
+    const staff = await getStoreStaff(storeId, req.user!.id);
+    if (!staff || !['owner', 'manager'].includes(staff.role)) {
+      res.status(403).json({ error: 'オーナーまたはマネージャーのみ削除できます' });
+      return;
+    }
+
+    const { data: target } = await supabaseAdmin
+      .from('time_records')
+      .select('id')
+      .eq('id', recordId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (!target) {
+      res.status(404).json({ error: '勤怠レコードが見つかりません' });
+      return;
+    }
+
+    const { error } = await supabaseAdmin
+      .from('time_records')
+      .delete()
+      .eq('id', recordId)
+      .eq('store_id', storeId);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error('[timecard DELETE /:storeId/records/:recordId] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// オーナー/マネージャーによる勤怠レコード新規作成
+router.post('/:storeId/records', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const { staffId, clockIn, clockOut, breakMinutes } = req.body as {
+      staffId?: string;
+      clockIn?: string;
+      clockOut?: string | null;
+      breakMinutes?: number;
+    };
+
+    const actor = await getStoreStaff(storeId, req.user!.id);
+    if (!actor || !['owner', 'manager'].includes(actor.role)) {
+      res.status(403).json({ error: 'オーナーまたはマネージャーのみ作成できます' });
+      return;
+    }
+
+    if (!staffId || !clockIn) {
+      res.status(400).json({ error: 'スタッフと出勤時刻は必須です' });
+      return;
+    }
+
+    // 対象スタッフが同一店舗か確認
+    const { data: targetStaff } = await supabaseAdmin
+      .from('store_staff')
+      .select('id')
+      .eq('id', staffId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (!targetStaff) {
+      res.status(404).json({ error: '対象スタッフが見つかりません' });
+      return;
+    }
+
+    if (clockOut && new Date(clockOut) <= new Date(clockIn)) {
+      res.status(400).json({ error: '退勤時刻は出勤時刻より後にしてください' });
+      return;
+    }
+
+    const insertPayload: {
+      store_id: string;
+      staff_id: string;
+      clock_in: string;
+      clock_out: string | null;
+      break_minutes: number;
+    } = {
+      store_id: storeId,
+      staff_id: staffId,
+      clock_in: clockIn,
+      clock_out: clockOut ?? null,
+      break_minutes: typeof breakMinutes === 'number' ? breakMinutes : 0,
+    };
+
+    const { data: record, error } = await supabaseAdmin
+      .from('time_records')
+      .insert(insertPayload)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        res.status(409).json({ error: '既に出勤中のレコードがあります（同時存在検知）' });
+        return;
+      }
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.status(201).json({
+      record: {
+        id: record.id,
+        clockIn: record.clock_in,
+        clockOut: record.clock_out,
+        breakMinutes: record.break_minutes,
+      },
+    });
+  } catch (e: any) {
+    console.error('[timecard POST /:storeId/records] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
 export const timecardRouter = router;
