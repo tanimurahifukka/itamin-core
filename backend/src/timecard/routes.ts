@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
+import { buildDetailCsv, buildSummaryCsv } from './csv';
+import type { DetailRecord, SummaryRecord } from './csv';
 
 const router = Router();
 
@@ -624,6 +626,139 @@ router.post('/:storeId/records', requireAuth, async (req: Request, res: Response
     });
   } catch (e: any) {
     console.error('[timecard POST /:storeId/records] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// 勤怠データ CSV エクスポート
+// GET /:storeId/export?year=YYYY&month=MM&mode=detail|summary
+// 権限: attendance プラグインの config.export_permission (role 配列)。未設定時は ['owner','manager']
+router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const year = parseInt(req.query.year as string) || new Date().getFullYear();
+    const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
+    const mode = (req.query.mode as string) === 'summary' ? 'summary' : 'detail';
+
+    // 認証ユーザーの店舗スタッフ情報取得
+    const staff = await getStoreStaff(storeId, req.user!.id);
+    if (!staff) {
+      res.status(403).json({ error: 'この店舗のスタッフではありません' });
+      return;
+    }
+
+    // attendance プラグイン config から export_permission を取得
+    const { data: pluginData } = await supabaseAdmin
+      .from('store_plugins')
+      .select('config')
+      .eq('store_id', storeId)
+      .eq('plugin_name', 'attendance')
+      .maybeSingle();
+
+    const cfg = (pluginData?.config as Record<string, unknown>) || {};
+    const exportPermission: string[] = Array.isArray(cfg.export_permission)
+      ? (cfg.export_permission as string[])
+      : ['owner', 'manager'];
+
+    if (!exportPermission.includes(staff.role)) {
+      res.status(403).json({ error: 'CSV エクスポートの権限がありません' });
+      return;
+    }
+
+    // 対象月のレコードを取得
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endMonth = month === 12 ? 1 : month + 1;
+    const endYear = month === 12 ? year + 1 : year;
+    const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
+
+    const { data, error } = await supabaseAdmin
+      .from('time_records')
+      .select('*, staff:store_staff(id, hourly_wage, user:profiles(name))')
+      .eq('store_id', storeId)
+      .gte('clock_in', startDate)
+      .lt('clock_in', endDate)
+      .order('clock_in');
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+    const filename = `attendance_${storeId}_${monthStr}_${mode}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    if (mode === 'detail') {
+      const records: DetailRecord[] = (data || [])
+        .filter((r: any) => r.clock_out != null)
+        .map((r: any) => {
+          const clockInDate = new Date(r.clock_in);
+          const clockOutDate = new Date(r.clock_out);
+          const diffMinutes = (clockOutDate.getTime() - clockInDate.getTime()) / 60000;
+          const breakMins = r.break_minutes || 0;
+          const workMinutes = Math.max(0, diffMinutes - breakMins);
+          const hourlyWage: number = r.staff?.hourly_wage || 0;
+          const estimatedSalary = Math.round(workMinutes / 60 * hourlyWage);
+          const dateStr = clockInDate.toISOString().split('T')[0];
+          const clockInStr = clockInDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Tokyo' });
+          const clockOutStr = clockOutDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Tokyo' });
+          return {
+            date: dateStr,
+            staffName: r.staff?.user?.name || '—',
+            clockIn: clockInStr,
+            clockOut: clockOutStr,
+            breakMinutes: breakMins,
+            workMinutes,
+            estimatedSalary,
+          };
+        });
+      res.send(buildDetailCsv(records));
+    } else {
+      // summary モード: スタッフごとに集計
+      const staffMap = new Map<string, {
+        staffName: string;
+        hourlyWage: number;
+        totalMinutes: number;
+        totalBreakMinutes: number;
+        workDays: Set<string>;
+      }>();
+
+      for (const r of data || []) {
+        const sid = (r as any).staff_id;
+        if (!staffMap.has(sid)) {
+          staffMap.set(sid, {
+            staffName: (r as any).staff?.user?.name || '—',
+            hourlyWage: (r as any).staff?.hourly_wage || 0,
+            totalMinutes: 0,
+            totalBreakMinutes: 0,
+            workDays: new Set(),
+          });
+        }
+        const entry = staffMap.get(sid)!;
+        if ((r as any).clock_out) {
+          const diff = (new Date((r as any).clock_out).getTime() - new Date((r as any).clock_in).getTime()) / 60000;
+          const breakMins = (r as any).break_minutes || 0;
+          entry.totalBreakMinutes += breakMins;
+          entry.totalMinutes += Math.max(0, diff - breakMins);
+        }
+        const day = new Date((r as any).clock_in).toISOString().split('T')[0];
+        entry.workDays.add(day);
+      }
+
+      const summaryRecords: SummaryRecord[] = Array.from(staffMap.values()).map(s => ({
+        staffName: s.staffName,
+        workDays: s.workDays.size,
+        totalWorkHours: Math.round(s.totalMinutes / 60 * 100) / 100,
+        totalBreakMinutes: s.totalBreakMinutes,
+        estimatedSalary: Math.round(s.totalMinutes / 60 * s.hourlyWage),
+      }));
+
+      res.send(buildSummaryCsv(summaryRecords));
+    }
+  } catch (e: any) {
+    console.error('[timecard GET /:storeId/export] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });

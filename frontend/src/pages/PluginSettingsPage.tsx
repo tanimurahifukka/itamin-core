@@ -694,6 +694,48 @@ export default function PluginSettingsPage() {
                     copyText,
                   })}
 
+                  {/* attendance プラグイン: CSVエクスポート許可ロール選択UI */}
+                  {plugin.name === 'attendance' && (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 8, color: '#555' }}>
+                        CSVエクスポート許可ロール
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {ALL_ROLES.map(role => {
+                          const currentPerms: string[] = Array.isArray(localConfigs[plugin.name]?.export_permission)
+                            ? (localConfigs[plugin.name].export_permission as string[])
+                            : ['owner', 'manager'];
+                          const checked = currentPerms.includes(role.value);
+                          return (
+                            <button
+                              key={role.value}
+                              data-testid={`export-permission-role-${role.value}`}
+                              onClick={() => {
+                                const next = checked
+                                  ? currentPerms.filter(r => r !== role.value)
+                                  : [...currentPerms, role.value];
+                                updateLocalConfig(plugin.name, 'export_permission', next);
+                              }}
+                              style={{
+                                padding: '6px 14px',
+                                borderRadius: 4,
+                                border: `1px solid ${checked ? '#2563eb' : '#d4d9df'}`,
+                                background: checked ? '#eff6ff' : '#fff',
+                                color: checked ? '#2563eb' : '#888',
+                                fontWeight: checked ? 600 : 400,
+                                fontSize: '0.85rem',
+                                cursor: 'pointer',
+                                fontFamily: 'inherit',
+                              }}
+                            >
+                              {role.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {plugin.settingsSchema.length > 0 && (
                     <div style={{ marginBottom: 12 }}>
                       <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 8, color: '#555' }}>

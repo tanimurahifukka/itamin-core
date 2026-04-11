@@ -45,6 +45,23 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
     else setMonth(m => m + 1);
   };
 
+  const handleCsvDownload = useCallback(async (mode: 'detail' | 'summary') => {
+    if (!storeId) return;
+    try {
+      const { blob, filename } = await api.exportAttendanceCsv(storeId, year, month, mode);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      // エラーは静かに無視（権限不足の場合など）
+    }
+  }, [storeId, year, month]);
+
   return (
     <div className="admin-monthly-list">
       <h2>月次勤怠一覧</h2>
@@ -53,6 +70,23 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
         <button className="button" onClick={prevMonth} data-testid="prev-month-button">◀</button>
         <span className="attendance-month-label">{year}年{month}月</span>
         <button className="button" onClick={nextMonth} data-testid="next-month-button">▶</button>
+      </div>
+
+      <div className="attendance-csv-actions" style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <button
+          className="button button-small"
+          onClick={() => handleCsvDownload('detail')}
+          data-testid="csv-download-detail-button"
+        >
+          CSVダウンロード（明細）
+        </button>
+        <button
+          className="button button-small"
+          onClick={() => handleCsvDownload('summary')}
+          data-testid="csv-download-summary-button"
+        >
+          CSVダウンロード（月次サマリ）
+        </button>
       </div>
 
       {loading ? (

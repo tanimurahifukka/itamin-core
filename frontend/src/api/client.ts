@@ -96,6 +96,33 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+/**
+ * Authorization ヘッダー付きで Blob をダウンロードし、
+ * Blob と Content-Disposition から抽出したファイル名を返す。
+ */
+async function downloadBlob(path: string): Promise<{ blob: Blob; filename: string }> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new ApiRequestError(body.error || `HTTP ${res.status}`, res.status, body);
+  }
+
+  const blob = await res.blob();
+  // Content-Disposition: attachment; filename="attendance_xxx_2026-04_detail.csv"
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="([^"]+)"/);
+  const filename = match ? match[1] : 'attendance.csv';
+  return { blob, filename };
+}
+
 export const api = {
   // Stores
   getStores: () => request<{ stores: Store[] }>('/stores'),
@@ -952,4 +979,19 @@ export const api = {
       `/public/r/${slug}/event/reservations`,
       { method: 'POST', body: JSON.stringify(data) },
     ),
+
+  // 勤怠 CSV エクスポート
+  exportAttendanceCsv: (
+    storeId: string,
+    year: number,
+    month: number,
+    mode: 'detail' | 'summary',
+  ): Promise<{ blob: Blob; filename: string }> => {
+    const params = new URLSearchParams({
+      year: String(year),
+      month: String(month),
+      mode,
+    });
+    return downloadBlob(`/timecard/${storeId}/export?${params}`);
+  },
 };
