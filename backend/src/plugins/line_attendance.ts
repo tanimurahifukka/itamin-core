@@ -16,6 +16,7 @@ export const lineAttendancePlugin: Plugin = {
   label: 'LINE打刻',
   icon: '📱',
   core: false,
+  defaultEnabled: true,
   defaultRoles: ['manager', 'leader', 'full_time', 'part_time'],
   settingsSchema: [
     {
@@ -68,6 +69,7 @@ export const attendanceAdminPlugin: Plugin = {
   label: '勤怠管理(LINE)',
   icon: '📋',
   core: false,
+  defaultEnabled: true,
   defaultRoles: ['owner', 'manager'],
   initialize: (_app: Express) => {},
 };

@@ -18,6 +18,7 @@ export interface Plugin {
   label: string;
   icon: string;
   core?: boolean;                        // true = 無効化不可（打刻・設定など）
+  defaultEnabled?: boolean;              // store_plugins に未登録のときの既定値（非core プラグイン用）
   defaultRoles: StaffRole[];             // デフォルトでアクセスできるロール
   settingsSchema?: PluginSettingField[];
   initialize: (app: import('express').Express) => void;
