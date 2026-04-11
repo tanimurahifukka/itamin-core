@@ -15,7 +15,13 @@
 --   - 使用済みトークンは使用不可
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS public.store_invitations (
+-- 00001 の旧スキーマ版 store_invitations (email/name/hourly_wage 方式) と
+-- それを参照する process_invitations トリガは token ベース方式では不要なので drop する
+DROP TRIGGER IF EXISTS on_profile_created_process_invitations ON public.profiles;
+DROP FUNCTION IF EXISTS public.process_invitations();
+DROP TABLE IF EXISTS public.store_invitations CASCADE;
+
+CREATE TABLE public.store_invitations (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   store_id       UUID NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
   token          TEXT NOT NULL UNIQUE,

@@ -12,7 +12,7 @@ export default function ConsecutiveWorkPage() {
   const loadData = useCallback(() => {
     if (!selectedStore) return;
     api.getConsecutiveWork(selectedStore.id)
-      .then((data) => setStaffStatus(data.staff))
+      .then((data) => setStaffStatus(data.staffStatus ?? []))
       .catch(() => {});
   }, [selectedStore]);
 

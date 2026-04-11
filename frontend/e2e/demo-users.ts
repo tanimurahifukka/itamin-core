@@ -1,12 +1,9 @@
 /**
- * デモ用アカウント / 店舗の定数定義
+ * Playwright 向けのデモ定数ローカルコピー。
  *
- * `backend/scripts/seed-demo.ts`（永続デモ投入）と
- * `frontend/e2e/setup.ts`（使い捨て E2E データ）の双方から import する。
- * ここを一元化することで「seed した email とテストが使う email がズレる」事故を防ぐ。
- *
- * NOTE: ここは d.ts 無しの純粋な TS モジュールで、実行環境依存を持たない。
- * Supabase クライアント等はここで import しない。
+ * backend/scripts/demo-users.ts と内容を同期させる必要がある。
+ * Playwright の TS ランナーは ESM/CJS 境界を越えると named import が
+ * 解決できなくなるため、同じ ESM パッケージ (frontend) 内に複写している。
  */
 
 export const DEMO_STORE_ID = '00000000-0000-0000-0000-00000000dd00';
@@ -31,20 +28,3 @@ export const DEMO_USERS: Record<DemoRole, DemoUser> = {
 };
 
 export const DEMO_ROLES: DemoRole[] = ['owner', 'manager', 'leader', 'full_time', 'part_time'];
-
-// 永続デモ店舗で有効化するプラグイン一覧。
-// core プラグイン（punch/attendance/staff/settings）はコード上で常時有効なので含めない。
-export const DEMO_ENABLED_PLUGINS = [
-  'shift',
-  'shift_request',
-  'haccp',
-  'menu',
-  'daily_report',
-  'inventory',
-  'notice',
-  'paid_leave',
-  'expense',
-  'feedback',
-  'line_attendance',
-  'attendance_admin',
-];

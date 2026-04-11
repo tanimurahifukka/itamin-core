@@ -586,7 +586,7 @@ export default function PluginSettingsPage() {
         {plugins.map(plugin => {
           const isExpanded = expandedPlugin === plugin.name;
           return (
-            <div key={plugin.name} style={{
+            <div key={plugin.name} data-testid={`plugin-card-${plugin.name}`} style={{
               background: 'white',
               borderRadius: 8,
               border: '1px solid #d4d9df',
@@ -599,6 +599,7 @@ export default function PluginSettingsPage() {
                 padding: '14px 20px',
               }}>
                 <div
+                  data-testid={`plugin-card-header-${plugin.name}`}
                   style={{ cursor: 'pointer', flex: 1 }}
                   onClick={() => setExpandedPlugin(isExpanded ? null : plugin.name)}
                 >

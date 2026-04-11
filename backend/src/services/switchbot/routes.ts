@@ -7,6 +7,86 @@ import { supabaseAdmin } from '../../config/supabase';
 const router = Router();
 const SWITCHBOT_BASE = 'https://api.switch-bot.com/v1.1';
 
+// ── kiosk/LINE 再利用向けヘルパ (router 外から呼ぶ) ─────────────────────────
+
+/** 指定店舗のメーター一覧を SwitchBot API から取得する。認証情報が無い場合は空配列。 */
+export async function fetchStoreMeters(storeId: string): Promise<any[]> {
+  const creds = await getCredentials(storeId);
+  if (!creds) return [];
+
+  try {
+    const r = await fetch(`${SWITCHBOT_BASE}/devices`, {
+      headers: makeSwitchBotHeaders(creds.token, creds.secret),
+    });
+    const json: any = await r.json();
+    if (!r.ok || json.statusCode !== 100) return [];
+
+    return (json.body?.deviceList || []).filter((d: any) => /meter/i.test(d.deviceType || ''));
+  } catch {
+    return [];
+  }
+}
+
+/** 指定デバイスのステータスを取得する。認証情報が無ければ null。 */
+export async function fetchDeviceStatus(storeId: string, deviceId: string) {
+  const creds = await getCredentials(storeId);
+  if (!creds) return null;
+
+  const r = await fetch(`${SWITCHBOT_BASE}/devices/${deviceId}/status`, {
+    headers: makeSwitchBotHeaders(creds.token, creds.secret),
+  });
+  const json: any = await r.json();
+  if (!r.ok || json.statusCode !== 100) return { error: json.message || `HTTP ${r.status}` };
+
+  const body = json.body || {};
+  return {
+    temperature: body.temperature ?? null,
+    humidity: body.humidity ?? null,
+    battery: body.battery ?? null,
+  };
+}
+
+/** 指定店舗の指定日付の readings をデバイス別にグループ化して返す。 */
+export async function listStoreReadingsForDate(storeId: string, date: string) {
+  const startISO = `${date}T00:00:00+09:00`;
+  const endISO = `${date}T23:59:59+09:00`;
+
+  const { data, error } = await supabaseAdmin
+    .from('switchbot_readings')
+    .select('device_id, device_name, temperature, humidity, battery, recorded_at')
+    .eq('store_id', storeId)
+    .gte('recorded_at', startISO)
+    .lte('recorded_at', endISO)
+    .order('recorded_at', { ascending: true });
+
+  if (error) throw new Error(error.message);
+
+  interface ReadingRow {
+    device_id: string;
+    device_name: string | null;
+    temperature: number | null;
+    humidity: number | null;
+    battery: number | null;
+    recorded_at: string;
+  }
+
+  const deviceMap = new Map<string, { deviceId: string; deviceName: string; readings: Array<{ temperature: number | null; humidity: number | null; battery: number | null; recordedAt: string }> }>();
+
+  for (const row of (data || []) as ReadingRow[]) {
+    if (!deviceMap.has(row.device_id)) {
+      deviceMap.set(row.device_id, { deviceId: row.device_id, deviceName: row.device_name || '', readings: [] });
+    }
+    deviceMap.get(row.device_id)!.readings.push({
+      temperature: row.temperature ?? null,
+      humidity: row.humidity ?? null,
+      battery: row.battery ?? null,
+      recordedAt: row.recorded_at,
+    });
+  }
+
+  return Array.from(deviceMap.values());
+}
+
 function makeSwitchBotHeaders(token: string, secret: string) {
   const t = Date.now();
   const nonce = crypto.randomUUID();

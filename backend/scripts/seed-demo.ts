@@ -126,7 +126,7 @@ async function seedNotice(ownerId: string) {
   // notices テーブルが無い環境もあるので失敗しても無視
   const { error } = await admin.from('notices').upsert(
     {
-      id: '00000000-0000-0000-0000-000000000n01',
+      id: '00000000-0000-0000-0000-00000000dd01',
       store_id: DEMO_STORE_ID,
       author_id: ownerId,
       title: 'デモ店舗へようこそ',

@@ -291,12 +291,12 @@ export const api = {
     const params = new URLSearchParams();
     if (year) params.set('year', String(year));
     if (month) params.set('month', String(month));
-    return request<{ staff: StaffOvertimeInfo[] }>(`/overtime-alert/${storeId}/monthly?${params}`);
+    return request<{ staffOvertime: StaffOvertimeInfo[]; settings: { monthlyLimitHours: number; standardHoursPerDay: number } }>(`/overtime-alert/${storeId}/monthly?${params}`);
   },
 
   // Consecutive Work
   getConsecutiveWork: (storeId: string) =>
-    request<{ staff: StaffConsecutiveInfo[] }>(`/consecutive-work/${storeId}/status`),
+    request<{ staffStatus: StaffConsecutiveInfo[] }>(`/consecutive-work/${storeId}/status`),
 
   // Daily Report
   getDailyReports: (storeId: string, year?: number, month?: number) => {
@@ -366,12 +366,12 @@ export const api = {
     if (year) params.set('year', String(year));
     if (month) params.set('month', String(month));
     if (category) params.set('category', category);
-    return request<{ items: Expense[]; summary: ExpenseSummary }>(`/expense/${storeId}/items?${params}`);
+    return request<{ expenses: Expense[]; summary: ExpenseSummary }>(`/expense/${storeId}/items?${params}`);
   },
   addExpense: (storeId: string, data: { date: string; category: string; description: string; amount: number; receiptNote?: string }) =>
-    request<{ item: Expense }>(`/expense/${storeId}/items`, { method: 'POST', body: JSON.stringify(data) }),
+    request<{ expense: Expense }>(`/expense/${storeId}/items`, { method: 'POST', body: JSON.stringify(data) }),
   updateExpense: (storeId: string, expenseId: string, updates: Partial<Pick<Expense, 'date' | 'category' | 'description' | 'amount' | 'receiptNote'>>) =>
-    request<{ item: Expense }>(`/expense/${storeId}/items/${expenseId}`, { method: 'PUT', body: JSON.stringify(updates) }),
+    request<{ expense: Expense }>(`/expense/${storeId}/items/${expenseId}`, { method: 'PUT', body: JSON.stringify(updates) }),
   deleteExpense: (storeId: string, expenseId: string) =>
     request<OkResponse>(`/expense/${storeId}/items/${expenseId}`, { method: 'DELETE' }),
 

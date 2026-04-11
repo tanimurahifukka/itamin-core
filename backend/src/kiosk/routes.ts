@@ -1,21 +1,21 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import * as crypto from 'crypto';
 import { supabaseAdmin } from '../config/supabase';
 import { config } from '../config';
 import { requireAuth } from '../middleware/auth';
 import { requireKiosk } from '../middleware/kiosk';
 import { requireManagedStore } from '../auth/authorization';
 import { checkAndLogRateLimit, getClientIp } from '../services/reservation/rate_limit';
-
-const SWITCHBOT_BASE = 'https://api.switch-bot.com/v1.1';
-
-function makeSwitchBotHeaders(token: string, secret: string) {
-  const t = Date.now();
-  const nonce = crypto.randomUUID();
-  const sign = crypto.createHmac('sha256', secret).update(token + t + nonce).digest('base64');
-  return { Authorization: token, t: String(t), nonce, sign, 'Content-Type': 'application/json' };
-}
+import {
+  listKioskActiveTemplates,
+  listKioskSubmissionsForDate,
+  createSubmission,
+} from '../services/haccp';
+import {
+  fetchStoreMeters,
+  fetchDeviceStatus,
+  listStoreReadingsForDate,
+} from '../services/switchbot/routes';
 
 const router = Router();
 
@@ -528,44 +528,9 @@ router.get('/:storeId/haccp/templates', requireKiosk, async (req: Request, res: 
     if (storeId !== req.kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
-
     const timing = typeof req.query.timing === 'string' ? req.query.timing : null;
-
-    let query = supabaseAdmin
-      .from('checklist_templates')
-      .select('id, name, timing, scope, description')
-      .eq('store_id', storeId)
-      .eq('scope', 'store')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true });
-
-    if (timing) query = query.eq('timing', timing);
-
-    const { data: templates, error } = await query;
-    if (error) { res.status(500).json({ error: error.message }); return; }
-
-    // 各テンプレートのアイテムを取得
-    const ids = (templates || []).map((t: any) => t.id);
-    const { data: items } = ids.length > 0
-      ? await supabaseAdmin
-          .from('checklist_template_items')
-          .select('id, template_id, label, item_type, required, min_value, max_value, unit, sort_order, options')
-          .in('template_id', ids)
-          .order('sort_order', { ascending: true })
-      : { data: [] };
-
-    const itemsByTemplate = ((items || []) as any[]).reduce((acc: any, item: any) => {
-      if (!acc[item.template_id]) acc[item.template_id] = [];
-      acc[item.template_id].push(item);
-      return acc;
-    }, {});
-
-    const result = (templates || []).map((t: any) => ({
-      ...t,
-      items: itemsByTemplate[t.id] || [],
-    }));
-
-    res.json({ templates: result });
+    const templates = await listKioskActiveTemplates(storeId, timing);
+    res.json({ templates });
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
@@ -587,53 +552,25 @@ router.post('/:storeId/haccp/submissions', requireKiosk, async (req: Request, re
       res.status(400).json({ error: 'template_id, membership_id, timing, items は必須です' }); return;
     }
 
-    // テンプレート確認
-    const { data: tpl } = await supabaseAdmin
-      .from('checklist_templates')
-      .select('id, name, version')
-      .eq('id', template_id)
-      .eq('store_id', storeId)
-      .maybeSingle();
-
-    if (!tpl) { res.status(404).json({ error: 'テンプレートが見つかりません' }); return; }
-
-    // サブミッション挿入
-    const { data: submission, error: subErr } = await supabaseAdmin
-      .from('checklist_submissions')
-      .insert({
-        store_id: storeId,
-        template_id,
-        template_version: tpl.version ?? 1,
+    try {
+      // kiosk は認証ユーザーが存在しないので submitted_by には membership_id を入れる。
+      // createSubmission 側は measurement/deviation 連携を含む本丸を 1 関数で完結させる。
+      const submission = await createSubmission({
+        storeId,
+        userId: membership_id,
         scope: 'store',
         timing,
-        membership_id,
-        submitted_at: new Date().toISOString(),
-        submitted_by: membership_id,
-      })
-      .select('id')
-      .single();
-
-    if (subErr) { res.status(500).json({ error: subErr.message }); return; }
-
-    // アイテム挿入
-    const rows = items.map((item: any) => ({
-      submission_id: submission.id,
-      template_item_id: item.template_item_id,
-      bool_value: item.bool_value ?? null,
-      numeric_value: item.numeric_value ?? null,
-      text_value: item.text_value ?? null,
-      select_value: item.select_value ?? null,
-      checked_by: membership_id,
-    }));
-
-    if (rows.length > 0) {
-      const { error: itemErr } = await supabaseAdmin
-        .from('checklist_submission_items')
-        .insert(rows);
-      if (itemErr) { res.status(500).json({ error: itemErr.message }); return; }
+        templateId: template_id,
+        membershipId: membership_id,
+        items,
+      });
+      res.status(201).json({ ok: true, submissionId: submission.id });
+    } catch (err: any) {
+      const msg = err?.message || '提出に失敗しました';
+      if (msg.includes('見つかりません')) res.status(404).json({ error: msg });
+      else if (msg.includes('必須')) res.status(400).json({ error: msg });
+      else res.status(500).json({ error: msg });
     }
-
-    res.status(201).json({ ok: true, submissionId: submission.id });
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
@@ -648,36 +585,8 @@ router.get('/:storeId/haccp/submissions', requireKiosk, async (req: Request, res
     if (storeId !== req.kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
-
     const date = typeof req.query.date === 'string' ? req.query.date : new Date().toISOString().split('T')[0];
-
-    const { data, error } = await supabaseAdmin
-      .from('checklist_submissions')
-      .select('id, template_id, timing, submitted_at, member:store_staff(user:profiles(name))')
-      .eq('store_id', storeId)
-      .eq('scope', 'store')
-      .gte('submitted_at', `${date}T00:00:00`)
-      .lte('submitted_at', `${date}T23:59:59`)
-      .order('submitted_at', { ascending: false });
-
-    if (error) { res.status(500).json({ error: error.message }); return; }
-
-    // テンプレート名を一括取得
-    const tplIds = [...new Set((data || []).map((s: any) => s.template_id))];
-    const { data: tpls } = tplIds.length > 0
-      ? await supabaseAdmin.from('checklist_templates').select('id, name').in('id', tplIds)
-      : { data: [] };
-    const tplMap = new Map(((tpls || []) as any[]).map((t: any) => [t.id, t.name]));
-
-    const submissions = (data || []).map((s: any) => ({
-      id: s.id,
-      templateId: s.template_id,
-      templateName: tplMap.get(s.template_id) || '不明',
-      timing: s.timing,
-      submittedAt: s.submitted_at,
-      submittedBy: s.member?.user?.name || '–',
-    }));
-
+    const submissions = await listKioskSubmissionsForDate(storeId, date);
     res.json({ submissions, date });
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Internal Server Error' });
@@ -693,26 +602,8 @@ router.get('/:storeId/switchbot', requireKiosk, async (req: Request, res: Respon
     if (storeId !== req.kioskStoreId) {
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
-    const { data } = await supabaseAdmin
-      .from('store_plugins')
-      .select('config')
-      .eq('store_id', storeId)
-      .eq('plugin_name', 'switchbot')
-      .maybeSingle();
-    const token = data?.config?.token;
-    const secret = data?.config?.secret;
-    if (!token || !secret) { res.json({ devices: [] }); return; }
-
-    const r = await fetch(`${SWITCHBOT_BASE}/devices`, {
-      headers: makeSwitchBotHeaders(token, secret),
-    });
-    const json: any = await r.json();
-    if (!r.ok || json.statusCode !== 100) { res.json({ devices: [] }); return; }
-
-    const meters = (json.body?.deviceList || []).filter((d: any) =>
-      /meter/i.test(d.deviceType || '')
-    );
-    res.json({ devices: meters });
+    const devices = await fetchStoreMeters(storeId);
+    res.json({ devices });
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
@@ -729,41 +620,12 @@ router.get('/:storeId/switchbot/readings', requireKiosk, async (req: Request, re
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
 
-    // date パラメータ（デフォルト: 今日）
     const dateParam = typeof req.query.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
       ? req.query.date
       : new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Tokyo' }).split(' ')[0];
 
-    // JST 深夜0時〜翌深夜0時の UTC 範囲を計算（JST = UTC+9）
-    const startISO = `${dateParam}T00:00:00+09:00`;
-    const endISO = `${dateParam}T23:59:59+09:00`;
-
-    const { data, error } = await supabaseAdmin
-      .from('switchbot_readings')
-      .select('device_id, device_name, temperature, humidity, battery, recorded_at')
-      .eq('store_id', storeId)
-      .gte('recorded_at', startISO)
-      .lte('recorded_at', endISO)
-      .order('recorded_at', { ascending: true });
-
-    if (error) { res.status(500).json({ error: error.message }); return; }
-
-    // device_id ごとにグループ化
-    const deviceMap = new Map<string, { deviceId: string; deviceName: string; readings: { temperature: number | null; humidity: number | null; battery: number | null; recordedAt: string }[] }>();
-    interface ReadingRow { device_id: string; device_name: string | null; temperature: number | null; humidity: number | null; battery: number | null; recorded_at: string; }
-    for (const row of (data || []) as ReadingRow[]) {
-      if (!deviceMap.has(row.device_id)) {
-        deviceMap.set(row.device_id, { deviceId: row.device_id, deviceName: row.device_name || '', readings: [] });
-      }
-      deviceMap.get(row.device_id)!.readings.push({
-        temperature: row.temperature ?? null,
-        humidity: row.humidity ?? null,
-        battery: row.battery ?? null,
-        recordedAt: row.recorded_at,
-      });
-    }
-
-    res.json({ devices: Array.from(deviceMap.values()), date: dateParam });
+    const devices = await listStoreReadingsForDate(storeId, dateParam);
+    res.json({ devices, date: dateParam });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Internal Server Error';
     res.status(500).json({ error: msg });
@@ -781,29 +643,14 @@ router.get('/:storeId/switchbot/:deviceId', requireKiosk, async (req: Request, r
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
 
-    const { data } = await supabaseAdmin
-      .from('store_plugins')
-      .select('config')
-      .eq('store_id', storeId)
-      .eq('plugin_name', 'switchbot')
-      .maybeSingle();
-
-    const token = data?.config?.token;
-    const secret = data?.config?.secret;
-    if (!token || !secret) {
+    const status = await fetchDeviceStatus(storeId, deviceId);
+    if (!status) {
       res.status(400).json({ error: 'SwitchBot APIトークンが設定されていません' }); return;
     }
-
-    const r = await fetch(`${SWITCHBOT_BASE}/devices/${deviceId}/status`, {
-      headers: makeSwitchBotHeaders(token, secret),
-    });
-    const json: any = await r.json();
-    if (!r.ok || json.statusCode !== 100) {
-      res.status(502).json({ error: `SwitchBot API error: ${json.message || r.status}` }); return;
+    if ('error' in status) {
+      res.status(502).json({ error: `SwitchBot API error: ${status.error}` }); return;
     }
-
-    const body = json.body || {};
-    res.json({ temperature: body.temperature ?? null, humidity: body.humidity ?? null, battery: body.battery ?? null });
+    res.json(status);
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }

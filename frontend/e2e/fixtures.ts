@@ -9,8 +9,8 @@
  * 同一 spec ファイル内での複数 test で不要な再ログインを避ける。
  */
 import { test as base, expect, Page, BrowserContext } from '@playwright/test';
-import type { DemoRole } from '../../backend/scripts/demo-users';
-import { DEMO_USERS } from '../../backend/scripts/demo-users';
+import type { DemoRole } from './demo-users';
+import { DEMO_USERS } from './demo-users';
 
 type StorageState = Awaited<ReturnType<BrowserContext['storageState']>>;
 

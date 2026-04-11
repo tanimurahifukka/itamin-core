@@ -36,8 +36,30 @@ async function login(page: Page, email: string, password: string) {
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', password);
   await page.click('.login-btn');
-  // ログイン後、サイドバーが出るまで待つ（店舗が1つなら自動選択）
-  await page.waitForSelector('.sidebar-nav-item', { timeout: 15000 });
+  // password-store.spec.ts が並列で第2店舗を作ると StoreSelectPage が出るので、主テスト店舗を選ぶ
+  await Promise.race([
+    page.waitForSelector('.sidebar-nav-item', { timeout: 15000 }),
+    page.waitForSelector('.store-selector', { timeout: 15000 }),
+  ]);
+  await page.waitForTimeout(300);
+  const selectorVisible = await page.locator('.store-selector').isVisible().catch(() => false);
+  if (selectorVisible) {
+    const cards = page.locator('.store-card');
+    const count = await cards.count();
+    for (let i = 0; i < count; i++) {
+      const title = (await cards.nth(i).locator('h3').textContent())?.trim();
+      if (title === 'テスト店舗') {
+        await cards.nth(i).click();
+        break;
+      }
+    }
+    await page.waitForSelector('.sidebar-nav-item', { timeout: 15000 });
+  }
+  await page.waitForFunction(
+    () => document.querySelectorAll('.sidebar-nav-item').length > 0,
+    undefined,
+    { timeout: 3000 },
+  ).catch(() => {});
 }
 
 async function logout(page: Page) {
@@ -90,10 +112,11 @@ test.describe('Owner ロール', () => {
     await expect(page.locator('text=プラグイン設定')).toBeVisible();
     // プラグインカードが表示される（展開するとアクセス権限が見える）
     // 打刻を展開
-    const punchHeader = page.locator('div:has-text("打刻")').first();
+    const punchHeader = page.locator('[data-testid="plugin-card-header-punch"]');
     await punchHeader.click();
     // アクセス権限のロールボタンが見える
-    await expect(page.locator('button:has-text("マネージャー")').first()).toBeVisible({ timeout: 5000 });
+    const punchCard = page.locator('[data-testid="plugin-card-punch"]');
+    await expect(punchCard.locator('button:has-text("マネージャー")')).toBeVisible({ timeout: 5000 });
 
     await logout(page);
   });

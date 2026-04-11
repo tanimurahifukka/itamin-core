@@ -44,12 +44,11 @@ vi.mock('../plugins/registry', () => ({
 
 // Import all plugins
 import { attendancePlugin } from '../plugins/attendance_plugin';
-import { checkPlugin } from '../plugins/check';
+import { haccpPlugin } from '../plugins/haccp';
 import { consecutiveWorkPlugin } from '../plugins/consecutive_work';
 import { dailyReportPlugin } from '../plugins/daily_report';
 import { expensePlugin } from '../plugins/expense';
 import { feedbackPlugin } from '../plugins/feedback';
-import { haccpKioskPlugin } from '../plugins/haccp_kiosk';
 import { inventoryPlugin } from '../plugins/inventory';
 import { kioskPlugin } from '../plugins/kiosk';
 import { lineAttendancePlugin } from '../plugins/line_attendance';
@@ -68,12 +67,11 @@ import { switchbotPlugin } from '../plugins/switchbot';
 
 const ALL_PLUGINS: Plugin[] = [
   attendancePlugin,
-  checkPlugin,
+  haccpPlugin,
   consecutiveWorkPlugin,
   dailyReportPlugin,
   expensePlugin,
   feedbackPlugin,
-  haccpKioskPlugin,
   inventoryPlugin,
   kioskPlugin,
   lineAttendancePlugin,

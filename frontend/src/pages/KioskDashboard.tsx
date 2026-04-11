@@ -180,7 +180,7 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
         <div style={s.headerTabs}>
           <button style={{ ...s.tab, ...(tab === 'punch' ? s.tabActive : {}) }} onClick={() => setTab('punch')}>打刻</button>
           <button style={{ ...s.tab, ...(tab === 'shift' ? s.tabActive : {}) }} onClick={() => setTab('shift')}>シフト管理</button>
-          {enabledPlugins.includes('haccp_kiosk') && (
+          {enabledPlugins.includes('haccp') && (
             <button style={{ ...s.tab, ...(tab === 'haccp' ? s.tabActive : {}) }} onClick={() => setTab('haccp')}>HACCP</button>
           )}
           {enabledPlugins.includes('switchbot') && (

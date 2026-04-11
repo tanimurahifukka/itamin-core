@@ -17,7 +17,14 @@ import {
   SystemTemplate,
   Assignment,
 } from '../api/checkApi';
+import { api } from '../api/client';
 import StoreChecklistPage from './StoreChecklistPage';
+
+interface SwitchBotDevice {
+  deviceId: string;
+  deviceName: string;
+  deviceType: string;
+}
 
 // ── 定数ラベル ────────────────────────────────────────────────────────────────
 
@@ -74,6 +81,7 @@ interface ItemForm {
   tracking_mode: TrackingMode;
   deviation_action: string;
   sort_order: number;
+  switchbot_device_id: string;
 }
 
 function emptyItemForm(): ItemForm {
@@ -81,6 +89,7 @@ function emptyItemForm(): ItemForm {
     id: null, label: '', item_key: '', item_type: 'checkbox',
     required: true, min_value: '', max_value: '', unit: '',
     is_ccp: false, tracking_mode: 'submission_only', deviation_action: '', sort_order: 0,
+    switchbot_device_id: '',
   };
 }
 
@@ -115,6 +124,7 @@ function TemplatesTab({ storeId }: { storeId: string }) {
 
   const [systemTemplates, setSystemTemplates] = useState<SystemTemplate[]>([]);
   const [fromSystemLoading, setFromSystemLoading] = useState(false);
+  const [switchbotDevices, setSwitchbotDevices] = useState<SwitchBotDevice[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -133,6 +143,13 @@ function TemplatesTab({ storeId }: { storeId: string }) {
   useEffect(() => {
     checkApi.getSystemTemplates('cafe').then(d => setSystemTemplates(d.system_templates)).catch(() => {});
   }, []);
+
+  // SwitchBot 連携が設定済みの店舗では device 一覧を取得する。失敗しても UI は崩さない。
+  useEffect(() => {
+    api.getSwitchBotDevices(storeId)
+      .then((d: { devices: SwitchBotDevice[] }) => setSwitchbotDevices(d.devices || []))
+      .catch(() => setSwitchbotDevices([]));
+  }, [storeId]);
 
   const handleCreate = async () => {
     if (!form.name.trim()) { setMessage('エラー: テンプレート名を入力してください'); return; }
@@ -212,6 +229,7 @@ function TemplatesTab({ storeId }: { storeId: string }) {
         tracking_mode: itemForm.tracking_mode,
         deviation_action: itemForm.deviation_action || null,
         sort_order: itemForm.sort_order,
+        switchbot_device_id: itemForm.switchbot_device_id || null,
       });
       setItemForm(emptyItemForm());
       await openTemplateItems(selectedTpl);
@@ -421,6 +439,28 @@ function TemplatesTab({ storeId }: { storeId: string }) {
                       onChange={e => setItemForm(p => ({ ...p, deviation_action: e.target.value }))}
                       style={{ width: '100%', padding: '7px 9px', borderRadius: 6, border: '1px solid #d1d5db', boxSizing: 'border-box' }} />
                   </div>
+                  {itemForm.item_type === 'numeric' && switchbotDevices.length > 0 && (
+                    <div style={{ marginBottom: 8 }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: '#475569', marginBottom: 4 }}>
+                        SwitchBot 温度計と連携（任意）
+                      </label>
+                      <select
+                        value={itemForm.switchbot_device_id}
+                        onChange={e => setItemForm(p => ({ ...p, switchbot_device_id: e.target.value }))}
+                        style={{ width: '100%', padding: '7px 9px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', boxSizing: 'border-box' }}
+                      >
+                        <option value="">手動入力のみ</option>
+                        {switchbotDevices.map(d => (
+                          <option key={d.deviceId} value={d.deviceId}>
+                            {d.deviceName} ({d.deviceType})
+                          </option>
+                        ))}
+                      </select>
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 4 }}>
+                        選択するとcron実行時に自動で測定値が登録されます
+                      </div>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                       <input type="checkbox" checked={itemForm.required} onChange={e => setItemForm(p => ({ ...p, required: e.target.checked }))} />

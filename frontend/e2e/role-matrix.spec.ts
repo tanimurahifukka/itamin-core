@@ -12,7 +12,7 @@
  * こちらは永続デモ店舗でより多くのプラグインを有効化した状態で検証する。
  */
 import { test, expect } from './fixtures';
-import type { DemoRole } from '../../backend/scripts/demo-users';
+import type { DemoRole } from './demo-users';
 
 /**
  * 各ロールが「見えるべきタブ」

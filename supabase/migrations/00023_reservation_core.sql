@@ -38,7 +38,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_store_line
   WHERE line_user_id IS NOT NULL AND deleted_at IS NULL;
 
 -- ── 3. reservations (4 タイプ共通マスタ) ───────────────────
-CREATE TABLE IF NOT EXISTS public.reservations (
+-- 00001 のスタブ版 reservations を drop して再作成する
+DROP TABLE IF EXISTS public.reservations CASCADE;
+CREATE TABLE public.reservations (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   store_id           UUID NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
   customer_id        UUID REFERENCES public.customers(id) ON DELETE SET NULL,

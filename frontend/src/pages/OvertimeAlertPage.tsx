@@ -16,7 +16,7 @@ export default function OvertimeAlertPage() {
     if (!selectedStore) return;
     api.getOvertimeAlert(selectedStore.id, year, month)
       .then((data) => {
-        setStaffOvertime(data.staff);
+        setStaffOvertime(data.staffOvertime ?? []);
       })
       .catch(() => {});
   }, [selectedStore, year, month]);

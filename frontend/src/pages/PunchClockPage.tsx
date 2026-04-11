@@ -56,6 +56,8 @@ export default function PunchClockPage() {
 
   useEffect(() => {
     if (!selectedStore) return;
+    // オーナーは打刻対象外なので status API を叩かない (backend が 403 を返す設計)
+    if (selectedStore.role === 'owner') return;
     api.getTimecardStatus(selectedStore.id).then(data => {
       setStaffId(data.staffId || '');
 

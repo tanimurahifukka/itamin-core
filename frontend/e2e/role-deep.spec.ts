@@ -19,7 +19,7 @@ import { test, expect } from './fixtures';
 test('full_time: 打刻ページを開いて「出勤」ボタンが見える', async ({ page, loginAs }) => {
   await loginAs('full_time');
 
-  const punchTab = page.locator('.sidebar-nav-item', { hasText: '打刻' });
+  const punchTab = page.locator('.sidebar-nav-item', { hasText: /^打刻$/ });
   await expect(punchTab).toBeVisible({ timeout: 10_000 });
   await punchTab.click();
   await expect(punchTab).toHaveClass(/active/);
@@ -40,7 +40,7 @@ test('part_time: シフト希望ページを開いてタブ遷移できる', asy
   await expect(tab).toHaveClass(/active/);
 
   // ShiftRequestPage がロードされた = main-content に何か描画されている
-  const main = page.locator('.main-content');
+  const main = page.locator('main.main-content');
   await expect(main).toBeVisible();
   // ローディング文言が消えた後の状態確認
   await expect(main.locator('text=読み込み中')).toBeHidden({ timeout: 15_000 }).catch(() => {});
@@ -57,7 +57,7 @@ test('manager: シフト管理ページを開いて描画される', async ({ pa
   await tab.click();
   await expect(tab).toHaveClass(/active/);
 
-  const main = page.locator('.main-content');
+  const main = page.locator('main.main-content');
   await expect(main).toBeVisible();
   // ShiftPage が描画されていることを「ローディングが消えた」で判定
   await expect(main.locator('text=読み込み中')).toBeHidden({ timeout: 15_000 }).catch(() => {});
@@ -71,7 +71,7 @@ test('leader: スタッフページを開いて描画される', async ({ page, 
   await tab.click();
   await expect(tab).toHaveClass(/active/);
 
-  const main = page.locator('.main-content');
+  const main = page.locator('main.main-content');
   await expect(main).toBeVisible();
   await expect(main.locator('text=読み込み中')).toBeHidden({ timeout: 15_000 }).catch(() => {});
 });
@@ -87,7 +87,7 @@ test('owner: 設定ページを開いてプラグイン設定が描画される'
   await tab.click();
   await expect(tab).toHaveClass(/active/);
 
-  const main = page.locator('.main-content');
+  const main = page.locator('main.main-content');
   await expect(main).toBeVisible();
   await expect(main.locator('text=読み込み中')).toBeHidden({ timeout: 15_000 }).catch(() => {});
 });

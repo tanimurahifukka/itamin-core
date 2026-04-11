@@ -8,6 +8,7 @@
 
 import * as crypto from 'crypto';
 import { supabaseAdmin } from '../../config/supabase';
+import { autoFillFromSwitchBot } from '../haccp';
 
 const SWITCHBOT_BASE = 'https://api.switch-bot.com/v1.1';
 
@@ -104,6 +105,8 @@ export interface CronResult {
   stores: number;
   readings: number;
   errors: number;
+  haccpMeasurements: number;
+  haccpDeviations: number;
 }
 
 /** メインの収集処理 */
@@ -111,6 +114,8 @@ export async function collectSwitchBotReadings(): Promise<CronResult> {
   const stores = await getAllEnabledStores();
   let totalReadings = 0;
   let totalErrors = 0;
+  let totalHaccpMeasurements = 0;
+  let totalHaccpDeviations = 0;
 
   await Promise.all(
     stores.map(async (creds) => {
@@ -152,9 +157,32 @@ export async function collectSwitchBotReadings(): Promise<CronResult> {
         } else {
           totalReadings += rows.length;
         }
+
+        // HACCP 自動入力: temperature が取れた reading を対応する template item に反映する。
+        // 失敗しても readings の挿入結果には影響させない (測定層は best-effort)。
+        for (const row of rows) {
+          if (row === null || row.temperature == null) continue;
+          try {
+            const result = await autoFillFromSwitchBot(
+              creds.storeId,
+              row.device_id,
+              { value: Number(row.temperature), unit: '°C', recordedAt: row.recorded_at },
+            );
+            totalHaccpMeasurements += result.measurements;
+            totalHaccpDeviations += result.deviations;
+          } catch (e) {
+            console.error(`[switchbot-cron] haccp auto-fill failed store=${creds.storeId} device=${row.device_id}:`, (e as Error).message);
+          }
+        }
       }
     })
   );
 
-  return { stores: stores.length, readings: totalReadings, errors: totalErrors };
+  return {
+    stores: stores.length,
+    readings: totalReadings,
+    errors: totalErrors,
+    haccpMeasurements: totalHaccpMeasurements,
+    haccpDeviations: totalHaccpDeviations,
+  };
 }

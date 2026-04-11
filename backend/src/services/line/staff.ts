@@ -5,6 +5,8 @@
  */
 import { Router, Request, Response } from 'express';
 import { supabaseAdmin } from '../../config/supabase';
+import { listActiveChecklist, createSubmission } from '../haccp';
+import { isValidTiming } from '../haccp/helpers';
 
 const router = Router();
 
@@ -289,7 +291,11 @@ router.post('/history', async (req: Request, res: Response) => {
 });
 
 // ================================================================
-// 4. チェックリスト 取得
+// 4. チェックリスト 取得 (HACCP v2)
+//
+// LINE 側は単に `timing` を指定して「その時にスタッフがやるチェック項目一覧」を欲しがる。
+// v2 ではこれは personal scope の active checklist に相当するので listActiveChecklist を使う。
+// レスポンス形状は v1 時代から少し拡張されているが、label/templateId は据え置きで後方互換。
 // ================================================================
 router.post('/checklist', async (req: Request, res: Response) => {
   try {
@@ -297,82 +303,50 @@ router.post('/checklist', async (req: Request, res: Response) => {
     if (!auth) return;
 
     const timing = req.body.timing || 'clock_in';
-    if (!['clock_in', 'clock_out'].includes(timing)) {
-      res.status(400).json({ error: 'timing は clock_in / clock_out のいずれかです' });
+    if (!isValidTiming(timing)) {
+      res.status(400).json({ error: 'timing が不正です' });
       return;
     }
 
-    // base レイヤーのテンプレートを取得
-    const { data: templates, error: tplError } = await supabaseAdmin
-      .from('checklist_templates')
-      .select('*')
-      .eq('store_id', auth.storeId)
-      .eq('layer', 'base')
-      .eq('timing', timing)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true });
+    const active = await listActiveChecklist(auth.storeId, timing, 'personal', null);
 
-    if (tplError) {
-      res.status(500).json({ error: tplError.message });
-      return;
-    }
+    const items = active.merged_items.map((mi: any) => ({
+      template_item_id: mi.id,
+      item_key: mi.item_key,
+      label: mi.label,
+      category: mi.template_name,
+      templateId: mi.template_id,
+      item_type: mi.item_type,
+      required: mi.required,
+      min_value: mi.min_value,
+      max_value: mi.max_value,
+      unit: mi.unit,
+      is_ccp: mi.is_ccp,
+    }));
 
-    // 旧 checklists テーブルもフォールバック
-    const { data: legacyChecklist } = await supabaseAdmin
-      .from('checklists')
-      .select('*')
-      .eq('store_id', auth.storeId)
-      .eq('timing', timing)
-      .maybeSingle();
-
-    const items: any[] = [];
-
-    // テンプレートからアイテムを展開
-    (templates || []).forEach((tpl: any) => {
-      if (Array.isArray(tpl.items)) {
-        tpl.items.forEach((item: any) => {
-          items.push({
-            label: item.label,
-            category: item.category || tpl.name,
-            templateId: tpl.id,
-          });
-        });
-      }
-    });
-
-    // テンプレートがなければ旧チェックリストを使う
-    if (items.length === 0 && legacyChecklist && Array.isArray(legacyChecklist.items)) {
-      legacyChecklist.items.forEach((item: any) => {
-        items.push({
-          label: typeof item === 'string' ? item : item.label,
-          category: item.category || '',
-        });
-      });
-    }
-
-    // 今日の記録を取得
+    // 今日の自分の submission があれば最新を返す
     const today = new Date().toISOString().split('T')[0];
-    const { data: todayRecords } = await supabaseAdmin
-      .from('check_records')
-      .select('*')
+    const { data: todaySubs } = await supabaseAdmin
+      .from('checklist_submissions')
+      .select('id, all_passed, submitted_at, snapshot')
       .eq('store_id', auth.storeId)
-      .eq('staff_id', auth.staffId)
+      .eq('membership_id', auth.staffId)
+      .eq('scope', 'personal')
       .eq('timing', timing)
-      .gte('checked_at', `${today}T00:00:00`)
-      .lte('checked_at', `${today}T23:59:59`)
-      .order('checked_at', { ascending: false })
+      .gte('submitted_at', `${today}T00:00:00`)
+      .lte('submitted_at', `${today}T23:59:59`)
+      .order('submitted_at', { ascending: false })
       .limit(1);
 
-    const latestRecord = todayRecords && todayRecords.length > 0 ? todayRecords[0] : null;
+    const latest = todaySubs && todaySubs.length > 0 ? todaySubs[0] : null;
 
     res.json({
       timing,
       items,
-      latestRecord: latestRecord ? {
-        id: latestRecord.id,
-        results: latestRecord.results,
-        allChecked: latestRecord.all_checked,
-        checkedAt: latestRecord.checked_at,
+      latestRecord: latest ? {
+        id: latest.id,
+        allChecked: latest.all_passed,
+        checkedAt: latest.submitted_at,
       } : null,
     });
   } catch (e: any) {
@@ -381,42 +355,71 @@ router.post('/checklist', async (req: Request, res: Response) => {
 });
 
 // ================================================================
-// 4. チェックリスト 提出
+// 4. チェックリスト 提出 (HACCP v2)
+//
+// LINE bot からは `{ timing, results: [{ template_item_id, checked?, numeric_value?, text_value? }] }`
+// で POST される想定。v1 の results は `{ label, checked }` だったが、v2 では
+// template_item_id を起点に判定/逸脱記録までやるので、bot 側で id を送ってもらう。
 // ================================================================
 router.post('/checklist/submit', async (req: Request, res: Response) => {
   try {
     const auth = await requireLineUser(req, res);
     if (!auth) return;
 
-    const { timing, results } = req.body;
+    const { timing, template_id, results } = req.body;
 
     if (!timing || !Array.isArray(results)) {
       res.status(400).json({ error: 'timing, results は必須です' });
       return;
     }
-
-    const allChecked = results.every((r: any) => r.checked);
-
-    const { data, error } = await supabaseAdmin
-      .from('check_records')
-      .insert({
-        store_id: auth.storeId,
-        staff_id: auth.staffId,
-        user_id: auth.userId,
-        timing,
-        results,
-        all_checked: allChecked,
-        checked_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error) {
-      res.status(500).json({ error: error.message });
+    if (!isValidTiming(timing)) {
+      res.status(400).json({ error: 'timing が不正です' });
       return;
     }
 
-    res.status(201).json({ record: data, message: 'チェックリストを提出しました' });
+    // template_id が指定されなければ、personal scope active の最初の template を使う
+    let resolvedTemplateId: string | null = template_id ?? null;
+    if (!resolvedTemplateId) {
+      const active = await listActiveChecklist(auth.storeId, timing, 'personal', null);
+      resolvedTemplateId = active.templates[0]?.id ?? null;
+    }
+    if (!resolvedTemplateId) {
+      res.status(404).json({ error: 'アクティブなテンプレートがありません' });
+      return;
+    }
+
+    try {
+      const submission = await createSubmission({
+        storeId: auth.storeId,
+        userId: auth.userId,
+        scope: 'personal',
+        timing,
+        templateId: resolvedTemplateId,
+        membershipId: auth.staffId,
+        items: results.map((r: any) => ({
+          template_item_id: r.template_item_id ?? null,
+          item_key: r.item_key,
+          bool_value: typeof r.checked === 'boolean' ? r.checked : (r.bool_value ?? null),
+          numeric_value: r.numeric_value ?? null,
+          text_value: r.text_value ?? null,
+          select_value: r.select_value ?? null,
+        })),
+      });
+
+      res.status(201).json({
+        record: {
+          id: submission.id,
+          allChecked: submission.all_passed,
+          checkedAt: submission.submitted_at,
+        },
+        message: 'チェックリストを提出しました',
+      });
+    } catch (err: any) {
+      const msg = err?.message || '提出に失敗しました';
+      if (msg.includes('見つかりません')) res.status(404).json({ error: msg });
+      else if (msg.includes('必須')) res.status(400).json({ error: msg });
+      else res.status(500).json({ error: msg });
+    }
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

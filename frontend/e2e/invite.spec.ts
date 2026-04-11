@@ -5,6 +5,7 @@
  * - 通常ログイン画面との分離
  */
 import { test, expect, Page } from '@playwright/test';
+import { DEMO_USERS, DEMO_STORE_NAME } from './demo-users';
 
 async function login(page: Page, email: string, password: string) {
   await page.goto('/');
@@ -150,8 +151,8 @@ test.describe('通常ログイン回帰テスト', () => {
     const errors: string[] = [];
     page.on('pageerror', err => errors.push(err.message));
 
-    await login(page, 'owner@sofe.test', 'password123');
-    await expect(page.locator('.store-name-link')).toContainText('cafe sofe');
+    await login(page, DEMO_USERS.owner.email, DEMO_USERS.owner.password);
+    await expect(page.locator('.store-name-link')).toContainText(DEMO_STORE_NAME);
     expect(errors).toEqual([]);
     await logout(page);
   });

@@ -6,12 +6,6 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      // ITAMIN CHECK plugin (FastAPI :3002)
-      '/api/check': {
-        target: 'http://localhost:3002',
-        changeOrigin: true,
-      },
-      // ITAMIN CORE (Express :3001)
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,

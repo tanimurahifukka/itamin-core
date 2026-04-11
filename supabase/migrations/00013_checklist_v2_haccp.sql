@@ -268,73 +268,73 @@ CREATE POLICY "csti_read" ON checklist_system_template_items
 
 -- Store templates: メンバー読み取り、管理者書き込み
 CREATE POLICY "ct_read"  ON checklist_templates
-  FOR SELECT TO authenticated USING (store_id = ANY(get_my_store_ids()));
+  FOR SELECT TO authenticated USING (store_id IN (SELECT public.get_my_store_ids()));
 CREATE POLICY "ct_write" ON checklist_templates
   FOR ALL TO authenticated
-  USING     (store_id = ANY(get_my_managed_store_ids()))
-  WITH CHECK (store_id = ANY(get_my_managed_store_ids()));
+  USING     (store_id IN (SELECT public.get_my_managed_store_ids()))
+  WITH CHECK (store_id IN (SELECT public.get_my_managed_store_ids()));
 
 CREATE POLICY "ctli_read"  ON checklist_template_items
-  FOR SELECT TO authenticated USING (store_id = ANY(get_my_store_ids()));
+  FOR SELECT TO authenticated USING (store_id IN (SELECT public.get_my_store_ids()));
 CREATE POLICY "ctli_write" ON checklist_template_items
   FOR ALL TO authenticated
-  USING     (store_id = ANY(get_my_managed_store_ids()))
-  WITH CHECK (store_id = ANY(get_my_managed_store_ids()));
+  USING     (store_id IN (SELECT public.get_my_managed_store_ids()))
+  WITH CHECK (store_id IN (SELECT public.get_my_managed_store_ids()));
 
 CREATE POLICY "cta_read"  ON checklist_assignments
-  FOR SELECT TO authenticated USING (store_id = ANY(get_my_store_ids()));
+  FOR SELECT TO authenticated USING (store_id IN (SELECT public.get_my_store_ids()));
 CREATE POLICY "cta_write" ON checklist_assignments
   FOR ALL TO authenticated
-  USING     (store_id = ANY(get_my_managed_store_ids()))
-  WITH CHECK (store_id = ANY(get_my_managed_store_ids()));
+  USING     (store_id IN (SELECT public.get_my_managed_store_ids()))
+  WITH CHECK (store_id IN (SELECT public.get_my_managed_store_ids()));
 
 -- Submissions: メンバー読み取り・投稿、管理者承認
 CREATE POLICY "csub_read"   ON checklist_submissions
-  FOR SELECT TO authenticated USING (store_id = ANY(get_my_store_ids()));
+  FOR SELECT TO authenticated USING (store_id IN (SELECT public.get_my_store_ids()));
 CREATE POLICY "csub_insert" ON checklist_submissions
-  FOR INSERT TO authenticated WITH CHECK (store_id = ANY(get_my_store_ids()));
+  FOR INSERT TO authenticated WITH CHECK (store_id IN (SELECT public.get_my_store_ids()));
 CREATE POLICY "csub_update" ON checklist_submissions
-  FOR UPDATE TO authenticated USING (store_id = ANY(get_my_managed_store_ids()));
+  FOR UPDATE TO authenticated USING (store_id IN (SELECT public.get_my_managed_store_ids()));
 
 CREATE POLICY "csi_read"   ON checklist_submission_items
-  FOR SELECT TO authenticated USING (store_id = ANY(get_my_store_ids()));
+  FOR SELECT TO authenticated USING (store_id IN (SELECT public.get_my_store_ids()));
 CREATE POLICY "csi_insert" ON checklist_submission_items
-  FOR INSERT TO authenticated WITH CHECK (store_id = ANY(get_my_store_ids()));
+  FOR INSERT TO authenticated WITH CHECK (store_id IN (SELECT public.get_my_store_ids()));
 
 -- Measurements
 CREATE POLICY "cm_read"   ON checklist_measurements
-  FOR SELECT TO authenticated USING (store_id = ANY(get_my_store_ids()));
+  FOR SELECT TO authenticated USING (store_id IN (SELECT public.get_my_store_ids()));
 CREATE POLICY "cm_insert" ON checklist_measurements
-  FOR INSERT TO authenticated WITH CHECK (store_id = ANY(get_my_store_ids()));
+  FOR INSERT TO authenticated WITH CHECK (store_id IN (SELECT public.get_my_store_ids()));
 
 -- Sensors
 CREATE POLICY "sd_read"  ON sensor_devices
-  FOR SELECT TO authenticated USING (store_id = ANY(get_my_store_ids()));
+  FOR SELECT TO authenticated USING (store_id IN (SELECT public.get_my_store_ids()));
 CREATE POLICY "sd_write" ON sensor_devices
   FOR ALL TO authenticated
-  USING     (store_id = ANY(get_my_managed_store_ids()))
-  WITH CHECK (store_id = ANY(get_my_managed_store_ids()));
+  USING     (store_id IN (SELECT public.get_my_managed_store_ids()))
+  WITH CHECK (store_id IN (SELECT public.get_my_managed_store_ids()));
 
 CREATE POLICY "sr_read"   ON sensor_readings
-  FOR SELECT TO authenticated USING (store_id = ANY(get_my_store_ids()));
+  FOR SELECT TO authenticated USING (store_id IN (SELECT public.get_my_store_ids()));
 CREATE POLICY "sr_insert" ON sensor_readings
-  FOR INSERT TO authenticated WITH CHECK (store_id = ANY(get_my_store_ids()));
+  FOR INSERT TO authenticated WITH CHECK (store_id IN (SELECT public.get_my_store_ids()));
 
 -- Deviations
 CREATE POLICY "cd_read"   ON checklist_deviations
-  FOR SELECT TO authenticated USING (store_id = ANY(get_my_store_ids()));
+  FOR SELECT TO authenticated USING (store_id IN (SELECT public.get_my_store_ids()));
 CREATE POLICY "cd_insert" ON checklist_deviations
-  FOR INSERT TO authenticated WITH CHECK (store_id = ANY(get_my_store_ids()));
+  FOR INSERT TO authenticated WITH CHECK (store_id IN (SELECT public.get_my_store_ids()));
 CREATE POLICY "cd_update" ON checklist_deviations
-  FOR UPDATE TO authenticated USING (store_id = ANY(get_my_managed_store_ids()));
+  FOR UPDATE TO authenticated USING (store_id IN (SELECT public.get_my_managed_store_ids()));
 
 -- HACCP reports
 CREATE POLICY "hr_read"  ON haccp_reports
-  FOR SELECT TO authenticated USING (store_id = ANY(get_my_store_ids()));
+  FOR SELECT TO authenticated USING (store_id IN (SELECT public.get_my_store_ids()));
 CREATE POLICY "hr_write" ON haccp_reports
   FOR ALL TO authenticated
-  USING     (store_id = ANY(get_my_managed_store_ids()))
-  WITH CHECK (store_id = ANY(get_my_managed_store_ids()));
+  USING     (store_id IN (SELECT public.get_my_managed_store_ids()))
+  WITH CHECK (store_id IN (SELECT public.get_my_managed_store_ids()));
 
 -- ── 11. Cafe seed data（6テンプレ 27項目 CCP7）───────────────────────────────
 INSERT INTO checklist_system_templates

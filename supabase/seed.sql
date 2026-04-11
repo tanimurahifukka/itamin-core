@@ -18,7 +18,7 @@ INSERT INTO store_plugins (store_id, plugin_name, enabled, config) VALUES
   ('a0000000-0000-0000-0000-000000000001', 'settings', true, '{}'),
   ('a0000000-0000-0000-0000-000000000001', 'shift', true, '{}'),
   ('a0000000-0000-0000-0000-000000000001', 'shift_request', true, '{}'),
-  ('a0000000-0000-0000-0000-000000000001', 'check', true, '{}');
+  ('a0000000-0000-0000-0000-000000000001', 'haccp', true, '{}');
 
 -- PLUGIN_PERMISSIONS
 INSERT INTO plugin_permissions (store_id, plugin_name, role) VALUES
@@ -36,9 +36,9 @@ INSERT INTO plugin_permissions (store_id, plugin_name, role) VALUES
   ('a0000000-0000-0000-0000-000000000001', 'shift_request', 'owner'),
   ('a0000000-0000-0000-0000-000000000001', 'shift_request', 'manager'),
   ('a0000000-0000-0000-0000-000000000001', 'shift_request', 'staff'),
-  ('a0000000-0000-0000-0000-000000000001', 'check', 'owner'),
-  ('a0000000-0000-0000-0000-000000000001', 'check', 'manager'),
-  ('a0000000-0000-0000-0000-000000000001', 'check', 'staff');
+  ('a0000000-0000-0000-0000-000000000001', 'haccp', 'owner'),
+  ('a0000000-0000-0000-0000-000000000001', 'haccp', 'manager'),
+  ('a0000000-0000-0000-0000-000000000001', 'haccp', 'staff');
 
 -- TIME_RECORDS (2 weeks of data)
 INSERT INTO time_records (store_id, staff_id, clock_in, clock_out, break_minutes, note) VALUES

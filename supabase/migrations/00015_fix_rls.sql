@@ -92,25 +92,9 @@ CREATE POLICY "manager以上が権限を管理できる"
   USING (store_id IN (SELECT public.get_my_managed_store_ids()));
 
 -- ============================================================
--- Fix checklists policies
+-- v1 checklists/check_records は 00013 で drop 済み。
+-- HACCP v2 (checklist_templates/_submissions) の policy は 00013 で定義済み。
 -- ============================================================
-DROP POLICY IF EXISTS "所属店舗のチェックリストを読める" ON public.checklists;
-CREATE POLICY "所属店舗のチェックリストを読める"
-  ON public.checklists FOR SELECT
-  USING (store_id IN (SELECT public.get_my_store_ids()));
-
-DROP POLICY IF EXISTS "manager以上がチェックリストを管理できる" ON public.checklists;
-CREATE POLICY "manager以上がチェックリストを管理できる"
-  ON public.checklists FOR ALL
-  USING (store_id IN (SELECT public.get_my_managed_store_ids()));
-
--- ============================================================
--- Fix check_records policies
--- ============================================================
-DROP POLICY IF EXISTS "所属店舗のチェック記録を読める" ON public.check_records;
-CREATE POLICY "所属店舗のチェック記録を読める"
-  ON public.check_records FOR SELECT
-  USING (store_id IN (SELECT public.get_my_store_ids()));
 
 -- ============================================================
 -- Fix shifts policies

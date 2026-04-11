@@ -66,6 +66,8 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
 
   const loadStatus = useCallback(async () => {
     if (!storeId) return;
+    // オーナーは打刻対象外なので status API を叩かない (backend が 403 を返す設計)
+    if (selectedStore?.role === 'owner') { setLoading(false); return; }
     try {
       const res = await api.getAttendanceToday(storeId);
       setData(res as unknown as AttendanceTodayData);
@@ -74,7 +76,7 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [storeId]);
+  }, [storeId, selectedStore?.role]);
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
 

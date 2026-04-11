@@ -13,7 +13,6 @@ import PunchClockPage from './pages/PunchClockPage';
 import DashboardPage from './pages/DashboardPage';
 import StaffPage from './pages/StaffPage';
 import ChecklistAdminPage from './pages/ChecklistAdminPage';
-import StoreChecklistPage from './pages/StoreChecklistPage';
 import PluginSettingsPage from './pages/PluginSettingsPage';
 import ShiftPage from './pages/ShiftPage';
 import ShiftRequestPage from './pages/ShiftRequestPage';
@@ -82,8 +81,7 @@ const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   punch: PunchClockPage,
   attendance: DashboardPage,
   staff: StaffPage,
-  check: ChecklistAdminPage,
-  store_check: StoreChecklistPage,
+  haccp: ChecklistAdminPage,
   shift: ShiftPage,
   shift_request: ShiftRequestPage,
   inventory: InventoryPage,
@@ -99,7 +97,6 @@ const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   line_attendance: AttendanceStaffPage,
   attendance_admin: AttendanceAdminPage,
   kiosk: KioskLinkPage,
-  haccp_kiosk: ChecklistAdminPage,
   nfc_cleaning: NfcLocationsPage,
   switchbot: SwitchBotReadingsPage,
   customers: CustomersPage,
@@ -594,8 +591,8 @@ export default function App() {
   const showMobileMenu = isMobile && !activeTab && !tabsLoading;
 
   // 主要タブ（打刻・チェックリスト）を上段に大きく表示
-  const primaryTabs = tabs.filter(t => ['punch', 'check'].includes(t.name));
-  const secondaryTabs = tabs.filter(t => !['punch', 'check'].includes(t.name));
+  const primaryTabs = tabs.filter(t => ['punch', 'haccp'].includes(t.name));
+  const secondaryTabs = tabs.filter(t => !['punch', 'haccp'].includes(t.name));
 
   return (
     <div className="app">

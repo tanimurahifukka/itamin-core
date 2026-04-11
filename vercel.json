@@ -11,26 +11,6 @@
   },
   "rewrites": [
     {
-      "source": "/api/check/templates/(.*)",
-      "destination": "/api"
-    },
-    {
-      "source": "/api/check/shift-map/(.*)",
-      "destination": "/api"
-    },
-    {
-      "source": "/api/check/checklists/(.*)",
-      "destination": "/api"
-    },
-    {
-      "source": "/api/check/records/(.*)",
-      "destination": "/api"
-    },
-    {
-      "source": "/api/check/(.*)",
-      "destination": "https://itamin-check.vercel.app/api/check/$1"
-    },
-    {
       "source": "/api/(.*)",
       "destination": "/api"
     },

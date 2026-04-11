@@ -1,11 +1,14 @@
 /**
- * ITAMIN CHECK プラグイン API クライアント v2
+ * ITAMIN HACCP プラグイン API クライアント
  * HACCP 準拠: timing TEXT / scope / CCP / 閾値 / 逸脱 / 測定層
+ *
+ * NOTE: バックエンドのプラグイン名は `check` → `haccp` にリネーム済み。
+ * このファイル名と export 名 (`checkApi`) は git blame を保つため据え置き。
  */
 
 import { supabase } from './supabase';
 
-const CHECK_API = '/api/check';
+const CHECK_API = '/api/haccp';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -88,6 +91,7 @@ export interface TemplateItem {
   frequency_interval_minutes: number | null;
   deviation_action: string | null;
   sort_order: number;
+  switchbot_device_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -279,6 +283,7 @@ export const checkApi = {
     frequency_interval_minutes?: number | null;
     deviation_action?: string | null;
     sort_order?: number;
+    switchbot_device_id?: string | null;
   }) =>
     request<{ item: TemplateItem }>(`/${storeId}/templates/${templateId}/items`, {
       method: 'POST',

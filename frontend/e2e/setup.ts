@@ -27,29 +27,82 @@ export const TEST_USERS = {
   part_time: { email: 'parttime@test.local', password: 'test1234', name: 'テストアルバイト' },
 } as const;
 
+// listUsers はデフォルト 50 件ページングなので、email で全件走査する。
+async function findUserByEmail(email: string): Promise<{ id: string } | null> {
+  let page = 1;
+  const perPage = 200;
+  while (page < 20) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) return null;
+    const found = data?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    if (found) return { id: found.id };
+    if (!data?.users || data.users.length < perPage) return null;
+    page++;
+  }
+  return null;
+}
+
+// profiles 行は stores.owner_id の FK なので、既存ユーザー再利用時にも必ず揃える。
+async function ensureProfile(
+  userId: string,
+  info: { email: string; name: string },
+): Promise<void> {
+  const { error } = await admin
+    .from('profiles')
+    .upsert({ id: userId, email: info.email, name: info.name }, { onConflict: 'id' });
+  if (error) {
+    console.warn(`[Setup] profiles upsert 警告: ${error.message}`);
+  }
+}
+
+async function createUserFresh(
+  role: string,
+  info: { email: string; password: string; name: string },
+): Promise<string> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const { data, error } = await admin.auth.admin.createUser({
+      email: info.email,
+      password: info.password,
+      email_confirm: true,
+      user_metadata: { full_name: info.name },
+    });
+    if (!error && data?.user) {
+      await ensureProfile(data.user.id, info);
+      return data.user.id;
+    }
+    lastError = error;
+    console.warn(`[Setup] ${role} 作成失敗 (attempt ${attempt}): ${error?.message ?? 'unknown'}`);
+    // "already registered" の場合は既存ユーザー ID を返す
+    const msg = error?.message ?? '';
+    if (msg.includes('already been registered') || msg.includes('already exists')) {
+      const found = await findUserByEmail(info.email);
+      if (found) {
+        await ensureProfile(found.id, info);
+        console.log(`[Setup] ${role} 既存ユーザーを再利用: ${found.id}`);
+        return found.id;
+      }
+    }
+  }
+  const message = lastError instanceof Error ? lastError.message : JSON.stringify(lastError);
+  throw new Error(`ユーザー作成失敗 (${role}): ${message}`);
+}
+
 export async function setupTestData() {
   console.log('[Setup] テストデータを作成中...');
 
   // 1. テストユーザー作成
   const userIds: Record<string, string> = {};
   for (const [role, info] of Object.entries(TEST_USERS)) {
-    // 既存ユーザー検索
-    const { data: existing } = await admin.auth.admin.listUsers();
-    const found = existing?.users?.find(u => u.email === info.email);
+    const found = await findUserByEmail(info.email);
 
     if (found) {
+      await ensureProfile(found.id, info);
       userIds[role] = found.id;
       console.log(`[Setup] ${role} 既存: ${found.id}`);
     } else {
-      const { data, error } = await admin.auth.admin.createUser({
-        email: info.email,
-        password: info.password,
-        email_confirm: true,
-        user_metadata: { full_name: info.name },
-      });
-      if (error) throw new Error(`ユーザー作成失敗 (${role}): ${error.message}`);
-      userIds[role] = data.user.id;
-      console.log(`[Setup] ${role} 作成: ${data.user.id}`);
+      userIds[role] = await createUserFresh(role, info);
+      console.log(`[Setup] ${role} 作成: ${userIds[role]}`);
     }
   }
 
@@ -85,8 +138,8 @@ export async function setupTestData() {
     else console.log(`[Setup] スタッフ ${role} 登録完了`);
   }
 
-  // 4. プラグイン有効化（shift, shift_request, check）
-  for (const pluginName of ['shift', 'shift_request', 'check']) {
+  // 4. プラグイン有効化（shift, shift_request, haccp）
+  for (const pluginName of ['shift', 'shift_request', 'haccp']) {
     await admin.from('store_plugins').upsert({
       store_id: storeId,
       plugin_name: pluginName,
@@ -100,16 +153,7 @@ export async function setupTestData() {
 }
 
 export async function teardownTestData() {
-  // テスト店舗を削除（CASCADE で関連データも消える）
-  await admin.from('stores').delete().eq('name', 'テスト店舗');
-
-  // テストユーザー削除
-  for (const info of Object.values(TEST_USERS)) {
-    const { data: existing } = await admin.auth.admin.listUsers();
-    const found = existing?.users?.find(u => u.email === info.email);
-    if (found) {
-      await admin.auth.admin.deleteUser(found.id);
-    }
-  }
-  console.log('[Teardown] テストデータ削除完了');
+  // 複数 spec ファイルが並列で走る時に teardown が他 spec の setup を破壊するため、
+  // 実際の削除は行わない (setupTestData は idempotent なので再利用で問題ない)。
+  console.log('[Teardown] スキップ (idempotent setup)');
 }

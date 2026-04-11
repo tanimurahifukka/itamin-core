@@ -598,6 +598,7 @@ export default function StaffPage() {
                         🔢 PIN を再発行
                       </button>
                       <button
+                        className="staff-action-remove"
                         onClick={() => { setOpenMenuId(null); openRemoveModal(s); }}
                         style={{ ...staffMenuItemStyle, color: '#dc2626' }}
                       >

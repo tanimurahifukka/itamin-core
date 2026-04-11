@@ -345,6 +345,8 @@ export default function StoreChecklistPage() {
   // membership_id (store_staff.id) を取得
   useEffect(() => {
     if (!selectedStore) return;
+    // オーナーは punch staff ではないので 403 になる。owner では取得せずに空のままにする
+    if (selectedStore.role === 'owner') return;
     api.getTimecardStatus(selectedStore.id)
       .then((d) => { if (d.staffId) setMembershipId(d.staffId); })
       .catch(() => {});

@@ -36,8 +36,8 @@ export default function ExpensePage() {
     if (!selectedStore) return;
     api.getExpenses(selectedStore.id, year, month, filterCategory || undefined)
       .then((data) => {
-        setExpenses(data.items);
-        setSummary(data.summary);
+        setExpenses(data.expenses ?? []);
+        setSummary(data.summary ?? { totalAmount: 0, categorySummary: {}, count: 0 });
       })
       .catch(() => {});
   }, [selectedStore, year, month, filterCategory]);
