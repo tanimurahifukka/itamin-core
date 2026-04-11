@@ -12,7 +12,13 @@
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
     "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
-    "pre-human-check": "bash scripts/pre-human-check.sh"
+    "pre-human-check": "bash scripts/pre-human-check.sh",
+    "seed:demo": "ts-node --transpile-only backend/scripts/seed-demo.ts",
+    "verify": "npm run verify:types && npm run verify:build && npm run verify:unit && npm run verify:e2e",
+    "verify:types": "tsc --noEmit -p backend/tsconfig.json && tsc -b frontend",
+    "verify:build": "npm run build --workspace=backend && npm run build --workspace=frontend",
+    "verify:unit": "npm test --workspace=backend",
+    "verify:e2e": "npm run seed:demo && npm run test:e2e --workspace=frontend"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
