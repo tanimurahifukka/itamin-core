@@ -52,12 +52,10 @@ import { feedbackPlugin } from '../plugins/feedback';
 import { haccpKioskPlugin } from '../plugins/haccp_kiosk';
 import { inventoryPlugin } from '../plugins/inventory';
 import { kioskPlugin } from '../plugins/kiosk';
-import { lineAttendancePlugin, attendanceAdminPlugin } from '../plugins/line_attendance';
 import { menuPlugin } from '../plugins/menu';
 import { noticePlugin } from '../plugins/notice';
 import { overtimeAlertPlugin } from '../plugins/overtime_alert';
 import { paidLeavePlugin } from '../plugins/paid_leave';
-import { punchPlugin } from '../plugins/punch';
 import { salesCapturePlugin } from '../plugins/sales_capture';
 import { settingsPlugin } from '../plugins/settings_plugin';
 import { shiftPlugin, shiftRequestPlugin } from '../plugins/shift';
@@ -74,13 +72,10 @@ const ALL_PLUGINS: Plugin[] = [
   haccpKioskPlugin,
   inventoryPlugin,
   kioskPlugin,
-  lineAttendancePlugin,
-  attendanceAdminPlugin,
   menuPlugin,
   noticePlugin,
   overtimeAlertPlugin,
   paidLeavePlugin,
-  punchPlugin,
   salesCapturePlugin,
   settingsPlugin,
   shiftPlugin,
@@ -116,10 +111,18 @@ describe('Plugin interface compliance', () => {
   it('core plugins have core: true', () => {
     const corePlugins = ALL_PLUGINS.filter(p => p.core);
     const coreNames = corePlugins.map(p => p.name);
-    // At minimum, 'punch', 'attendance', and 'settings' must be core
-    expect(coreNames).toContain('punch');
+    // 勤怠ドメインは 'attendance' プラグインに統合されている
     expect(coreNames).toContain('attendance');
+    expect(coreNames).toContain('staff');
     expect(coreNames).toContain('settings');
+  });
+
+  it('attendance plugin owns /api/attendance routes via initialize(app)', () => {
+    // 鉄則3: 勤怠プラグインは自分自身でルーティングを登録する
+    expect(attendancePlugin.name).toBe('attendance');
+    expect(attendancePlugin.core).toBe(true);
+    // initialize 関数は Express app を受け取り、router を登録する
+    expect(typeof attendancePlugin.initialize).toBe('function');
   });
 
   it('non-core plugins do not have core: true', () => {
@@ -127,14 +130,6 @@ describe('Plugin interface compliance', () => {
     for (const plugin of nonCorePlugins) {
       expect(plugin.core).not.toBe(true);
     }
-  });
-
-  it('line_attendance and attendance_admin are defaultEnabled', () => {
-    // スタッフの出勤画面 (AttendanceStaffPage) と
-    // 管理者の今日の出勤ボード (AttendanceAdminPage) は
-    // store_plugins 未登録のときも既定で有効化されている必要がある
-    expect(lineAttendancePlugin.defaultEnabled).toBe(true);
-    expect(attendanceAdminPlugin.defaultEnabled).toBe(true);
   });
 
   it('each plugin has at least one defaultRole', () => {

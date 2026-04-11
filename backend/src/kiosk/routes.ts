@@ -6,6 +6,7 @@ import { config } from '../config';
 import { requireAuth } from '../middleware/auth';
 import { requireKiosk } from '../middleware/kiosk';
 import { requireManagedStore } from '../auth/authorization';
+import { calcBusinessDate, nextSessionNo, writeEvent, getPolicy } from '../services/attendance/helpers';
 
 const SWITCHBOT_BASE = 'https://api.switch-bot.com/v1.1';
 
@@ -117,7 +118,7 @@ router.get('/:storeId/staff', requireKiosk, async (req: Request, res: Response) 
 
     const { data, error } = await supabaseAdmin
       .from('store_staff')
-      .select('id, role, user:profiles(id, name)')
+      .select('id, role, user_id, user:profiles(id, name)')
       .eq('store_id', storeId)
       .neq('role', 'owner')
       .order('id');
@@ -127,25 +128,31 @@ router.get('/:storeId/staff', requireKiosk, async (req: Request, res: Response) 
       return;
     }
 
-    // 本日出勤中かチェック
-    const today = new Date().toISOString().split('T')[0];
+    // 勤務中 or 休憩中のセッションを取得（attendance_records ベース）
     const { data: openRecords } = await supabaseAdmin
-      .from('time_records')
-      .select('staff_id, id, clock_in')
+      .from('attendance_records')
+      .select('user_id, id, clock_in_at, status')
       .eq('store_id', storeId)
-      .gte('clock_in', `${today}T00:00:00`)
-      .is('clock_out', null);
+      .in('status', ['working', 'on_break']);
 
-    const openMap = new Map((openRecords || []).map((r: any) => [r.staff_id, r]));
+    const openByUserId = new Map(
+      ((openRecords || []) as { user_id: string; id: string; clock_in_at: string; status: string }[])
+        .map(r => [r.user_id, r])
+    );
 
-    const staff = (data || []).map((s: any) => ({
-      id: s.id,
-      name: s.user?.name || '',
-      role: s.role,
-      clockedIn: openMap.has(s.id),
-      openRecordId: openMap.get(s.id)?.id || null,
-      clockInTime: openMap.get(s.id)?.clock_in || null,
-    }));
+    interface StaffRow { id: string; role: string; user_id: string; user: { id: string; name: string | null }[] | null }
+    const staff = ((data || []) as unknown as StaffRow[]).map(s => {
+      const open = openByUserId.get(s.user_id);
+      const profile = Array.isArray(s.user) ? s.user[0] : null;
+      return {
+        id: s.id,
+        name: profile?.name || '',
+        role: s.role,
+        clockedIn: !!open,
+        openRecordId: open?.id || null,
+        clockInTime: open?.clock_in_at || null,
+      };
+    });
 
     res.json({ staff });
   } catch (e: any) {
@@ -390,10 +397,10 @@ router.post('/:storeId/punch', requireKiosk, async (req: Request, res: Response)
       return;
     }
 
-    // スタッフがこの店舗に所属しているか確認
+    // スタッフがこの店舗に所属しているか確認（user_id を取得）
     const { data: staff } = await supabaseAdmin
       .from('store_staff')
-      .select('id, role')
+      .select('id, role, user_id')
       .eq('id', staffId)
       .eq('store_id', storeId)
       .maybeSingle();
@@ -407,24 +414,42 @@ router.post('/:storeId/punch', requireKiosk, async (req: Request, res: Response)
       return;
     }
 
+    const userId = staff.user_id;
+    const policy = await getPolicy(supabaseAdmin, storeId);
+    const now = new Date();
+
     if (action === 'clock-in') {
-      // 既に出勤中かチェック
+      // 既に出勤中 or 休憩中かチェック（attendance_records ベース）
       const { data: open } = await supabaseAdmin
-        .from('time_records')
-        .select('id, clock_in')
+        .from('attendance_records')
+        .select('id, clock_in_at, status')
         .eq('store_id', storeId)
-        .eq('staff_id', staffId)
-        .is('clock_out', null)
+        .eq('user_id', userId)
+        .in('status', ['working', 'on_break'])
         .maybeSingle();
 
       if (open) {
-        res.status(409).json({ error: '既に出勤中です', clockInTime: open.clock_in });
+        res.status(409).json({ error: '既に出勤中です', clockInTime: open.clock_in_at });
         return;
       }
 
+      const businessDate = calcBusinessDate(now, policy.timezone, policy.business_day_cutoff_hour);
+      const sessionNo = await nextSessionNo(supabaseAdmin, userId, businessDate);
+
       const { data: record, error } = await supabaseAdmin
-        .from('time_records')
-        .insert({ store_id: storeId, staff_id: staffId })
+        .from('attendance_records')
+        .insert({
+          store_id: storeId,
+          user_id: userId,
+          business_date: businessDate,
+          session_no: sessionNo,
+          status: 'working',
+          clock_in_at: now.toISOString(),
+          source: 'kiosk',
+          clock_in_method: 'kiosk',
+          created_by: userId,
+          updated_by: userId,
+        })
         .select()
         .single();
 
@@ -433,15 +458,20 @@ router.post('/:storeId/punch', requireKiosk, async (req: Request, res: Response)
         return;
       }
 
-      res.status(201).json({ ok: true, action: 'clock-in', clockIn: record.clock_in });
+      await writeEvent(supabaseAdmin, {
+        storeId, userId, recordId: record.id,
+        eventType: 'clock_in', source: 'kiosk',
+      });
+
+      res.status(201).json({ ok: true, action: 'clock-in', clockIn: record.clock_in_at });
     } else {
-      // 退勤
+      // 退勤: working または on_break セッションを取得
       const { data: open } = await supabaseAdmin
-        .from('time_records')
-        .select('id')
+        .from('attendance_records')
+        .select('id, status')
         .eq('store_id', storeId)
-        .eq('staff_id', staffId)
-        .is('clock_out', null)
+        .eq('user_id', userId)
+        .in('status', ['working', 'on_break'])
         .maybeSingle();
 
       if (!open) {
@@ -449,9 +479,34 @@ router.post('/:storeId/punch', requireKiosk, async (req: Request, res: Response)
         return;
       }
 
+      // 休憩中の場合はポリシーに従って自動終了するか拒否
+      if (open.status === 'on_break') {
+        if (!policy.auto_close_break_before_clock_out) {
+          res.status(409).json({ error: '休憩中は退勤できません。先に休憩を終了してください。' });
+          return;
+        }
+        const { data: openBreak } = await supabaseAdmin
+          .from('attendance_breaks')
+          .select('id')
+          .eq('attendance_record_id', open.id)
+          .is('ended_at', null)
+          .maybeSingle();
+        if (openBreak) {
+          await supabaseAdmin.from('attendance_breaks')
+            .update({ ended_at: now.toISOString() })
+            .eq('id', openBreak.id);
+        }
+      }
+
       const { data: record, error } = await supabaseAdmin
-        .from('time_records')
-        .update({ clock_out: new Date().toISOString() })
+        .from('attendance_records')
+        .update({
+          status: 'completed',
+          clock_out_at: now.toISOString(),
+          clock_out_method: 'kiosk',
+          updated_by: userId,
+          updated_at: now.toISOString(),
+        })
         .eq('id', open.id)
         .select()
         .single();
@@ -461,7 +516,12 @@ router.post('/:storeId/punch', requireKiosk, async (req: Request, res: Response)
         return;
       }
 
-      res.json({ ok: true, action: 'clock-out', clockOut: record.clock_out });
+      await writeEvent(supabaseAdmin, {
+        storeId, userId, recordId: record.id,
+        eventType: 'clock_out', source: 'kiosk',
+      });
+
+      res.json({ ok: true, action: 'clock-out', clockOut: record.clock_out_at });
     }
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Internal Server Error' });

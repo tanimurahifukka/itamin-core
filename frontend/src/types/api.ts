@@ -56,42 +56,8 @@ export interface Invitation {
   createdAt: string;
 }
 
-// ============================================================
-// Timecard
-// ============================================================
-
-export interface TimeRecord {
-  id: string;
-  storeId?: string;
-  staffId?: string;
-  clockIn: string;
-  clockOut: string | null;
-  breakMinutes: number;
-  staffName?: string;
-  staffPicture?: string;
-  hourlyWage?: number;
-  transportFee?: number;
-}
-
-export interface TimecardStatus {
-  isClockedIn: boolean;
-  isStale: boolean;
-  currentRecord: TimeRecord | null;
-  staffId: string;
-}
-
-export interface MonthlySummaryStaff {
-  staffId: string;
-  staffName: string;
-  hourlyWage: number;
-  transportFee: number;
-  workDays: number;
-  totalWorkMinutes: number;
-  totalWorkHours: number;
-  estimatedSalary: number;
-  totalTransportFee: number;
-  totalCost: number;
-}
+// 旧 TimeRecord / TimecardStatus / MonthlySummaryStaff は削除済み
+// （unified attendance プラグインが AttendanceTodayResponse 等で置き換える）
 
 // ============================================================
 // Plugin Settings
@@ -405,6 +371,7 @@ export interface StaffConsecutiveInfo {
 export interface AttendanceTodayResponse {
   businessDate: string;
   currentStatus: string;
+  membershipId: string;
   activeSession: AttendanceSession | null;
   completedSessions: AttendanceSession[];
   recentEvents: AttendanceEvent[];

@@ -4,9 +4,6 @@ import type {
   StoreAccount,
   StaffMember,
   Invitation,
-  TimeRecord,
-  TimecardStatus,
-  MonthlySummaryStaff,
   PluginInfo,
   Shift,
   ShiftRequest,
@@ -120,33 +117,7 @@ export const api = {
   rehireStaff: (storeId: string, data: { email: string; role?: string; hourlyWage?: number }) =>
     request<{ invitation: Invitation; message?: string }>(`/stores/${storeId}/staff/rehire`, { method: 'POST', body: JSON.stringify(data) }),
 
-  // Timecard
-  getTimecardStatus: (storeId: string) => request<TimecardStatus>(`/timecard/${storeId}/status`),
-  clockIn: (storeId: string) =>
-    request<{ record: TimeRecord }>(`/timecard/${storeId}/clock-in`, { method: 'POST' }),
-  correctAndClockIn: (storeId: string, staleRecordId: string, clockOut: string, breakMinutes?: number) =>
-    request<{ record: TimeRecord }>(`/timecard/${storeId}/correct-and-clockin`, {
-      method: 'POST',
-      body: JSON.stringify({ staleRecordId, clockOut, breakMinutes }),
-    }),
-  clockOut: (storeId: string, breakMinutes?: number) =>
-    request<{ record: TimeRecord }>(`/timecard/${storeId}/clock-out`, {
-      method: 'POST',
-      body: JSON.stringify({ breakMinutes }),
-    }),
-  updateTimeRecord: (storeId: string, recordId: string, updates: { clockIn?: string; clockOut?: string; breakMinutes?: number }) =>
-    request<{ record: TimeRecord }>(`/timecard/${storeId}/records/${recordId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    }),
-  getDailyRecords: (storeId: string, date?: string) =>
-    request<{ records: TimeRecord[] }>(`/timecard/${storeId}/daily${date ? `?date=${date}` : ''}`),
-  getMonthlyRecords: (storeId: string, year?: number, month?: number) => {
-    const params = new URLSearchParams();
-    if (year) params.set('year', String(year));
-    if (month !== undefined) params.set('month', String(month));
-    return request<{ records: TimeRecord[]; summary: MonthlySummaryStaff[] }>(`/timecard/${storeId}/monthly?${params}`);
-  },
+  // Timecard（旧 /api/timecard/* は削除済み。新勤怠 API は下部 "Attendance" セクション参照）
 
   // Plugin Settings
   getPluginSettings: (storeId: string) => request<{ plugins: PluginInfo[] }>(`/plugin-settings/${storeId}`),

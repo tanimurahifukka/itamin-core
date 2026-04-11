@@ -90,6 +90,7 @@ router.get('/me/today', requireAuth, async (req: Request, res: Response) => {
     res.json({
       businessDate,
       currentStatus,
+      membershipId: membership.id,
       activeSession: activeSession ? formatSession(activeSession) : null,
       completedSessions: (completedToday || []).map(formatSession),
       recentEvents: events || [],

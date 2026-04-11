@@ -16,22 +16,23 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
-    // スタッフ一覧取得（store_staff.id でマッチさせるため id も取得）
+    // スタッフ一覧取得（user_id で attendance_records と突き合わせる）
     const { data: members } = await supabaseAdmin
       .from('store_staff')
       .select('id, user_id, role, user:profiles(name, email)')
       .eq('store_id', storeId);
 
-    // 過去30日の打刻レコードを取得（staff_id は store_staff.id）
+    // 過去30日の勤怠レコードを取得（business_date ベース）
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoStr = `${thirtyDaysAgo.getFullYear()}-${String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(thirtyDaysAgo.getDate()).padStart(2, '0')}`;
 
     const { data: records, error } = await supabaseAdmin
-      .from('time_records')
-      .select('staff_id, clock_in')
+      .from('attendance_records')
+      .select('user_id, business_date')
       .eq('store_id', storeId)
-      .gte('clock_in', thirtyDaysAgo.toISOString())
-      .order('clock_in', { ascending: true });
+      .gte('business_date', thirtyDaysAgoStr)
+      .order('business_date', { ascending: true });
 
     if (error) {
       res.status(500).json({ error: error.message });
@@ -41,13 +42,15 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const staffStatus = (members || []).map((m: any) => {
-      // staff_id = store_staff.id でフィルタ
-      const staffRecords = (records || []).filter((r: any) => r.staff_id === m.id);
+    interface StaffMember { id: string; user_id: string; role: string; user: { name: string | null; email: string | null }[] | null }
+    interface AttendanceRow { user_id: string; business_date: string }
+
+    const staffStatus = ((members || []) as unknown as StaffMember[]).map(m => {
+      // user_id でフィルタ
+      const staffRecords = ((records || []) as AttendanceRow[]).filter(r => r.user_id === m.user_id);
       const workDates = new Set<string>();
       for (const r of staffRecords) {
-        const d = new Date(r.clock_in);
-        workDates.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+        workDates.add(r.business_date);
       }
 
       // 今日から遡って連勤日数をカウント
@@ -70,9 +73,10 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
         }
       }
 
+      const profile = Array.isArray(m.user) ? m.user[0] : null;
       return {
         userId: m.user_id,
-        name: (m as any).user?.name || (m as any).user?.email || '不明',
+        name: profile?.name || profile?.email || '不明',
         role: m.role,
         consecutiveDays,
         level: consecutiveDays >= 6 ? 'danger' : consecutiveDays >= 5 ? 'warning' : 'normal',
@@ -80,7 +84,7 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
     });
 
     // 連勤日数が多い順にソート
-    staffStatus.sort((a: any, b: any) => b.consecutiveDays - a.consecutiveDays);
+    staffStatus.sort((a, b) => b.consecutiveDays - a.consecutiveDays);
 
     res.json({ staffStatus });
   } catch (e: any) {

@@ -9,8 +9,7 @@ import LineMenuPage from './pages/attendance/LineMenuPage';
 import LoginPage from './pages/LoginPage';
 import PasswordChangePage from './pages/PasswordChangePage';
 import StoreSelectPage from './pages/StoreSelectPage';
-import PunchClockPage from './pages/PunchClockPage';
-import DashboardPage from './pages/DashboardPage';
+import AttendancePage from './pages/AttendancePage';
 import StaffPage from './pages/StaffPage';
 import ChecklistAdminPage from './pages/ChecklistAdminPage';
 import StoreChecklistPage from './pages/StoreChecklistPage';
@@ -27,8 +26,6 @@ import ExpensePage from './pages/ExpensePage';
 import FeedbackPage from './pages/FeedbackPage';
 import MenuPage from './pages/MenuPage';
 import SalesCapturePage from './pages/SalesCapturePage';
-import AttendanceStaffPage from './pages/AttendanceStaffPage';
-import AttendanceAdminPage from './pages/AttendanceAdminPage';
 import KioskLinkPage from './pages/KioskLinkPage';
 import SwitchBotReadingsPage from './pages/SwitchBotReadingsPage';
 import CustomersPage from './pages/CustomersPage';
@@ -65,9 +62,10 @@ function getSavedStoreId(): string | null {
 }
 
 // プラグイン名 → コンポーネント対応表
+// 鉄則1: 勤怠ドメインは単一の `attendance` プラグインに集約されている。
+// AttendancePage はロールに応じて AttendanceAdminPage / AttendanceStaffPage を描画する。
 const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
-  punch: PunchClockPage,
-  attendance: DashboardPage,
+  attendance: AttendancePage,
   staff: StaffPage,
   check: ChecklistAdminPage,
   store_check: StoreChecklistPage,
@@ -83,8 +81,6 @@ const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   feedback: FeedbackPage,
   menu: MenuPage,
   sales_capture: SalesCapturePage,
-  line_attendance: AttendanceStaffPage,
-  attendance_admin: AttendanceAdminPage,
   kiosk: KioskLinkPage,
   haccp_kiosk: ChecklistAdminPage,
   switchbot: SwitchBotReadingsPage,
@@ -185,7 +181,6 @@ export default function App() {
         // 有効でない非コアプラグインはスキップ
         if (!p.enabled && !p.core) continue;
         if (p.name === 'shift_request' && !allowStaffRequest) continue;
-        if (p.name === 'punch' && myRole === 'owner') continue;
         // 自分のロールがアクセス権限に含まれているか
         const allowed: string[] = p.allowedRoles || p.defaultRoles || [];
         if (!allowed.includes(myRole)) continue;
@@ -524,8 +519,9 @@ export default function App() {
   const showMobileMenu = isMobile && !activeTab && !tabsLoading;
 
   // 主要タブ（打刻・チェックリスト）を上段に大きく表示
-  const primaryTabs = tabs.filter(t => ['punch', 'check'].includes(t.name));
-  const secondaryTabs = tabs.filter(t => !['punch', 'check'].includes(t.name));
+  // 主要タブ（勤怠・チェックリスト）を上段に大きく表示
+  const primaryTabs = tabs.filter(t => ['attendance', 'check'].includes(t.name));
+  const secondaryTabs = tabs.filter(t => !['attendance', 'check'].includes(t.name));
 
   return (
     <div className="app">

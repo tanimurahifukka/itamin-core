@@ -345,8 +345,8 @@ export default function StoreChecklistPage() {
   // membership_id (store_staff.id) を取得
   useEffect(() => {
     if (!selectedStore) return;
-    api.getTimecardStatus(selectedStore.id)
-      .then((d) => { if (d.staffId) setMembershipId(d.staffId); })
+    api.getAttendanceToday(selectedStore.id)
+      .then((d) => { if (d.membershipId) setMembershipId(d.membershipId); })
       .catch(() => {});
   }, [selectedStore]);
 

@@ -4,8 +4,6 @@ import helmet from 'helmet';
 import { config } from './config';
 import { storesRouter } from './auth/stores';
 import { kioskRouter } from './kiosk/routes';
-import { timecardRouter } from './timecard/routes';
-import { attendanceApiRouter } from './services/attendance/routes';
 import { lineRouter } from './services/line/routes';
 import { linePunchRouter } from './services/line/punch';
 import { lineWebhookRouter } from './services/line/webhook';
@@ -23,7 +21,6 @@ import { paidLeavePlugin } from './plugins/paid_leave';
 import { expensePlugin } from './plugins/expense';
 import { feedbackPlugin } from './plugins/feedback';
 import { menuPlugin } from './plugins/menu';
-import { punchPlugin } from './plugins/punch';
 import { attendancePlugin } from './plugins/attendance_plugin';
 import { staffPlugin } from './plugins/staff';
 import { kioskPlugin } from './plugins/kiosk';
@@ -34,7 +31,6 @@ import { salesCapturePlugin } from './plugins/sales_capture';
 import { customersPlugin } from './plugins/customers';
 import { switchbotRouter } from './services/switchbot/routes';
 import { collectSwitchBotReadings } from './services/switchbot/cron';
-import { lineAttendancePlugin, attendanceAdminPlugin } from './plugins/line_attendance';
 
 const app = express();
 
@@ -49,17 +45,16 @@ app.use(cors({
 app.use(express.json());
 
 // Core routes（認証はSupabase Auth JWT）
+// 鉄則3: attendance / timecard などの業務ルーティングはプラグイン自身が initialize(app) で登録する。
+// ここには複数プラグインに跨がる横断的なルート（認証・LINE 受信・Webhook など）のみを置く。
 app.use('/api/stores', storesRouter);
 app.use('/api/kiosk', kioskRouter);
-app.use('/api/timecard', timecardRouter);
-app.use('/api/attendance', attendanceApiRouter);
 app.use('/api/auth/line', lineRouter);
 app.use('/api/line-punch', linePunchRouter);
 app.use('/api/line-staff', lineStaffRouter);
 app.use('/api/webhooks/line', lineWebhookRouter);
 
 // Core plugins（無効化不可）
-pluginRegistry.register(punchPlugin);
 pluginRegistry.register(attendancePlugin);
 pluginRegistry.register(staffPlugin);
 
@@ -77,8 +72,6 @@ pluginRegistry.register(paidLeavePlugin);
 pluginRegistry.register(expensePlugin);
 pluginRegistry.register(feedbackPlugin);
 pluginRegistry.register(salesCapturePlugin);
-pluginRegistry.register(lineAttendancePlugin);
-pluginRegistry.register(attendanceAdminPlugin);
 
 pluginRegistry.register(kioskPlugin);
 pluginRegistry.register(haccpKioskPlugin);
