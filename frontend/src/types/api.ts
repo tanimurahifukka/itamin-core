@@ -729,3 +729,38 @@ export interface PublicEventAvailability {
   price: number | null;
   image_url: string | null;
 }
+
+// ============================================================
+// Store Calendar
+// ============================================================
+
+export interface StoreBusinessHour {
+  id?: string;
+  day_of_week: number; // 0=Sun..6=Sat
+  open_time: string;   // HH:MM or HH:MM:SS
+  close_time: string;
+  is_closed: boolean;
+  note?: string | null;
+}
+
+export type CalendarOverrideKind = 'closed' | 'special_hours' | 'holiday';
+
+export interface StoreCalendarOverride {
+  id: string;
+  date: string; // YYYY-MM-DD
+  kind: CalendarOverrideKind;
+  open_time: string | null;
+  close_time: string | null;
+  label: string | null;
+}
+
+export interface EffectiveHours {
+  date: string;
+  dayOfWeek: number;
+  isOpen: boolean;
+  openTime: string | null;
+  closeTime: string | null;
+  source: 'override' | 'business_hours' | 'default';
+  kind?: CalendarOverrideKind;
+  label?: string | null;
+}

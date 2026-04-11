@@ -44,6 +44,7 @@ import PublicTableBookingPage from './pages/reservation/PublicTableBookingPage';
 import PublicTimeslotBookingPage from './pages/reservation/PublicTimeslotBookingPage';
 import PublicSchoolBookingPage from './pages/reservation/PublicSchoolBookingPage';
 import PublicEventBookingPage from './pages/reservation/PublicEventBookingPage';
+import CalendarAdminPage from './pages/CalendarAdminPage';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -100,6 +101,7 @@ const PLUGIN_COMPONENTS: Record<string, React.ComponentType> = {
   nfc_cleaning: NfcLocationsPage,
   switchbot: SwitchBotReadingsPage,
   customers: CustomersPage,
+  calendar: CalendarAdminPage,
   reservation_table: ReservationTablePage,
   reservation_timeslot: ReservationTimeslotPage,
   reservation_school: ReservationSchoolPage,

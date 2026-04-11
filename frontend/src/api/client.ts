@@ -56,6 +56,10 @@ import type {
   PublicSchoolSessionAvailability,
   ReservationEvent,
   PublicEventAvailability,
+  StoreBusinessHour,
+  StoreCalendarOverride,
+  CalendarOverrideKind,
+  EffectiveHours,
 } from '../types/api';
 
 const API_BASE = '/api';
@@ -889,6 +893,50 @@ export const api = {
     ),
   getPublicEvents: (slug: string) =>
     request<{ events: PublicEventAvailability[] }>(`/public/r/${slug}/event/events`),
+
+  // ============================================================
+  // Calendar — 営業日カレンダー
+  // ============================================================
+  getBusinessHours: (storeId: string) =>
+    request<{ hours: StoreBusinessHour[] }>(`/calendar/${storeId}/business-hours`),
+  updateBusinessHours: (storeId: string, hours: StoreBusinessHour[]) =>
+    request<OkResponse>(`/calendar/${storeId}/business-hours`, {
+      method: 'PUT',
+      body: JSON.stringify({ hours }),
+    }),
+  listCalendarOverrides: (storeId: string, from: string, to: string) =>
+    request<{ overrides: StoreCalendarOverride[] }>(
+      `/calendar/${storeId}/overrides?from=${from}&to=${to}`,
+    ),
+  createCalendarOverride: (
+    storeId: string,
+    data: {
+      date: string;
+      kind: CalendarOverrideKind;
+      open_time?: string | null;
+      close_time?: string | null;
+      label?: string | null;
+    },
+  ) =>
+    request<{ override: StoreCalendarOverride }>(`/calendar/${storeId}/overrides`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateCalendarOverride: (
+    storeId: string,
+    id: string,
+    patch: Partial<Omit<StoreCalendarOverride, 'id' | 'date'>>,
+  ) =>
+    request<{ override: StoreCalendarOverride }>(
+      `/calendar/${storeId}/overrides/${id}`,
+      { method: 'PATCH', body: JSON.stringify(patch) },
+    ),
+  deleteCalendarOverride: (storeId: string, id: string) =>
+    request<OkResponse>(`/calendar/${storeId}/overrides/${id}`, { method: 'DELETE' }),
+  getEffectiveHours: (storeId: string, from: string, to: string) =>
+    request<{ days: EffectiveHours[] }>(
+      `/calendar/${storeId}/effective?from=${from}&to=${to}`,
+    ),
   createPublicEventReservation: (
     slug: string,
     data: {
