@@ -156,6 +156,7 @@ nfcPunchRouter.post('/clock-in', async (req: Request, res: Response) => {
     const { data: open } = await supabaseAdmin
       .from('attendance_records')
       .select('id')
+      .eq('store_id', auth.storeId)
       .eq('user_id', auth.userId)
       .in('status', ['working', 'on_break'])
       .maybeSingle();
