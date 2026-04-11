@@ -3,6 +3,8 @@ import { requireAuth } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
 import { buildDetailCsv, buildSummaryCsv } from './csv';
 import type { DetailRecord, SummaryRecord } from './csv';
+import { aggregateSummary, computeWorkMinutes } from './aggregate';
+import type { RawRecord } from './aggregate';
 
 const router = Router();
 
@@ -306,49 +308,40 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
       return;
     }
 
-    // スタッフごとに集計
-    const staffMap = new Map<string, {
-      staffId: string;
-      staffName: string;
-      hourlyWage: number;
-      transportFee: number;
-      totalMinutes: number;
-      workDays: Set<string>;
-    }>();
-
-    for (const r of data || []) {
-      const sid = r.staff_id;
-      if (!staffMap.has(sid)) {
-        staffMap.set(sid, {
-          staffId: sid,
-          staffName: r.staff?.user?.name || '—',
-          hourlyWage: r.staff?.hourly_wage || 0,
-          transportFee: r.staff?.transport_fee || 0,
-          totalMinutes: 0,
-          workDays: new Set(),
-        });
+    // スタッフごとに集計（aggregateSummary を使用して /export との重複解消）
+    // 交通費計算に必要な transportFee は aggregateSummary の対象外のため別途保持する
+    const transportFeeMap = new Map<string, number>();
+    const rawRecords: RawRecord[] = (data || []).map((r: any) => {
+      const sid: string = r.staff_id;
+      if (!transportFeeMap.has(sid)) {
+        transportFeeMap.set(sid, r.staff?.transport_fee || 0);
       }
-      const entry = staffMap.get(sid)!;
-      if (r.clock_out) {
-        const diff = (new Date(r.clock_out).getTime() - new Date(r.clock_in).getTime()) / 60000;
-        entry.totalMinutes += diff - (r.break_minutes || 0);
-      }
-      // 出勤日をカウント（日付ベース）
-      const day = new Date(r.clock_in).toISOString().split('T')[0];
-      entry.workDays.add(day);
-    }
+      return {
+        staff_id: sid,
+        clock_in: r.clock_in,
+        clock_out: r.clock_out,
+        break_minutes: r.break_minutes,
+        hourly_wage: r.staff?.hourly_wage || 0,
+        staff_name: r.staff?.user?.name || '—',
+      };
+    });
 
-    const summary = Array.from(staffMap.values()).map(s => {
-      const totalWorkHours = Math.round(s.totalMinutes / 60 * 100) / 100;
-      const totalTransportFee = s.workDays.size * s.transportFee;
-      const estimatedSalary = Math.round(totalWorkHours * s.hourlyWage);
+    const aggregated = aggregateSummary(rawRecords);
+
+    const summary = aggregated.map(s => {
+      const totalWorkHours = Math.round(s.laborMinutes / 60 * 100) / 100;
+      const transportFee = transportFeeMap.get(s.staffId) || 0;
+      const totalTransportFee = s.workDays * transportFee;
+      const estimatedSalary = s.wageTotal;
       return {
         staffId: s.staffId,
         staffName: s.staffName,
-        hourlyWage: s.hourlyWage,
-        transportFee: s.transportFee,
-        workDays: s.workDays.size,
-        totalWorkMinutes: Math.round(s.totalMinutes),
+        hourlyWage: transportFeeMap.has(s.staffId)
+          ? rawRecords.find(r => r.staff_id === s.staffId)?.hourly_wage || 0
+          : 0,
+        transportFee,
+        workDays: s.workDays,
+        totalWorkMinutes: s.laborMinutes,
         totalWorkHours,
         estimatedSalary,
         totalTransportFee,
@@ -638,7 +631,14 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
     const storeId = req.params.storeId as string;
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
     const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
-    const mode = (req.query.mode as string) === 'summary' ? 'summary' : 'detail';
+    const modeParam = req.query.mode as string;
+
+    // Medium 11: 不正な mode 値は 400 Bad Request
+    if (modeParam !== 'detail' && modeParam !== 'summary') {
+      res.status(400).json({ error: 'mode パラメータは "detail" または "summary" を指定してください' });
+      return;
+    }
+    const mode = modeParam as 'detail' | 'summary';
 
     // 認証ユーザーの店舗スタッフ情報取得
     const staff = await getStoreStaff(storeId, req.user!.id);
@@ -656,14 +656,33 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
       .maybeSingle();
 
     const cfg = (pluginData?.config as Record<string, unknown>) || {};
-    const exportPermission: string[] = Array.isArray(cfg.export_permission)
-      ? (cfg.export_permission as string[])
-      : ['owner', 'manager'];
+
+    // Critical 2: fail-closed ロジック
+    // - export_permission が undefined (未設定) → デフォルト ['owner','manager']
+    // - export_permission が存在するが配列でない → 空配列扱いで全拒否
+    // - export_permission が配列 → そのまま使用(空配列なら全拒否)
+    let exportPermission: string[];
+    if (cfg.export_permission === undefined) {
+      exportPermission = ['owner', 'manager'];
+    } else if (Array.isArray(cfg.export_permission)) {
+      exportPermission = cfg.export_permission as string[];
+    } else {
+      // 明示的に設定されているが配列でない → fail-closed (全拒否)
+      exportPermission = [];
+    }
 
     if (!exportPermission.includes(staff.role)) {
       res.status(403).json({ error: 'CSV エクスポートの権限がありません' });
       return;
     }
+
+    // 店舗名を取得してファイル名に使用（Medium 9）
+    const { data: storeData } = await supabaseAdmin
+      .from('stores')
+      .select('name')
+      .eq('id', storeId)
+      .maybeSingle();
+    const storeName = (storeData as { name?: string } | null)?.name || storeId;
 
     // 対象月のレコードを取得
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
@@ -684,21 +703,27 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
       return;
     }
 
+    // Medium 9: RFC 5987 形式のファイル名
     const monthStr = `${year}-${String(month).padStart(2, '0')}`;
-    const filename = `attendance_${storeId}_${monthStr}_${mode}.csv`;
+    const asciiFilename = `attendance_${monthStr}_${mode}.csv`;
+    const encodedStoreName = encodeURIComponent(storeName);
+    const utf8Filename = `attendance_${encodedStoreName}_${monthStr}_${mode}.csv`;
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${asciiFilename}"; filename*=UTF-8''${utf8Filename}`,
+    );
 
     if (mode === 'detail') {
+      // High 5: clock_out != null のレコードのみ集計
       const records: DetailRecord[] = (data || [])
         .filter((r: any) => r.clock_out != null)
         .map((r: any) => {
           const clockInDate = new Date(r.clock_in);
           const clockOutDate = new Date(r.clock_out);
-          const diffMinutes = (clockOutDate.getTime() - clockInDate.getTime()) / 60000;
           const breakMins = r.break_minutes || 0;
-          const workMinutes = Math.max(0, diffMinutes - breakMins);
+          const workMinutes = computeWorkMinutes(r.clock_in, r.clock_out, breakMins);
           const hourlyWage: number = r.staff?.hourly_wage || 0;
           const estimatedSalary = Math.round(workMinutes / 60 * hourlyWage);
           const dateStr = clockInDate.toISOString().split('T')[0];
@@ -714,48 +739,32 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
             estimatedSalary,
           };
         });
-      res.send(buildDetailCsv(records));
+      // High 6: Buffer.from で堅牢化
+      res.send(Buffer.from(buildDetailCsv(records), 'utf8'));
     } else {
-      // summary モード: スタッフごとに集計
-      const staffMap = new Map<string, {
-        staffName: string;
-        hourlyWage: number;
-        totalMinutes: number;
-        totalBreakMinutes: number;
-        workDays: Set<string>;
-      }>();
-
-      for (const r of data || []) {
-        const sid = (r as any).staff_id;
-        if (!staffMap.has(sid)) {
-          staffMap.set(sid, {
-            staffName: (r as any).staff?.user?.name || '—',
-            hourlyWage: (r as any).staff?.hourly_wage || 0,
-            totalMinutes: 0,
-            totalBreakMinutes: 0,
-            workDays: new Set(),
-          });
-        }
-        const entry = staffMap.get(sid)!;
-        if ((r as any).clock_out) {
-          const diff = (new Date((r as any).clock_out).getTime() - new Date((r as any).clock_in).getTime()) / 60000;
-          const breakMins = (r as any).break_minutes || 0;
-          entry.totalBreakMinutes += breakMins;
-          entry.totalMinutes += Math.max(0, diff - breakMins);
-        }
-        const day = new Date((r as any).clock_in).toISOString().split('T')[0];
-        entry.workDays.add(day);
-      }
-
-      const summaryRecords: SummaryRecord[] = Array.from(staffMap.values()).map(s => ({
-        staffName: s.staffName,
-        workDays: s.workDays.size,
-        totalWorkHours: Math.round(s.totalMinutes / 60 * 100) / 100,
-        totalBreakMinutes: s.totalBreakMinutes,
-        estimatedSalary: Math.round(s.totalMinutes / 60 * s.hourlyWage),
+      // summary モード: aggregateSummary で集計（High 5, High 7）
+      // aggregateSummary は clock_out != null のレコードのみ集計し、detail と一致する
+      const rawRecords: RawRecord[] = (data || []).map((r: any) => ({
+        staff_id: r.staff_id,
+        clock_in: r.clock_in,
+        clock_out: r.clock_out,
+        break_minutes: r.break_minutes,
+        hourly_wage: r.staff?.hourly_wage || 0,
+        staff_name: r.staff?.user?.name || '—',
       }));
 
-      res.send(buildSummaryCsv(summaryRecords));
+      const aggregated = aggregateSummary(rawRecords);
+
+      const summaryRecords: SummaryRecord[] = aggregated.map(s => ({
+        staffName: s.staffName,
+        workDays: s.workDays,
+        totalWorkHours: Math.round(s.laborMinutes / 60 * 100) / 100,
+        totalBreakMinutes: s.breakMinutes,
+        estimatedSalary: s.wageTotal,
+      }));
+
+      // High 6: Buffer.from で堅牢化
+      res.send(Buffer.from(buildSummaryCsv(summaryRecords), 'utf8'));
     }
   } catch (e: any) {
     console.error('[timecard GET /:storeId/export] error:', e);

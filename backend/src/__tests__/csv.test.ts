@@ -43,6 +43,51 @@ describe('escapeCsvCell', () => {
   it('カンマ・ダブルクォートを同時に含む場合も正しく処理する', () => {
     expect(escapeCsvCell('a,"b",c')).toBe('"a,""b"",c"');
   });
+
+  // CSV インジェクション(Excel 式注入)対策
+  it('= で始まる値には先頭に \' を prefix する', () => {
+    expect(escapeCsvCell('=cmd|calc')).toBe("'=cmd|calc");
+  });
+
+  it('+ で始まる値には先頭に \' を prefix する', () => {
+    expect(escapeCsvCell('+1+1')).toBe("'+1+1");
+  });
+
+  it('- で始まる値には先頭に \' を prefix する', () => {
+    expect(escapeCsvCell('-2+3')).toBe("'-2+3");
+  });
+
+  it('@ で始まる値には先頭に \' を prefix する', () => {
+    expect(escapeCsvCell('@SUM(A1)')).toBe("'@SUM(A1)");
+  });
+
+  it('\\t で始まる値には先頭に \' を prefix する', () => {
+    expect(escapeCsvCell('\t=evil')).toBe("'\t=evil");
+  });
+
+  it('\\r で始まる値には先頭に \' を prefix し、\\r を含むためダブルクォートで囲む', () => {
+    // '\r=evil → \r を含むためダブルクォートで囲む → "'\r=evil"
+    const result = escapeCsvCell('\r=evil');
+    expect(result).toBe("\"'\\r=evil\"".replace('\\r', '\r'));
+    expect(result).toContain('\r=evil');
+  });
+
+  it('= で始まりカンマも含む場合: prefix してからダブルクォートで囲む', () => {
+    // '=cmd,foo を ダブルクォートで囲む → "'=cmd,foo"
+    expect(escapeCsvCell('=cmd,foo')).toBe("\"'=cmd,foo\"");
+  });
+
+  it('= で始まりダブルクォートも含む場合: prefix してからエスケープする', () => {
+    // '=cmd"foo → "'=cmd""foo"
+    expect(escapeCsvCell('=cmd"foo')).toBe("\"'=cmd\"\"foo\"");
+  });
+
+  it('通常の文字列(prefix 不要)は影響を受けない', () => {
+    expect(escapeCsvCell('田中 太郎')).toBe('田中 太郎');
+    expect(escapeCsvCell('09:00')).toBe('09:00');
+    expect(escapeCsvCell('2026-04-01')).toBe('2026-04-01');
+    expect(escapeCsvCell(12000)).toBe('12000');
+  });
 });
 
 describe('toCsvRow', () => {

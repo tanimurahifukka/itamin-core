@@ -14,6 +14,7 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
   const { selectedStore } = useAuth();
   const [summary, setSummary] = useState<AdminMonthlySummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [csvError, setCsvError] = useState<string | null>(null);
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -47,6 +48,7 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
 
   const handleCsvDownload = useCallback(async (mode: 'detail' | 'summary') => {
     if (!storeId) return;
+    setCsvError(null);
     try {
       const { blob, filename } = await api.exportAttendanceCsv(storeId, year, month, mode);
       const url = URL.createObjectURL(blob);
@@ -57,8 +59,15 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch {
-      // エラーは静かに無視（権限不足の場合など）
+    } catch (err: unknown) {
+      // 権限エラー(403)の場合は分かりやすいメッセージを表示
+      if (err instanceof Error && 'status' in err && (err as { status: number }).status === 403) {
+        setCsvError('CSVエクスポート権限がありません。オーナーまたはマネージャーにご確認ください。');
+      } else if (err instanceof Error) {
+        setCsvError(`CSVダウンロードに失敗しました: ${err.message}`);
+      } else {
+        setCsvError('CSVダウンロードに失敗しました。');
+      }
     }
   }, [storeId, year, month]);
 
@@ -71,6 +80,12 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
         <span className="attendance-month-label">{year}年{month}月</span>
         <button className="button" onClick={nextMonth} data-testid="next-month-button">▶</button>
       </div>
+
+      {csvError && (
+        <div className="error-message" role="alert" data-testid="csv-error-message">
+          {csvError}
+        </div>
+      )}
 
       <div className="attendance-csv-actions" style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <button

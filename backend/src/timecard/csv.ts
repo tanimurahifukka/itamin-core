@@ -7,13 +7,20 @@
  * CSV セル値のエスケープ
  * カンマ・ダブルクォート・改行を含む場合はダブルクォートで囲み、
  * 内部のダブルクォートは "" に置換する。
+ * Excel 式インジェクション対策: =, +, -, @, \t, \r で始まる値には先頭に ' を付与する。
  */
 export function escapeCsvCell(value: string | number | null | undefined): string {
   const str = value == null ? '' : String(value);
-  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-    return '"' + str.replace(/"/g, '""') + '"';
+
+  // CSV インジェクション(Excel 式注入)対策:
+  // セル値が危険な先頭文字で始まる場合、シングルクォートを prefix する
+  const CSV_INJECTION_PATTERN = /^[=+\-@\t\r]/;
+  const sanitized = CSV_INJECTION_PATTERN.test(str) ? "'" + str : str;
+
+  if (sanitized.includes(',') || sanitized.includes('"') || sanitized.includes('\n') || sanitized.includes('\r')) {
+    return '"' + sanitized.replace(/"/g, '""') + '"';
   }
-  return str;
+  return sanitized;
 }
 
 /**
