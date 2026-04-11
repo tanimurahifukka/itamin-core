@@ -22,11 +22,35 @@ interface MonthlyData {
   records?: RawStaffRecord[];
 }
 
+function editPermissionToRoles(level: string | undefined): string[] {
+  switch (level) {
+    case 'owner_manager':
+      return ['owner', 'manager'];
+    case 'owner_manager_leader':
+      return ['owner', 'manager', 'leader'];
+    case 'owner':
+    default:
+      return ['owner'];
+  }
+}
+
 export default function DashboardPage() {
   const { selectedStore } = useAuth();
   const isOwner = selectedStore?.role === 'owner';
-  const isManager = selectedStore?.role === 'manager';
-  const canEdit = isOwner || isManager;
+  const [editAllowedRoles, setEditAllowedRoles] = useState<string[]>(['owner']);
+  const canEdit = !!selectedStore?.role && editAllowedRoles.includes(selectedStore.role);
+
+  // 打刻プラグインの edit_permission を読む
+  useEffect(() => {
+    if (!selectedStore) return;
+    api.getPluginSettings(selectedStore.id)
+      .then(data => {
+        const punch = data.plugins.find(p => p.name === 'punch');
+        const level = punch?.config?.edit_permission as string | undefined;
+        setEditAllowedRoles(editPermissionToRoles(level));
+      })
+      .catch(() => setEditAllowedRoles(['owner']));
+  }, [selectedStore]);
   const [records, setRecords] = useState<TimeRecord[]>([]);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [viewMode, setViewMode] = useState<ViewMode>('daily');

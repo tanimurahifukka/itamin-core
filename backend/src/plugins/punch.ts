@@ -42,6 +42,18 @@ export const punchPlugin: Plugin = {
       default: false,
       description: '物理 NFC タグから公開ページを開き、per-staff PIN で打刻する経路。',
     },
+    {
+      key: 'edit_permission',
+      label: 'タイムカード編集権限',
+      type: 'select',
+      default: 'owner',
+      options: [
+        { value: 'owner', label: 'オーナーのみ' },
+        { value: 'owner_manager', label: 'オーナー + マネージャー' },
+        { value: 'owner_manager_leader', label: 'オーナー + マネージャー + リーダー' },
+      ],
+      description: '日別タイムカードの修正・削除・新規作成を実行できる権限の範囲。',
+    },
   ],
   initialize: (_app: Express) => {
     // ルーティングは既存の timecardRouter / attendanceApiRouter / linePunchRouter /

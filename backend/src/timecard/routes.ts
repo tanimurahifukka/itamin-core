@@ -15,6 +15,39 @@ async function getStoreStaff(storeId: string, userId: string) {
   return data;
 }
 
+// 店舗ごとのタイムカード編集権限を読む
+// plugins/punch.ts settingsSchema.edit_permission に対応
+async function getEditAllowedRoles(storeId: string): Promise<string[]> {
+  const { data } = await supabaseAdmin
+    .from('store_plugins')
+    .select('config')
+    .eq('store_id', storeId)
+    .eq('plugin_name', 'punch')
+    .maybeSingle();
+
+  const cfg = (data?.config as Record<string, unknown>) || {};
+  const level = (cfg.edit_permission as string) || 'owner';
+  switch (level) {
+    case 'owner_manager':
+      return ['owner', 'manager'];
+    case 'owner_manager_leader':
+      return ['owner', 'manager', 'leader'];
+    case 'owner':
+    default:
+      return ['owner'];
+  }
+}
+
+async function requireRecordEditor(storeId: string, userId: string, res: Response) {
+  const staff = await getStoreStaff(storeId, userId);
+  const allowed = await getEditAllowedRoles(storeId);
+  if (!staff || !allowed.includes(staff.role)) {
+    res.status(403).json({ error: 'タイムカードを編集する権限がありません' });
+    return null;
+  }
+  return staff;
+}
+
 async function requirePunchStaff(storeId: string, userId: string, res: Response) {
   const staff = await getStoreStaff(storeId, userId);
   if (!staff) {
@@ -404,12 +437,8 @@ router.put('/:storeId/records/:recordId', requireAuth, async (req: Request, res:
     const recordId = req.params.recordId as string;
     const { clockIn, clockOut, breakMinutes } = req.body;
 
-    // オーナーまたはマネージャーのみ
-    const staff = await getStoreStaff(storeId, req.user!.id);
-    if (!staff || !['owner', 'manager'].includes(staff.role)) {
-      res.status(403).json({ error: 'オーナーまたはマネージャーのみ修正できます' });
-      return;
-    }
+    const editor = await requireRecordEditor(storeId, req.user!.id, res);
+    if (!editor) return;
 
     // 対象レコードが同じ店舗のものか確認
     const { data: target } = await supabaseAdmin
@@ -472,11 +501,8 @@ router.delete('/:storeId/records/:recordId', requireAuth, async (req: Request, r
     const storeId = req.params.storeId as string;
     const recordId = req.params.recordId as string;
 
-    const staff = await getStoreStaff(storeId, req.user!.id);
-    if (!staff || !['owner', 'manager'].includes(staff.role)) {
-      res.status(403).json({ error: 'オーナーまたはマネージャーのみ削除できます' });
-      return;
-    }
+    const editor = await requireRecordEditor(storeId, req.user!.id, res);
+    if (!editor) return;
 
     const { data: target } = await supabaseAdmin
       .from('time_records')
@@ -519,11 +545,8 @@ router.post('/:storeId/records', requireAuth, async (req: Request, res: Response
       breakMinutes?: number;
     };
 
-    const actor = await getStoreStaff(storeId, req.user!.id);
-    if (!actor || !['owner', 'manager'].includes(actor.role)) {
-      res.status(403).json({ error: 'オーナーまたはマネージャーのみ作成できます' });
-      return;
-    }
+    const editor = await requireRecordEditor(storeId, req.user!.id, res);
+    if (!editor) return;
 
     if (!staffId || !clockIn) {
       res.status(400).json({ error: 'スタッフと出勤時刻は必須です' });
