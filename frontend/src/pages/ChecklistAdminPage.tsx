@@ -268,9 +268,22 @@ function TemplatesTab({ storeId }: { storeId: string }) {
       </div>
 
       {/* 業種テンプレートから作成 */}
-      {filteredSysTemplates.length > 0 && (
-        <div style={{ marginBottom: 20, padding: 14, borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>業種テンプレートから作成</div>
+      <div style={{ marginBottom: 20, padding: 14, borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>
+          業種テンプレートから作成
+          <span style={{ marginLeft: 8, fontSize: '0.75rem', color: '#64748b', fontWeight: 400 }}>
+            （推奨：ゼロから作らず、まずここに該当テンプレがないか確認してください）
+          </span>
+        </div>
+        {systemTemplates.length === 0 ? (
+          <div style={{ padding: '10px 12px', background: '#fff', borderRadius: 8, border: '1px dashed #cbd5e1', color: '#64748b', fontSize: '0.88rem' }}>
+            業種テンプレートが登録されていません。管理者にお問い合わせください。
+          </div>
+        ) : filteredSysTemplates.length === 0 ? (
+          <div style={{ padding: '10px 12px', background: '#fff', borderRadius: 8, border: '1px dashed #cbd5e1', color: '#64748b', fontSize: '0.88rem' }}>
+            この{SCOPE_LABEL[scopeTab]}チェック用の業種テンプレートはありません。上のタブで他のスコープも確認してみてください。
+          </div>
+        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {filteredSysTemplates.map(sys => (
               <div key={sys.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '8px 12px', borderRadius: 8, border: '1px solid #e5e7eb' }}>
@@ -290,8 +303,8 @@ function TemplatesTab({ storeId }: { storeId: string }) {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {message && (
         <div style={{ marginBottom: 12, color: message.startsWith('エラー') ? '#b91c1c' : '#166534', fontWeight: 500 }}>
