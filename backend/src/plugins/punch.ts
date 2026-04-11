@@ -52,7 +52,19 @@ export const punchPlugin: Plugin = {
         { value: 'owner_manager', label: 'オーナー + マネージャー' },
         { value: 'owner_manager_leader', label: 'オーナー + マネージャー + リーダー' },
       ],
-      description: '日別タイムカードの修正・削除・新規作成を実行できる権限の範囲。',
+      description: '日別タイムカードの修正・新規作成を実行できる権限の範囲。',
+    },
+    {
+      key: 'delete_permission',
+      label: 'タイムカード削除権限',
+      type: 'select',
+      default: 'owner',
+      options: [
+        { value: 'owner', label: 'オーナーのみ' },
+        { value: 'owner_manager', label: 'オーナー + マネージャー' },
+        { value: 'owner_manager_leader', label: 'オーナー + マネージャー + リーダー' },
+      ],
+      description: '日別タイムカードの記録を削除できる権限の範囲。既定はオーナーのみ。',
     },
   ],
   initialize: (_app: Express) => {

@@ -15,18 +15,9 @@ async function getStoreStaff(storeId: string, userId: string) {
   return data;
 }
 
-// 店舗ごとのタイムカード編集権限を読む
-// plugins/punch.ts settingsSchema.edit_permission に対応
-async function getEditAllowedRoles(storeId: string): Promise<string[]> {
-  const { data } = await supabaseAdmin
-    .from('store_plugins')
-    .select('config')
-    .eq('store_id', storeId)
-    .eq('plugin_name', 'punch')
-    .maybeSingle();
-
-  const cfg = (data?.config as Record<string, unknown>) || {};
-  const level = (cfg.edit_permission as string) || 'owner';
+// 権限レベル文字列をロール配列へ展開する共通ヘルパー
+// plugins/punch.ts settingsSchema.edit_permission / delete_permission に対応
+function permissionLevelToRoles(level: string | undefined): string[] {
   switch (level) {
     case 'owner_manager':
       return ['owner', 'manager'];
@@ -38,11 +29,34 @@ async function getEditAllowedRoles(storeId: string): Promise<string[]> {
   }
 }
 
+// 店舗ごとのタイムカード編集・削除権限を読む
+async function getPunchPermissionRoles(storeId: string, key: 'edit_permission' | 'delete_permission'): Promise<string[]> {
+  const { data } = await supabaseAdmin
+    .from('store_plugins')
+    .select('config')
+    .eq('store_id', storeId)
+    .eq('plugin_name', 'punch')
+    .maybeSingle();
+
+  const cfg = (data?.config as Record<string, unknown>) || {};
+  return permissionLevelToRoles(cfg[key] as string | undefined);
+}
+
 async function requireRecordEditor(storeId: string, userId: string, res: Response) {
   const staff = await getStoreStaff(storeId, userId);
-  const allowed = await getEditAllowedRoles(storeId);
+  const allowed = await getPunchPermissionRoles(storeId, 'edit_permission');
   if (!staff || !allowed.includes(staff.role)) {
     res.status(403).json({ error: 'タイムカードを編集する権限がありません' });
+    return null;
+  }
+  return staff;
+}
+
+async function requireRecordDeleter(storeId: string, userId: string, res: Response) {
+  const staff = await getStoreStaff(storeId, userId);
+  const allowed = await getPunchPermissionRoles(storeId, 'delete_permission');
+  if (!staff || !allowed.includes(staff.role)) {
+    res.status(403).json({ error: 'タイムカードを削除する権限がありません' });
     return null;
   }
   return staff;
@@ -495,14 +509,14 @@ router.put('/:storeId/records/:recordId', requireAuth, async (req: Request, res:
   }
 });
 
-// オーナー/マネージャーによる勤怠レコード削除
+// 勤怠レコード削除 (削除権限は punch.delete_permission で制御)
 router.delete('/:storeId/records/:recordId', requireAuth, async (req: Request, res: Response) => {
   try {
     const storeId = req.params.storeId as string;
     const recordId = req.params.recordId as string;
 
-    const editor = await requireRecordEditor(storeId, req.user!.id, res);
-    if (!editor) return;
+    const deleter = await requireRecordDeleter(storeId, req.user!.id, res);
+    if (!deleter) return;
 
     const { data: target } = await supabaseAdmin
       .from('time_records')

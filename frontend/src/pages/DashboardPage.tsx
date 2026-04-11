@@ -22,7 +22,7 @@ interface MonthlyData {
   records?: RawStaffRecord[];
 }
 
-function editPermissionToRoles(level: string | undefined): string[] {
+function permissionLevelToRoles(level: string | undefined): string[] {
   switch (level) {
     case 'owner_manager':
       return ['owner', 'manager'];
@@ -38,18 +38,25 @@ export default function DashboardPage() {
   const { selectedStore } = useAuth();
   const isOwner = selectedStore?.role === 'owner';
   const [editAllowedRoles, setEditAllowedRoles] = useState<string[]>(['owner']);
+  const [deleteAllowedRoles, setDeleteAllowedRoles] = useState<string[]>(['owner']);
   const canEdit = !!selectedStore?.role && editAllowedRoles.includes(selectedStore.role);
+  const canDelete = !!selectedStore?.role && deleteAllowedRoles.includes(selectedStore.role);
 
-  // 打刻プラグインの edit_permission を読む
+  // 打刻プラグインの edit_permission / delete_permission を読む
   useEffect(() => {
     if (!selectedStore) return;
     api.getPluginSettings(selectedStore.id)
       .then(data => {
         const punch = data.plugins.find(p => p.name === 'punch');
-        const level = punch?.config?.edit_permission as string | undefined;
-        setEditAllowedRoles(editPermissionToRoles(level));
+        const editLevel = punch?.config?.edit_permission as string | undefined;
+        const deleteLevel = punch?.config?.delete_permission as string | undefined;
+        setEditAllowedRoles(permissionLevelToRoles(editLevel));
+        setDeleteAllowedRoles(permissionLevelToRoles(deleteLevel));
       })
-      .catch(() => setEditAllowedRoles(['owner']));
+      .catch(() => {
+        setEditAllowedRoles(['owner']);
+        setDeleteAllowedRoles(['owner']);
+      });
   }, [selectedStore]);
   const [records, setRecords] = useState<TimeRecord[]>([]);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -827,7 +834,7 @@ export default function DashboardPage() {
               <button className="break-cancel" onClick={closeEditModal} data-testid="edit-cancel-btn">
                 キャンセル
               </button>
-              {!isCreating && editRecord && (
+              {!isCreating && editRecord && canDelete && (
                 <button
                   className="break-cancel"
                   onClick={handleEditDelete}
