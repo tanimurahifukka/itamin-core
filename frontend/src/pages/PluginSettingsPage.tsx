@@ -750,14 +750,18 @@ export default function PluginSettingsPage() {
                       onClick={() => saveSettings(plugin.name)}
                       disabled={savingConfig === plugin.name}
                       style={primaryButtonStyle}
+                      data-testid={`plugin-save-button-${plugin.name}`}
                     >
                       {savingConfig === plugin.name ? '保存中...' : '保存'}
                     </button>
                     {configMsg[plugin.name] && (
-                      <span style={{
-                        fontSize: '0.85rem',
-                        color: configMsg[plugin.name].startsWith('エラー') ? '#c53030' : '#22c55e',
-                      }}>
+                      <span
+                        data-testid={`plugin-config-msg-${plugin.name}`}
+                        style={{
+                          fontSize: '0.85rem',
+                          color: configMsg[plugin.name].startsWith('エラー') ? '#c53030' : '#22c55e',
+                        }}
+                      >
                         {configMsg[plugin.name]}
                       </span>
                     )}
