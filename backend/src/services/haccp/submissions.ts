@@ -63,7 +63,7 @@ export async function listKioskActiveTemplates(storeId: string, timing: string |
 export async function listKioskSubmissionsForDate(storeId: string, date: string) {
   const { data, error } = await supabaseAdmin
     .from('checklist_submissions')
-    .select('id, template_id, timing, submitted_at, member:store_staff(user:profiles(name))')
+    .select('id, template_id, timing, submitted_at, member:store_staff!membership_id(user:profiles(name))')
     .eq('store_id', storeId)
     .eq('scope', 'store')
     .gte('submitted_at', `${date}T00:00:00`)
