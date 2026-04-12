@@ -782,4 +782,221 @@ router.get('/:storeId/reservations', requireKiosk, async (req: Request, res: Res
   }
 });
 
+// ============================================================
+// 予約月次サマリ（キオスク認証）— カレンダー表示用
+// ============================================================
+router.get('/:storeId/reservations/monthly', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    if (storeId !== req.kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    const yearParam = typeof req.query.year === 'string' ? parseInt(req.query.year, 10) : NaN;
+    const monthParam = typeof req.query.month === 'string' ? parseInt(req.query.month, 10) : NaN;
+
+    if (isNaN(yearParam) || isNaN(monthParam) || monthParam < 1 || monthParam > 12) {
+      res.status(400).json({ error: 'year と month は必須です（整数）' }); return;
+    }
+
+    const monthStart = `${yearParam}-${String(monthParam).padStart(2, '0')}-01T00:00:00`;
+    const lastDay = new Date(yearParam, monthParam, 0).getDate();
+    const monthEnd = `${yearParam}-${String(monthParam).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`;
+
+    const { data, error } = await supabaseAdmin
+      .from('reservations')
+      .select('id, starts_at, reservation_type')
+      .eq('store_id', storeId)
+      .gte('starts_at', monthStart)
+      .lte('starts_at', monthEnd)
+      .not('status', 'eq', 'cancelled');
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    const days: Record<string, { count: number; types: string[] }> = {};
+    for (const row of (data || []) as any[]) {
+      const dateKey = (row.starts_at as string).split('T')[0];
+      if (!days[dateKey]) {
+        days[dateKey] = { count: 0, types: [] };
+      }
+      days[dateKey].count += 1;
+      const rtype = row.reservation_type as string;
+      if (rtype && !days[dateKey].types.includes(rtype)) {
+        days[dateKey].types.push(rtype);
+      }
+    }
+
+    res.json({ days });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// イベント一覧（キオスク認証）
+// ============================================================
+router.get('/:storeId/events', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    if (storeId !== req.kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('reservation_events')
+      .select('*')
+      .eq('store_id', storeId)
+      .order('starts_at', { ascending: false });
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    res.json({ events: data || [] });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// イベント作成（キオスク認証）
+// ============================================================
+router.post('/:storeId/events', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    if (storeId !== req.kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    const { title, description, starts_at, ends_at, capacity, price, status } = req.body || {};
+
+    if (!title || !starts_at || !ends_at || capacity == null) {
+      res.status(400).json({ error: 'title, starts_at, ends_at, capacity は必須です' }); return;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('reservation_events')
+      .insert({
+        store_id: storeId,
+        title,
+        description: description ?? null,
+        starts_at,
+        ends_at,
+        capacity,
+        price: price ?? null,
+        status: status ?? 'published',
+        sort_order: 0,
+      })
+      .select()
+      .single();
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    res.status(201).json({ event: data });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// イベント更新（キオスク認証）
+// ============================================================
+router.patch('/:storeId/events/:eventId', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const eventId = req.params.eventId as string;
+    if (storeId !== req.kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    const { title, description, starts_at, ends_at, capacity, price, status } = req.body || {};
+    const updates: Record<string, any> = {};
+    if (title !== undefined) updates.title = title;
+    if (description !== undefined) updates.description = description;
+    if (starts_at !== undefined) updates.starts_at = starts_at;
+    if (ends_at !== undefined) updates.ends_at = ends_at;
+    if (capacity !== undefined) updates.capacity = capacity;
+    if (price !== undefined) updates.price = price;
+    if (status !== undefined) updates.status = status;
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: '更新するフィールドを指定してください' }); return;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('reservation_events')
+      .update(updates)
+      .eq('id', eventId)
+      .eq('store_id', storeId)
+      .select()
+      .single();
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (!data) { res.status(404).json({ error: 'イベントが見つかりません' }); return; }
+
+    res.json({ event: data });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// イベント削除（キオスク認証）
+// ============================================================
+router.delete('/:storeId/events/:eventId', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const eventId = req.params.eventId as string;
+    if (storeId !== req.kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    const { error } = await supabaseAdmin
+      .from('reservation_events')
+      .delete()
+      .eq('id', eventId)
+      .eq('store_id', storeId);
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// 予約ステータス更新（キオスク認証）
+// ============================================================
+router.post('/:storeId/reservations/:reservationId/status', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const reservationId = req.params.reservationId as string;
+    if (storeId !== req.kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    const { status } = req.body || {};
+    const allowedStatuses = ['confirmed', 'seated', 'completed', 'no_show', 'cancelled'];
+    if (!status || !allowedStatuses.includes(status)) {
+      res.status(400).json({ error: `status は ${allowedStatuses.join(', ')} のいずれかを指定してください` }); return;
+    }
+
+    const updates: Record<string, any> = { status };
+    if (status === 'cancelled') {
+      updates.cancelled_at = new Date().toISOString();
+    }
+
+    const { error } = await supabaseAdmin
+      .from('reservations')
+      .update(updates)
+      .eq('id', reservationId)
+      .eq('store_id', storeId);
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
 export const kioskRouter = router;

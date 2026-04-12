@@ -156,6 +156,38 @@ export const kioskApi = {
       resource_ref: string | null;
     }> }>(`/kiosk/${storeId}/reservations${date ? `?date=${date}` : ''}`),
 
+  getReservationsMonthly: (storeId: string, year: number, month: number) =>
+    kioskRequest<{ days: Record<string, { count: number; types: string[] }> }>(
+      `/kiosk/${storeId}/reservations/monthly?year=${year}&month=${month}`
+    ),
+
+  getEvents: (storeId: string) =>
+    kioskRequest<{ events: Array<{
+      id: string; store_id: string; title: string; description: string | null;
+      starts_at: string; ends_at: string; capacity: number; price: number | null;
+      image_url: string | null; status: string; sort_order: number;
+    }> }>(`/kiosk/${storeId}/events`),
+
+  createEvent: (storeId: string, data: {
+    title: string; description?: string | null; starts_at: string; ends_at: string;
+    capacity: number; price?: number | null; status?: string;
+  }) => kioskRequest<{ event: Record<string, unknown> }>(`/kiosk/${storeId}/events`, {
+    method: 'POST', body: JSON.stringify(data),
+  }),
+
+  updateEvent: (storeId: string, eventId: string, patch: Record<string, unknown>) =>
+    kioskRequest<{ event: Record<string, unknown> }>(`/kiosk/${storeId}/events/${eventId}`, {
+      method: 'PATCH', body: JSON.stringify(patch),
+    }),
+
+  deleteEvent: (storeId: string, eventId: string) =>
+    kioskRequest<{ ok: boolean }>(`/kiosk/${storeId}/events/${eventId}`, { method: 'DELETE' }),
+
+  updateReservationStatus: (storeId: string, reservationId: string, status: string) =>
+    kioskRequest<{ ok: boolean }>(`/kiosk/${storeId}/reservations/${reservationId}/status`, {
+      method: 'POST', body: JSON.stringify({ status }),
+    }),
+
   getNfcLocationStatus: (storeId: string, locationId: string, date: string) =>
     kioskRequest<{ done: boolean; submitted_at?: string; staff_name?: string }>(
       `/kiosk/${storeId}/nfc-location-status?location_id=${locationId}&date=${date}`
