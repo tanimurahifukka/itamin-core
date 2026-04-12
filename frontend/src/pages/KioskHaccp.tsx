@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { kioskApi } from '../api/kioskClient';
 
 interface TemplateItem {
@@ -35,6 +35,12 @@ interface StaffItem {
   name: string;
 }
 
+interface MonthlyDayTiming {
+  submitted: boolean;
+  all_passed?: boolean;
+  count?: number;
+}
+
 interface Props {
   storeId: string;
   staff: StaffItem[];
@@ -49,9 +55,29 @@ const TIMING_LABELS: Record<string, string> = {
   ad_hoc: '随時',
 };
 
+// カレンダー表示用の短縮ラベル
+const TIMING_SHORT: Record<string, string> = {
+  store_opening: '開',
+  store_daily: '日',
+  store_closing: '閉',
+  ad_hoc: '他',
+};
+
 const TIMINGS = ['store_opening', 'store_daily', 'store_closing', 'ad_hoc'] as const;
 
 function toDateStr(d: Date) { return d.toISOString().split('T')[0]; }
+
+// カレンダー用: 月の日付一覧を生成(週の先頭を日曜として前後の空白込み)
+function buildCalendarGrid(year: number, month: number): Array<string | null> {
+  const firstDay = new Date(year, month - 1, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const cells: Array<string | null> = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push(`${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+  }
+  return cells;
+}
 
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
@@ -71,6 +97,16 @@ export default function KioskHaccp({ storeId, staff }: Props) {
   const [fetchingDevice, setFetchingDevice] = useState<string | null>(null);
   const [nfcStatuses, setNfcStatuses] = useState<Record<string, { done: boolean; submitted_at?: string }>>({});
 
+  // カレンダーモード state
+  const [viewMode, setViewMode] = useState<'input' | 'calendar'>('input');
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth() + 1);
+  const [monthlyData, setMonthlyData] = useState<Record<string, Record<string, MonthlyDayTiming>>>({});
+  const [calLoading, setCalLoading] = useState(false);
+  const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null);
+  const [calDateSubmissions, setCalDateSubmissions] = useState<Submission[]>([]);
+  const [calDateLoading, setCalDateLoading] = useState(false);
+
   const today = toDateStr(new Date());
 
   const load = useCallback(async () => {
@@ -87,6 +123,30 @@ export default function KioskHaccp({ storeId, staff }: Props) {
     }
   }, [storeId, timing, today]);
 
+  const loadMonthly = useCallback(async (year: number, month: number) => {
+    setCalLoading(true);
+    try {
+      const res = await kioskApi.getHaccpMonthlySubmissions(storeId, year, month);
+      setMonthlyData(res.days);
+    } catch {
+      setMonthlyData({});
+    } finally {
+      setCalLoading(false);
+    }
+  }, [storeId]);
+
+  const loadCalDateSubmissions = useCallback(async (date: string) => {
+    setCalDateLoading(true);
+    try {
+      const res = await kioskApi.getHaccpSubmissions(storeId, date);
+      setCalDateSubmissions(res.submissions);
+    } catch {
+      setCalDateSubmissions([]);
+    } finally {
+      setCalDateLoading(false);
+    }
+  }, [storeId]);
+
   // テンプレートを開いたときにSwitchBotデバイス一覧を取得
   useEffect(() => {
     kioskApi.getSwitchBotDevices(storeId)
@@ -95,6 +155,14 @@ export default function KioskHaccp({ storeId, staff }: Props) {
   }, [storeId]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (viewMode === 'calendar') {
+      loadMonthly(calYear, calMonth);
+      setSelectedCalDate(null);
+      setCalDateSubmissions([]);
+    }
+  }, [viewMode, calYear, calMonth, loadMonthly]);
 
   // staff が更新されたとき、現在の staffId が一覧にない場合は先頭にリセット
   // staffId は意図的に deps から除外（staffId 変更で再実行させたくない）
@@ -201,6 +269,24 @@ export default function KioskHaccp({ storeId, staff }: Props) {
   const todaySubmissions = submissions.filter(s => s.submittedAt.startsWith(today));
   const timingSubmissions = todaySubmissions.filter(s => s.timing === timing);
 
+  const calendarGrid = useMemo(() => buildCalendarGrid(calYear, calMonth), [calYear, calMonth]);
+
+  const navigateCalendar = (dir: 1 | -1) => {
+    let newMonth = calMonth + dir;
+    let newYear = calYear;
+    if (newMonth > 12) { newMonth = 1; newYear++; }
+    if (newMonth < 1) { newMonth = 12; newYear--; }
+    setCalMonth(newMonth);
+    setCalYear(newYear);
+    setSelectedCalDate(null);
+    setCalDateSubmissions([]);
+  };
+
+  const handleCalCellClick = (date: string) => {
+    setSelectedCalDate(date);
+    loadCalDateSubmissions(date);
+  };
+
   // SwitchBotデバイスの現在値を全台取得
   const [deviceStatus, setDeviceStatus] = useState<Record<string, { temperature: number | null; humidity: number | null; loading: boolean }>>({});
 
@@ -257,23 +343,155 @@ export default function KioskHaccp({ storeId, staff }: Props) {
         </div>
       )}
 
-      {/* タイミング選択 */}
-      <div style={s.timingRow}>
-        {TIMINGS.map(t => (
-          <button
-            key={t}
-            style={{ ...s.timingBtn, ...(timing === t ? s.timingBtnActive : {}) }}
-            onClick={() => { setTiming(t); setSelected(null); }}
-          >
-            {TIMING_LABELS[t]}
-            {todaySubmissions.filter(s => s.timing === t).length > 0 && (
-              <span style={s.doneBadge}>✓</span>
-            )}
-          </button>
-        ))}
+      {/* タイミング選択 + カレンダー切替 */}
+      <div style={{ ...s.timingRow, justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+          {TIMINGS.map(t => (
+            <button
+              key={t}
+              style={{ ...s.timingBtn, ...(timing === t && viewMode === 'input' ? s.timingBtnActive : {}) }}
+              onClick={() => { setTiming(t); setSelected(null); if (viewMode === 'calendar') setViewMode('input'); }}
+            >
+              {TIMING_LABELS[t]}
+              {todaySubmissions.filter(s => s.timing === t).length > 0 && (
+                <span style={s.doneBadge}>✓</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <button
+          style={{ ...s.timingBtn, ...(viewMode === 'calendar' ? s.timingBtnActive : {}), marginLeft: 8 }}
+          onClick={() => setViewMode(v => v === 'calendar' ? 'input' : 'calendar')}
+        >
+          📅 カレンダー
+        </button>
       </div>
 
-      <div style={s.body}>
+      {/* カレンダービュー */}
+      {viewMode === 'calendar' && (
+        <div style={s.calRoot}>
+          {/* 月ナビ */}
+          <div style={s.calNav}>
+            <button style={s.calNavBtn} onClick={() => navigateCalendar(-1)}>◀</button>
+            <span style={s.calNavLabel}>{calYear}年{calMonth}月</span>
+            <button style={s.calNavBtn} onClick={() => navigateCalendar(1)}>▶</button>
+            {calLoading && <span style={{ fontSize: 12, color: '#999', marginLeft: 8 }}>読み込み中...</span>}
+          </div>
+
+          {/* 曜日ヘッダ */}
+          <div style={s.calGrid}>
+            {['日', '月', '火', '水', '木', '金', '土'].map((w, i) => (
+              <div key={w} style={{ ...s.calWeekHeader, color: i === 0 ? '#d32f2f' : i === 6 ? '#1565c0' : '#555' }}>
+                {w}
+              </div>
+            ))}
+
+            {/* 日付セル */}
+            {calendarGrid.map((dateStr, idx) => {
+              if (!dateStr) {
+                return <div key={`empty-${idx}`} style={s.calEmptyCell} />;
+              }
+
+              const dayNum = parseInt(dateStr.split('-')[2], 10);
+              const weekIdx = idx % 7;
+              const isSun = weekIdx === 0;
+              const isSat = weekIdx === 6;
+              const isToday = dateStr === today;
+              const isFuture = dateStr > today;
+              const isSelected = dateStr === selectedCalDate;
+              const dayData = monthlyData[dateStr] || {};
+
+              const timingsWithData = TIMINGS.filter(t => dayData[t]);
+              const allSubmitted = TIMINGS.every(t => dayData[t]?.submitted);
+              const anySubmitted = TIMINGS.some(t => dayData[t]?.submitted);
+              const anyDeviation = TIMINGS.some(t => dayData[t]?.submitted && !dayData[t]?.all_passed);
+
+              let cellBg = '#fff';
+              if (isFuture) cellBg = '#f8fafc';
+              else if (allSubmitted && !anyDeviation) cellBg = '#f0fdf4';
+              else if (anySubmitted && anyDeviation) cellBg = '#fffbeb';
+              else if (anySubmitted) cellBg = '#f0fdf4';
+
+              return (
+                <div
+                  key={dateStr}
+                  style={{
+                    ...s.calCell,
+                    background: cellBg,
+                    border: isSelected ? '2px solid #4f8ef7' : isToday ? '2px solid #4f8ef7' : '1px solid #e2e8f0',
+                    boxShadow: isToday ? '0 0 0 1px #4f8ef7' : 'none',
+                    cursor: isFuture ? 'default' : 'pointer',
+                    opacity: isFuture ? 0.5 : 1,
+                  }}
+                  onClick={() => !isFuture && handleCalCellClick(dateStr)}
+                >
+                  <div style={{
+                    fontSize: 13,
+                    fontWeight: isToday ? 700 : 500,
+                    color: isSun ? '#d32f2f' : isSat ? '#1565c0' : '#222',
+                    marginBottom: 4,
+                  }}>
+                    {dayNum}
+                  </div>
+                  <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap' as const }}>
+                    {TIMINGS.map(t => {
+                      const info = dayData[t];
+                      const dot = info?.submitted
+                        ? (info.all_passed ? '🟢' : '🟡')
+                        : (isFuture ? '' : '⚪');
+                      if (!dot) return null;
+                      return (
+                        <span key={t} style={s.calTimingDot} title={TIMING_LABELS[t]}>
+                          <span style={{ fontSize: 8 }}>{dot}</span>
+                          <span style={{ fontSize: 8, color: '#666' }}>{TIMING_SHORT[t]}</span>
+                        </span>
+                      );
+                    })}
+                    {!isFuture && timingsWithData.length === 0 && (
+                      <span style={{ fontSize: 9, color: '#ccc' }}>–</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 凡例 */}
+          <div style={s.calLegend}>
+            <span>🟢 全項目OK</span>
+            <span>🟡 逸脱あり</span>
+            <span>⚪ 未提出</span>
+          </div>
+
+          {/* 選択日の詳細 */}
+          {selectedCalDate && (
+            <div style={{ marginTop: 16 }}>
+              <div style={s.panelTitle}>
+                {new Date(selectedCalDate + 'T00:00:00').toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })} の記録
+              </div>
+              {calDateLoading ? (
+                <div style={s.empty}>読み込み中...</div>
+              ) : calDateSubmissions.length === 0 ? (
+                <div style={s.empty}>この日の提出記録はありません</div>
+              ) : (
+                <div style={s.subList}>
+                  {calDateSubmissions.map(sub => (
+                    <div key={sub.id} style={s.subRow}>
+                      <div>
+                        <div style={s.subName}>{sub.templateName}</div>
+                        <div style={s.subMeta}>{TIMING_LABELS[sub.timing] || sub.timing} · {sub.submittedBy}</div>
+                      </div>
+                      <div style={s.subTime}>{fmtTime(sub.submittedAt)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ ...s.body, display: viewMode === 'calendar' ? 'none' : 'flex' }}>
         {/* 左: テンプレート一覧 + 本日の記録 */}
         <div style={s.left}>
           <div style={s.panelTitle}>チェックリスト</div>
@@ -483,10 +701,21 @@ export default function KioskHaccp({ storeId, staff }: Props) {
 const s: Record<string, React.CSSProperties> = {
   root: { display: 'flex', flexDirection: 'column', gap: 16, position: 'relative' },
   msg: { position: 'fixed', top: 64, left: 0, right: 0, padding: '16px 24px', fontSize: 16, fontWeight: 700, textAlign: 'center', zIndex: 200 },
-  timingRow: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  timingRow: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
   timingBtn: { padding: '9px 20px', border: '1px solid #d0d7e2', borderRadius: 8, background: '#fff', cursor: 'pointer', fontSize: 14, color: '#555', fontFamily: 'sans-serif', position: 'relative' },
   timingBtnActive: { background: '#4f8ef7', color: '#fff', borderColor: '#4f8ef7', fontWeight: 700 },
   doneBadge: { marginLeft: 6, fontSize: 11, background: '#4caf50', color: '#fff', borderRadius: 4, padding: '1px 5px' },
+  // カレンダービュー
+  calRoot: { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px 20px' },
+  calNav: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 },
+  calNavBtn: { padding: '6px 14px', border: '1px solid #d0d7e2', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 16, color: '#333', fontFamily: 'sans-serif' },
+  calNavLabel: { fontSize: 16, fontWeight: 700, color: '#222', minWidth: 120, textAlign: 'center' as const },
+  calGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 },
+  calWeekHeader: { textAlign: 'center' as const, fontSize: 12, fontWeight: 700, padding: '6px 0', color: '#555' },
+  calCell: { minHeight: 72, borderRadius: 6, padding: '6px 6px', cursor: 'pointer', transition: 'box-shadow 0.1s' },
+  calEmptyCell: { minHeight: 72, borderRadius: 6 },
+  calTimingDot: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', lineHeight: 1 },
+  calLegend: { display: 'flex', gap: 16, fontSize: 11, color: '#888', marginTop: 10, flexWrap: 'wrap' as const },
   body: { display: 'flex', gap: 16, alignItems: 'flex-start' },
   left: { flex: '0 0 260px', display: 'flex', flexDirection: 'column', gap: 8 },
   right: { flex: 1, background: '#fff', border: '2px solid #4f8ef7', borderRadius: 10, padding: '16px 20px' },

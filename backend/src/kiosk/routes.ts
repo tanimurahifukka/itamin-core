@@ -643,6 +643,71 @@ router.get('/:storeId/haccp/submissions', requireKiosk, async (req: Request, res
 });
 
 // ============================================================
+// HACCP: 月次提出サマリ（キオスク認証）?year=YYYY&month=MM
+// ============================================================
+router.get('/:storeId/haccp/submissions/monthly', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    if (storeId !== req.kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    const now = new Date();
+    const year = typeof req.query.year === 'string' ? parseInt(req.query.year, 10) : now.getFullYear();
+    const month = typeof req.query.month === 'string' ? parseInt(req.query.month, 10) : now.getMonth() + 1;
+
+    if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+      res.status(400).json({ error: '無効なyearまたはmonthパラメータです' }); return;
+    }
+
+    const monthStart = `${year}-${String(month).padStart(2, '0')}-01T00:00:00`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`;
+
+    const { data, error } = await supabaseAdmin
+      .from('checklist_submissions')
+      .select('id, timing, submitted_at, checklist_submission_items(bool_value, numeric_value, is_deviated)')
+      .eq('store_id', storeId)
+      .eq('scope', 'store')
+      .gte('submitted_at', monthStart)
+      .lte('submitted_at', monthEnd)
+      .order('submitted_at', { ascending: true });
+
+    if (error) throw new Error(error.message);
+
+    // 日付ごと・タイミングごとに集計
+    interface TimingInfo {
+      submitted: boolean;
+      all_passed?: boolean;
+      count?: number;
+    }
+    const days: Record<string, Record<string, TimingInfo>> = {};
+
+    for (const row of (data || []) as any[]) {
+      const dateKey = (row.submitted_at as string).split('T')[0];
+      if (!days[dateKey]) days[dateKey] = {};
+
+      const timing = row.timing as string;
+      const items = (row.checklist_submission_items || []) as any[];
+      const hasDeviation = items.some((i: any) => i.is_deviated === true);
+      const allPassed = !hasDeviation;
+
+      if (!days[dateKey][timing]) {
+        days[dateKey][timing] = { submitted: true, all_passed: allPassed, count: 1 };
+      } else {
+        const existing = days[dateKey][timing];
+        existing.count = (existing.count || 1) + 1;
+        existing.all_passed = existing.all_passed && allPassed;
+      }
+    }
+
+    res.json({ days, year, month });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
 // SwitchBot: デバイス一覧（キオスク認証）
 // ============================================================
 router.get('/:storeId/switchbot', requireKiosk, async (req: Request, res: Response) => {

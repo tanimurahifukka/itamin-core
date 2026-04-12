@@ -109,6 +109,13 @@ export const kioskApi = {
       `/kiosk/${storeId}/haccp/submissions${date ? `?date=${date}` : ''}`
     ),
 
+  getHaccpMonthlySubmissions: (storeId: string, year: number, month: number) =>
+    kioskRequest<{
+      days: Record<string, Record<string, { submitted: boolean; all_passed?: boolean; count?: number }>>;
+      year: number;
+      month: number;
+    }>(`/kiosk/${storeId}/haccp/submissions/monthly?year=${year}&month=${month}`),
+
   getSwitchBotDevices: (storeId: string) =>
     kioskRequest<{ devices: Array<{ deviceId: string; deviceName: string; deviceType: string }> }>(
       `/kiosk/${storeId}/switchbot`
