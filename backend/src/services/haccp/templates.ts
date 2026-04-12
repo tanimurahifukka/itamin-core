@@ -120,11 +120,12 @@ export async function provisionSystemTemplates(
       throw new Error(`Failed to create template for system_template_id ${sys.id}: ${tplErr?.message}`);
     }
 
+    const tplId = (tpl as any).id;
     const sysItems: any[] = itemsBySystemTemplate[sys.id] || [];
     if (sysItems.length > 0) {
       const itemsToInsert = sysItems.map((si: any) => ({
         store_id: storeId,
-        template_id: (tpl as any).id,
+        template_id: tplId,
         item_key: si.item_key,
         label: si.label,
         item_type: si.item_type,
@@ -146,7 +147,9 @@ export async function provisionSystemTemplates(
         .insert(itemsToInsert);
 
       if (itemErr) {
-        throw new Error(`Failed to insert items for template ${(tpl as any).id}: ${itemErr.message}`);
+        // Rollback: remove orphaned template row to keep idempotency intact
+        await supabaseAdmin.from('checklist_templates').delete().eq('id', tplId);
+        throw new Error(`Failed to insert items for template ${tplId}: ${itemErr.message}`);
       }
     }
 
@@ -259,6 +262,8 @@ templatesRouter.post('/:storeId/templates/provision-all', requireAuth, async (re
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
+    // TODO: read business_type from stores table instead of hardcoding 'cafe'
+    // when multi-industry support is added
     const provisioned = await provisionSystemTemplates(storeId, 'cafe', req.user!.id);
     res.json({ ok: true, provisioned });
   } catch (e: any) {

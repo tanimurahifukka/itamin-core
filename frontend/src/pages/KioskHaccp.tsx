@@ -96,6 +96,15 @@ export default function KioskHaccp({ storeId, staff }: Props) {
 
   useEffect(() => { load(); }, [load]);
 
+  // staff が更新されたとき、現在の staffId が一覧にない場合は先頭にリセット
+  // staffId は意図的に deps から除外（staffId 変更で再実行させたくない）
+  useEffect(() => {
+    if (staff.length > 0 && !staff.find(s => s.id === staffId)) {
+      setStaffId(staff[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staff]);
+
   const showMsg = (text: string, ok: boolean) => {
     setMsg({ text, ok });
     setTimeout(() => setMsg(null), 3000);
@@ -312,7 +321,18 @@ export default function KioskHaccp({ storeId, staff }: Props) {
         </div>
 
         {/* 右: チェックフォーム */}
-        {selected && (
+        {selected && staff.length === 0 && (
+          <div style={s.right}>
+            <div style={s.formHeader}>
+              <div style={s.formTitle}>{selected.name}</div>
+              <button style={s.closeBtn} onClick={() => setSelected(null)}>✕</button>
+            </div>
+            <div style={s.noStaffMsg}>
+              本日の出勤者がいません。打刻してからチェックリストを入力してください。
+            </div>
+          </div>
+        )}
+        {selected && staff.length > 0 && (
           <div style={s.right}>
             <div style={s.formHeader}>
               <div style={s.formTitle}>{selected.name}</div>
@@ -508,4 +528,5 @@ const s: Record<string, React.CSSProperties> = {
   deviceName: { fontSize: 11, color: '#92400e', fontWeight: 600, marginBottom: 4 },
   deviceTemp: { fontSize: 18, fontWeight: 700, color: '#1e40af' },
   deviceHumid: { fontSize: 11, color: '#64748b', marginTop: 2 },
+  noStaffMsg: { padding: '20px 0', fontSize: 14, color: '#c2410c', fontWeight: 600, textAlign: 'center' as const },
 };

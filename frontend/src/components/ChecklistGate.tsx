@@ -4,7 +4,7 @@
  * インターフェース: { storeId, staffId, timing, onComplete, onCancel } を維持
  * staffId = store_staff.id（= membership_id）
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { checkApi, ActiveItem, SubmissionItemInput, CheckTiming } from '../api/checkApi';
 
 interface Props {
@@ -68,11 +68,15 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]         = useState('');
 
+  // ref 化: 親が毎秒 re-render してもコールバック参照変更で useEffect が再実行されないようにする
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
   useEffect(() => {
     checkApi.getActive(storeId, 'personal', timing as CheckTiming)
       .then(data => {
         if (!data.merged_items || data.merged_items.length === 0) {
-          onComplete();
+          onCompleteRef.current();
           return;
         }
         setItems(data.merged_items);
@@ -85,9 +89,9 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
       .catch(e => {
         // エラー時でも打刻フローを止めない
         console.warn('[ChecklistGate] fetch error, skipping gate:', e.message);
-        onComplete();
+        onCompleteRef.current();
       });
-  }, [storeId, timing, onComplete]);
+  }, [storeId, timing]);
 
   const allComplete = items.length > 0 && items.every(item => isItemComplete(item, values[item.id] ?? emptyValues()));
 

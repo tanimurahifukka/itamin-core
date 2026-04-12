@@ -209,7 +209,7 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
       {/* HACCPタブ */}
       {tab === 'haccp' && (
         <div style={{ ...s.body, maxWidth: '100%', padding: '16px 20px' }}>
-          <KioskHaccp storeId={storeId} staff={staff.map(st => ({ id: st.id, name: st.name }))} />
+          <KioskHaccp storeId={storeId} staff={staff.filter(st => st.clockedIn).map(st => ({ id: st.id, name: st.name }))} />
         </div>
       )}
 
