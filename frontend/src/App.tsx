@@ -122,14 +122,27 @@ function KioskApp() {
 
   const [kioskStoreId, setKioskStoreId] = useState<string>(() => {
     const saved = getKioskStore();
-    return saved?.storeId || storeIdFromUrl;
+    // URL パラメータが明示的に指定されていて保存済みと異なる場合、旧セッションをクリア
+    if (storeIdFromUrl && saved?.storeId && storeIdFromUrl !== saved.storeId) {
+      clearKioskSession();
+      return storeIdFromUrl;
+    }
+    return storeIdFromUrl || saved?.storeId || '';
   });
   const [kioskStoreName, setKioskStoreName] = useState<string>(() => {
-    return getKioskStore()?.storeName || '';
+    const saved = getKioskStore();
+    if (storeIdFromUrl && saved?.storeId && storeIdFromUrl !== saved.storeId) {
+      return '';
+    }
+    return saved?.storeName || '';
   });
   const [loggedIn, setLoggedIn] = useState<boolean>(() => {
     const token = getKioskToken();
     const saved = getKioskStore();
+    // URL パラメータで別店舗を指定した場合はログアウト状態にする
+    if (storeIdFromUrl && saved?.storeId && storeIdFromUrl !== saved.storeId) {
+      return false;
+    }
     return !!(token && saved);
   });
 
