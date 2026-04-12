@@ -356,7 +356,19 @@ export default function OrganizationsPage() {
             <div>
               {/* 基本情報 */}
               <div style={sectionStyle}>
-                <h2 style={{ margin: '0 0 12px', fontSize: '20px' }}>{orgDetail.organization.name}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <h2 style={{ margin: 0, fontSize: '20px' }}>{orgDetail.organization.name}</h2>
+                  <a
+                    href="/shift-multi"
+                    style={{
+                      padding: '6px 16px', background: '#2563eb', color: 'white',
+                      borderRadius: 6, textDecoration: 'none', fontSize: '0.85rem',
+                      fontWeight: 500, display: 'inline-block',
+                    }}
+                  >
+                    マルチ店舗シフト
+                  </a>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '14px' }}>
                   <div><span style={{ color: '#6b7280' }}>スラグ: </span>{orgDetail.organization.slug}</div>
                   <div><span style={{ color: '#6b7280' }}>種別: </span>{orgDetail.organization.org_type}</div>

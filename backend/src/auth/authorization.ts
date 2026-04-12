@@ -184,6 +184,41 @@ export async function isShiftRequestEnabled(storeId: string): Promise<boolean> {
  * - 'manager' → owner + manager  （デフォルト）
  * - 'leader'  → owner + manager + leader
  */
+// 組織レベルの管理者権限チェック（owner / admin）
+export async function requireOrgManager(
+  req: Request, res: Response, orgId: string
+): Promise<{ id: string; role: OrgRole } | null> {
+  const userId = req.user!.id;
+  const { data } = await supabaseAdmin
+    .from('organization_members')
+    .select('id, role')
+    .eq('org_id', orgId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!data) {
+    res.status(403).json({ error: 'この組織へのアクセス権限がありません' });
+    return null;
+  }
+  const role = (data as any).role as OrgRole;
+  if (role !== 'owner' && role !== 'admin') {
+    res.status(403).json({ error: '組織の管理権限が必要です' });
+    return null;
+  }
+  return { id: (data as any).id, role };
+}
+
+// 組織配下の店舗ID一覧を取得
+export async function getOrgStoreIds(orgId: string): Promise<string[]> {
+  const { data, error } = await supabaseAdmin
+    .from('stores')
+    .select('id')
+    .eq('org_id', orgId);
+
+  if (error || !data) return [];
+  return (data as any[]).map(s => s.id);
+}
+
 export async function canResetStaffPassword(
   storeId: string,
   userRole: StaffRole

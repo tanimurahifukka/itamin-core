@@ -14,6 +14,7 @@ import { pluginRegistry } from './plugins/registry';
 import { pluginSettingsRouter } from './plugins/settings';
 import { shiftPlugin } from './plugins/shift';
 import { shiftRequestPlugin } from './plugins/shift_request';
+import { shiftMultiPlugin } from './plugins/shift_multi';
 import { haccpPlugin } from './plugins/haccp';
 import { inventoryPlugin } from './plugins/inventory';
 import { overtimeAlertPlugin } from './plugins/overtime_alert';
@@ -100,6 +101,7 @@ pluginRegistry.register(staffPlugin);
 // Feature plugins（有効/無効切替可能）
 pluginRegistry.register(shiftPlugin);
 pluginRegistry.register(shiftRequestPlugin);
+pluginRegistry.register(shiftMultiPlugin);
 pluginRegistry.register(haccpPlugin);
 pluginRegistry.register(menuPlugin);
 pluginRegistry.register(dailyReportPlugin);
