@@ -977,6 +977,88 @@ router.post('/:storeId/staff', requireAuth, async (req: Request, res: Response) 
   }
 });
 
+// 既存ユーザーを別店舗に直接追加（オーナー/マネージャーが userId で指定）
+router.post('/:storeId/staff/assign-existing', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const userId = typeof req.body?.userId === 'string' ? req.body.userId.trim() : '';
+    const role = req.body?.role ?? 'part_time';
+
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    if (!userId) {
+      res.status(400).json({ error: 'userId は必須です' });
+      return;
+    }
+
+    if (!VALID_STAFF_ROLES.includes(role) || role === 'owner') {
+      res.status(400).json({ error: '不正な role が指定されています' });
+      return;
+    }
+
+    // ユーザーの存在確認
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!profile) {
+      res.status(404).json({ error: 'ユーザーが見つかりません' });
+      return;
+    }
+
+    // 重複チェック
+    const { data: existing } = await supabaseAdmin
+      .from('store_staff')
+      .select('id')
+      .eq('store_id', storeId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existing) {
+      res.status(409).json({ error: '既にこの事業所に所属しています' });
+      return;
+    }
+
+    // store_staff に追加
+    const { data: newStaff, error: staffErr } = await supabaseAdmin
+      .from('store_staff')
+      .insert({ store_id: storeId, user_id: userId, role })
+      .select('id')
+      .single();
+
+    if (staffErr) {
+      res.status(500).json({ error: staffErr.message });
+      return;
+    }
+
+    if (newStaff?.id) {
+      await ensureStaffPin(storeId, newStaff.id);
+    }
+
+    await writeAuditLog({
+      storeId,
+      actorId: req.user!.id,
+      action: 'staff_assign_cross_store',
+      targetType: 'store_staff',
+      targetId: newStaff?.id ?? undefined,
+      metadata: { userId, role },
+    });
+
+    res.status(201).json({
+      ok: true,
+      staffId: newStaff?.id,
+      userName: profile.name,
+      message: `${profile.name} さんを追加しました`,
+    });
+  } catch (e: any) {
+    console.error('[stores POST /:storeId/staff/assign-existing] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
 // 未登録の招待一覧
 router.get('/:storeId/invitations', requireAuth, async (req: Request, res: Response) => {
   try {

@@ -33,7 +33,7 @@ const staffMenuItemStyle: React.CSSProperties = {
 };
 
 export default function StaffPage() {
-  const { selectedStore } = useAuth();
+  const { selectedStore, stores } = useAuth();
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [name, setName] = useState('');
@@ -73,6 +73,12 @@ export default function StaffPage() {
   const [resetPasswordInput, setResetPasswordInput] = useState('');
   const [resetting, setResetting] = useState(false);
   const [resetResult, setResetResult] = useState<{ password: string; message: string } | null>(null);
+
+  // 他店舗に追加モーダル
+  const [assignTarget, setAssignTarget] = useState<StaffMember | null>(null);
+  const [assignStoreId, setAssignStoreId] = useState('');
+  const [assignRole, setAssignRole] = useState('part_time');
+  const [assigning, setAssigning] = useState(false);
 
   // 行アクションドロップダウン
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -303,6 +309,27 @@ export default function StaffPage() {
     navigator.clipboard.writeText(pinResult.pin).then(() => {
       showToast('PIN をコピーしました', 'info');
     });
+  };
+
+  // 他店舗にスタッフを追加
+  const otherManagedStores = stores.filter(
+    s => s.id !== selectedStore?.id && ['owner', 'manager'].includes(s.role)
+  );
+
+  const handleAssignToStore = async () => {
+    if (!assignTarget || !assignStoreId || assigning) return;
+    setAssigning(true);
+    try {
+      const result = await api.assignExistingStaff(assignStoreId, assignTarget.userId, assignRole);
+      showToast(result.message, 'success');
+      setAssignTarget(null);
+      setAssignStoreId('');
+      setAssignRole('part_time');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '追加に失敗しました', 'error');
+    } finally {
+      setAssigning(false);
+    }
   };
 
   const openHistoryModal = async () => {
@@ -597,6 +624,14 @@ export default function StaffPage() {
                       >
                         🔢 PIN を再発行
                       </button>
+                      {otherManagedStores.length > 0 && s.role !== 'owner' && (
+                        <button
+                          onClick={() => { setOpenMenuId(null); setAssignTarget(s); setAssignStoreId(''); setAssignRole('part_time'); }}
+                          style={staffMenuItemStyle}
+                        >
+                          🏪 他店舗に追加
+                        </button>
+                      )}
                       <button
                         className="staff-action-remove"
                         onClick={() => { setOpenMenuId(null); openRemoveModal(s); }}
@@ -937,6 +972,67 @@ export default function StaffPage() {
             <p style={{ fontSize: '0.8rem', color: '#999', marginTop: 12 }}>
               この PIN を本人に伝えてください。再発行すると旧 PIN は無効になります。
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* 他店舗に追加モーダル */}
+      {assignTarget && (
+        <div className="remove-modal-overlay" onClick={() => !assigning && setAssignTarget(null)}>
+          <div className="remove-modal" onClick={e => e.stopPropagation()}>
+            <div className="remove-modal-icon">🏪</div>
+            <h3 className="remove-modal-title">他店舗に追加</h3>
+            <p className="remove-modal-desc">
+              <strong>{assignTarget.userName}</strong> さんを別の事業所にも追加します。
+            </p>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: '#475569', marginBottom: 4 }}>
+                追加先の事業所
+              </label>
+              <select
+                value={assignStoreId}
+                onChange={e => setAssignStoreId(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', fontSize: '0.95rem' }}
+              >
+                <option value="">選択してください</option>
+                {otherManagedStores.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: '#475569', marginBottom: 4 }}>
+                ロール
+              </label>
+              <select
+                value={assignRole}
+                onChange={e => setAssignRole(e.target.value)}
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', fontSize: '0.95rem' }}
+              >
+                {assignableRoles.map(r => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="remove-modal-actions">
+              <button
+                className="remove-modal-cancel"
+                onClick={() => setAssignTarget(null)}
+                disabled={assigning}
+              >
+                キャンセル
+              </button>
+              <button
+                className={`remove-modal-submit ${assignStoreId ? 'active' : ''}`}
+                onClick={handleAssignToStore}
+                disabled={!assignStoreId || assigning}
+              >
+                {assigning ? '追加中...' : '追加する'}
+              </button>
+            </div>
           </div>
         </div>
       )}

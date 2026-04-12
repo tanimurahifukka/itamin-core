@@ -157,6 +157,11 @@ export const api = {
     }),
   updateStaff: (storeId: string, staffId: string, updates: { hourlyWage?: number; transportFee?: number; joinedAt?: string | null; role?: string }) =>
     request<OkResponse>(`/stores/${storeId}/staff/${staffId}`, { method: 'PUT', body: JSON.stringify(updates) }),
+  assignExistingStaff: (storeId: string, userId: string, role?: string) =>
+    request<{ ok: boolean; staffId: string; userName: string; message: string }>(`/stores/${storeId}/staff/assign-existing`, {
+      method: 'POST',
+      body: JSON.stringify({ userId, role }),
+    }),
   removeStaff: (storeId: string, staffId: string) =>
     request<OkResponse>(`/stores/${storeId}/staff/${staffId}`, { method: 'DELETE' }),
   resetStaffPassword: (storeId: string, staffId: string, password?: string) =>
