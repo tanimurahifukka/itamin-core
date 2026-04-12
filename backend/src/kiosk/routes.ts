@@ -531,22 +531,44 @@ router.get('/:storeId/haccp/templates', requireKiosk, async (req: Request, res: 
     }
     const timing = typeof req.query.timing === 'string' ? req.query.timing : null;
     let templates = await listKioskActiveTemplates(storeId, timing);
+    let _debug: any = undefined;
 
     // Fallback: if no templates found, auto-provision from system templates
     if (templates.length === 0) {
+      // Diagnose: count system templates and existing store templates
+      const { data: sysTpls } = await supabaseAdmin
+        .from('checklist_system_templates')
+        .select('id, name, timing, scope')
+        .eq('business_type', 'cafe')
+        .eq('is_active', true);
+      const { data: storeTpls } = await supabaseAdmin
+        .from('checklist_templates')
+        .select('id, name, timing, scope, is_active, system_template_id')
+        .eq('store_id', storeId);
+
+      _debug = {
+        systemTemplatesCount: sysTpls?.length ?? 0,
+        storeTemplatesCount: storeTpls?.length ?? 0,
+        storeTemplates: (storeTpls || []).map((t: any) => ({
+          name: t.name, timing: t.timing, scope: t.scope, is_active: t.is_active,
+        })),
+        queriedTiming: timing,
+      };
+
       try {
         const count = await provisionSystemTemplates(storeId, 'cafe');
+        _debug.provisionedCount = count;
         if (count > 0) {
           console.log(`[kiosk] Auto-provisioned ${count} HACCP templates for store ${storeId}`);
           templates = await listKioskActiveTemplates(storeId, timing);
         }
       } catch (provErr: any) {
-        // Do not fail the request if provisioning errors — return empty list
+        _debug.provisionError = provErr.message;
         console.warn(`[kiosk] HACCP template auto-provision warning for store ${storeId}:`, provErr.message);
       }
     }
 
-    res.json({ templates });
+    res.json({ templates, _debug });
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
