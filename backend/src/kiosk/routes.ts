@@ -591,11 +591,22 @@ router.post('/:storeId/haccp/submissions', requireKiosk, async (req: Request, re
     }
 
     try {
-      // kiosk は認証ユーザーが存在しないので submitted_by には membership_id を入れる。
-      // createSubmission 側は measurement/deviation 連携を含む本丸を 1 関数で完結させる。
+      // kiosk には認証ユーザーがいないので、membership_id (store_staff.id) から
+      // user_id (auth.users.id) ���引いて submitted_by に使う。
+      const { data: staffRow, error: staffErr } = await supabaseAdmin
+        .from('store_staff')
+        .select('user_id')
+        .eq('id', membership_id)
+        .eq('store_id', storeId)
+        .single();
+
+      if (staffErr || !staffRow) {
+        res.status(400).json({ error: 'スタッフが見つかりません' }); return;
+      }
+
       const submission = await createSubmission({
         storeId,
-        userId: membership_id,
+        userId: staffRow.user_id,
         scope: 'store',
         timing,
         templateId: template_id,
