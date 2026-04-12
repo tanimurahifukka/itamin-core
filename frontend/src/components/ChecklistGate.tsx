@@ -4,7 +4,7 @@
  * インターフェース: { storeId, staffId, timing, onComplete, onCancel } を維持
  * staffId = store_staff.id（= membership_id）
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { checkApi, ActiveItem, SubmissionItemInput, CheckTiming } from '../api/checkApi';
 
 interface Props {
@@ -68,11 +68,14 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]         = useState('');
 
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+
   useEffect(() => {
     checkApi.getActive(storeId, 'personal', timing as CheckTiming)
       .then(data => {
         if (!data.merged_items || data.merged_items.length === 0) {
-          onComplete();
+          onCompleteRef.current();
           return;
         }
         setItems(data.merged_items);
@@ -85,9 +88,9 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
       .catch(e => {
         // エラー時でも打刻フローを止めない
         console.warn('[ChecklistGate] fetch error, skipping gate:', e.message);
-        onComplete();
+        onCompleteRef.current();
       });
-  }, [storeId, timing, onComplete]);
+  }, [storeId, timing]);
 
   const allComplete = items.length > 0 && items.every(item => isItemComplete(item, values[item.id] ?? emptyValues()));
 
@@ -123,14 +126,14 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
           items: subItems,
         });
       }
-      onComplete();
+      onCompleteRef.current();
     } catch (e: unknown) {
       // 提出エラー時もゲートを通過させる（打刻フローを壊さない）
       const msg = e instanceof Error ? e.message : String(e);
       console.warn('[ChecklistGate] submission error (proceeding):', msg);
       setError(`記録に失敗しました: ${msg}`);
       // 3 秒後に通過
-      setTimeout(() => onComplete(), 3000);
+      setTimeout(() => onCompleteRef.current(), 3000);
     } finally {
       setSubmitting(false);
     }
