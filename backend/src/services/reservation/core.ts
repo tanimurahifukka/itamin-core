@@ -103,6 +103,7 @@ export async function upsertCustomerFromReservation(
       phone_normalized: normalizedPhone,
       email: draft.email || null,
       source: 'reservation',
+      tags: ['予約経由'],
     })
     .select('id')
     .single();
@@ -191,6 +192,7 @@ export interface CreateReservationInput {
   notes?: string | null;
   metadata?: Record<string, unknown>;
   createdBy?: string | null;
+  sendConfirmationEmail?: boolean;
 }
 
 export interface CreateReservationResult {
@@ -251,7 +253,7 @@ export async function createReservation(
     metadata: { source: input.source },
   });
 
-  if (input.customerEmail) {
+  if (input.customerEmail && input.sendConfirmationEmail !== false) {
     await enqueueNotification({
       reservationId: reservation.id,
       channel: 'email',

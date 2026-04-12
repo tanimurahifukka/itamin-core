@@ -116,6 +116,40 @@ router.get('/:storeId', requireAuth, async (req: Request, res: Response) => {
 });
 
 // ============================================================
+// 顧客の予約履歴取得 (CRM-1)
+// ============================================================
+router.get('/:storeId/:customerId/reservations', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const customerId = String(req.params.customerId);
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const { data, error, count } = await supabaseAdmin
+      .from('reservations')
+      .select('*', { count: 'exact' })
+      .eq('store_id', storeId)
+      .eq('customer_id', customerId)
+      .order('starts_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json({ reservations: data ?? [], total: count ?? 0, limit, offset });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Internal Server Error';
+    console.error('[customers GET /:storeId/:customerId/reservations] error:', e);
+    res.status(500).json({ error: message });
+  }
+});
+
+// ============================================================
 // 顧客単件取得
 // ============================================================
 router.get('/:storeId/:customerId', requireAuth, async (req: Request, res: Response) => {

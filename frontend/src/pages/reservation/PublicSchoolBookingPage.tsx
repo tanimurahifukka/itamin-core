@@ -19,7 +19,7 @@ import {
   formatDateTime,
 } from './_ui';
 
-type Step = 'loading' | 'courses' | 'sessions' | 'form' | 'done' | 'error';
+type Step = 'loading' | 'courses' | 'sessions' | 'form' | 'done' | 'error' | 'cancel';
 
 export default function PublicSchoolBookingPage() {
   const slug = useMemo(() => {
@@ -43,6 +43,8 @@ export default function PublicSchoolBookingPage() {
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<PublicReservationSummary | null>(null);
+  const [submitError, setSubmitError] = useState('');
+  const [requirePhone, setRequirePhone] = useState(false);
 
   useEffect(() => {
     if (!slug) {
@@ -61,6 +63,9 @@ export default function PublicSchoolBookingPage() {
         setStore(s.store);
         const c = await api.getPublicSchoolCourses(slug);
         setCourses(c.courses);
+        if ((c as { settings?: { require_phone?: boolean } }).settings?.require_phone) {
+          setRequirePhone(true);
+        }
         setStep('courses');
       } catch {
         setErrorMsg('店舗が見つかりません');
@@ -84,6 +89,7 @@ export default function PublicSchoolBookingPage() {
 
   const submit = async () => {
     if (!selectedSession) return;
+    setSubmitError('');
     setSubmitting(true);
     try {
       const res = await api.createPublicSchoolReservation(slug, {
@@ -97,7 +103,7 @@ export default function PublicSchoolBookingPage() {
       setResult(res.reservation);
       setStep('done');
     } catch (e) {
-      alert(e instanceof Error ? e.message : '予約に失敗しました');
+      setSubmitError(e instanceof Error ? e.message : '予約に失敗しました');
     } finally {
       setSubmitting(false);
     }
@@ -121,10 +127,20 @@ export default function PublicSchoolBookingPage() {
             <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 16 }}>
               確認メールをお送りしました。
             </p>
+            <button
+              onClick={() => setStep('cancel')}
+              style={{ marginTop: 8, padding: '6px 12px', background: 'none', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: '#64748b' }}
+            >
+              予約をキャンセルする場合はこちら
+            </button>
           </div>
         </div>
       </Centered>
     );
+  }
+
+  if (step === 'cancel') {
+    return <CancelSection slug={slug} store={store} onBack={() => setStep('done')} />;
   }
 
   return (
@@ -180,7 +196,7 @@ export default function PublicSchoolBookingPage() {
                     opacity: full ? 0.5 : 1,
                   }}
                 >
-                  <div style={{ fontWeight: 600 }}>{formatDateTime(s.starts_at)}</div>
+                  <div style={{ fontWeight: 600 }}>{formatDateTime(s.starts_at)} 〜 {formatDateTime(s.ends_at)}</div>
                   <div style={{ fontSize: 12, color: '#64748b' }}>残り {s.remaining}名</div>
                   {s.note && <div style={{ fontSize: 11, color: '#94a3b8' }}>{s.note}</div>}
                 </button>
@@ -197,7 +213,11 @@ export default function PublicSchoolBookingPage() {
             {selectedCourse.name} / {formatDateTime(selectedSession.starts_at)}
           </div>
           <FieldRow label="人数">
-            <input type="number" min={1} max={selectedSession.remaining} value={partySize} onChange={(e) => setPartySize(Number(e.target.value))} style={inputStyle} />
+            <input type="number" min={1} max={selectedSession.remaining} value={partySize} onChange={(e) => {
+              const v = Math.max(1, Math.min(selectedSession.remaining, Number(e.target.value)));
+              setPartySize(v);
+            }} style={inputStyle} />
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>残り {selectedSession.remaining}名</div>
           </FieldRow>
           <FieldRow label="お名前 *">
             <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
@@ -205,18 +225,19 @@ export default function PublicSchoolBookingPage() {
           <FieldRow label="メールアドレス *">
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
           </FieldRow>
-          <FieldRow label="電話番号">
+          <FieldRow label={requirePhone ? '電話番号 *' : '電話番号'}>
             <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} style={inputStyle} />
           </FieldRow>
           <FieldRow label="備考">
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} style={{ ...inputStyle, minHeight: 60 }} />
           </FieldRow>
+          {submitError && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 8, padding: '8px 12px', background: '#fef2f2', borderRadius: 6 }}>{submitError}</div>}
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button onClick={() => setStep('sessions')} style={{ flex: 1, padding: 12, background: '#f1f5f9', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
               戻る
             </button>
             <button
-              disabled={submitting || !name || !email}
+              disabled={submitting || !name || !email || (requirePhone && !phone)}
               onClick={submit}
               style={{ flex: 2, padding: 12, background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}
             >
@@ -225,6 +246,69 @@ export default function PublicSchoolBookingPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function CancelSection({ slug, store, onBack }: { slug: string; store: PublicStoreInfo; onBack: () => void }) {
+  const [code, setCode] = useState('');
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleCancel = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await api.cancelPublicSchoolReservation(slug, {
+        confirmation_code: code,
+        email,
+      });
+      setSuccess(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'キャンセルに失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <Centered>
+        <div>
+          <h2>予約をキャンセルしました</h2>
+          <p style={{ color: '#64748b' }}>キャンセル確認メールをお送りしました。</p>
+        </div>
+      </Centered>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 640, margin: '0 auto', padding: 20 }}>
+      <StoreHeader store={store} />
+      <div style={cardStyle}>
+        <h3 style={{ margin: '0 0 12px' }}>予約キャンセル</h3>
+        <FieldRow label="確認コード">
+          <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} style={inputStyle} placeholder="例: A2B3C4D5" />
+        </FieldRow>
+        <FieldRow label="メールアドレス">
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
+        </FieldRow>
+        {error && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 8, padding: '8px 12px', background: '#fef2f2', borderRadius: 6 }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <button onClick={onBack} style={{ flex: 1, padding: 12, background: '#f1f5f9', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+            戻る
+          </button>
+          <button
+            disabled={loading || !code || !email}
+            onClick={handleCancel}
+            style={{ flex: 2, padding: 12, background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+          >
+            {loading ? '処理中…' : 'キャンセルする'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -615,6 +615,10 @@ export const api = {
     request<OkResponse>(`/customers/${storeId}/${customerId}`, { method: 'DELETE' }),
   checkCustomerDuplicate: (storeId: string, phone: string) =>
     request<CustomerDuplicateCheck>(`/customers/${storeId}/duplicate-check?phone=${encodeURIComponent(phone)}`),
+  getCustomerReservations: (storeId: string, customerId: string) =>
+    request<{ reservations: ReservationRow[]; total: number }>(
+      `/customers/${storeId}/${customerId}/reservations`,
+    ),
 
   // ============================================================
   // Reservation — store slug (shared)
@@ -859,10 +863,31 @@ export const api = {
       `/reservation/school/${storeId}/schools/${schoolId}/sessions`,
       { method: 'POST', body: JSON.stringify(data) },
     ),
+  bulkCreateSchoolSessions: (
+    storeId: string,
+    schoolId: string,
+    data: {
+      start_date: string;
+      end_date: string;
+      days_of_week: number[];
+      start_time: string;
+      end_time: string;
+      capacity_override?: number | null;
+      note?: string | null;
+    },
+  ) =>
+    request<{ sessions: ReservationSchoolSession[]; count: number }>(
+      `/reservation/school/${storeId}/schools/${schoolId}/sessions/bulk`,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
   deleteSchoolSession: (storeId: string, sessionId: string) =>
     request<OkResponse>(`/reservation/school/${storeId}/sessions/${sessionId}`, {
       method: 'DELETE',
     }),
+  listSessionReservations: (storeId: string, sessionId: string) =>
+    request<{ reservations: ReservationRow[] }>(
+      `/reservation/school/${storeId}/sessions/${sessionId}/reservations`,
+    ),
   listSchoolReservations: (storeId: string) =>
     request<{ reservations: ReservationRow[] }>(
       `/reservation/school/${storeId}/reservations`,
@@ -871,6 +896,20 @@ export const api = {
     request<{ reservation: ReservationRow }>(
       `/reservation/school/${storeId}/reservations/${reservationId}/cancel`,
       { method: 'POST', body: JSON.stringify({ reason }) },
+    ),
+  updateSchoolSession: (storeId: string, sessionId: string, patch: { status: string }) =>
+    request<{ session: ReservationSchoolSession }>(
+      `/reservation/school/${storeId}/sessions/${sessionId}`,
+      { method: 'PATCH', body: JSON.stringify(patch) },
+    ),
+  updateSchoolReservation: (
+    storeId: string,
+    reservationId: string,
+    patch: { status: string },
+  ) =>
+    request<{ reservation: ReservationRow }>(
+      `/reservation/school/${storeId}/reservations/${reservationId}`,
+      { method: 'PATCH', body: JSON.stringify(patch) },
     ),
   getPublicSchoolCourses: (slug: string) =>
     request<{ courses: ReservationSchool[] }>(`/public/r/${slug}/school/courses`),
@@ -893,6 +932,18 @@ export const api = {
     request<{ reservation: PublicReservationSummary }>(
       `/public/r/${slug}/school/reservations`,
       { method: 'POST', body: JSON.stringify(data) },
+    ),
+  cancelPublicSchoolReservation: (
+    slug: string,
+    data: { confirmation_code: string; email: string },
+  ) =>
+    request<{ reservation: { id: string; status: string; cancelled_at: string } }>(
+      `/public/r/${slug}/school/cancel`,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
+  lookupPublicSchoolReservation: (slug: string, code: string, email: string) =>
+    request<{ reservation: ReservationRow }>(
+      `/public/r/${slug}/school/lookup?code=${encodeURIComponent(code)}&email=${encodeURIComponent(email)}`,
     ),
 
   // ============================================================

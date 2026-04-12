@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
-import type { Customer } from '../types/api';
+import type { Customer, ReservationRow } from '../types/api';
 
 const PAGE_LIMIT = 20;
 
@@ -267,14 +267,8 @@ export default function CustomersPage() {
           </table>
         </div>
 
-        {/* 予約履歴プレースホルダー */}
-        <div className="records-section" style={{ marginTop: 16 }}>
-          <h3 style={{ marginBottom: 8 }}>予約履歴</h3>
-          <div className="empty-state">
-            <div className="empty-state-icon">📅</div>
-            <p className="empty-state-text">予約機能は準備中です</p>
-          </div>
-        </div>
+        {/* 予約履歴 (CRM-1) */}
+        <CustomerReservationHistory storeId={selectedStore!.id} customerId={selectedCustomer.id} />
 
         {/* Form Modal (Edit) */}
         {formOpen && (
@@ -464,6 +458,89 @@ export default function CustomersPage() {
           onSubmit={handleFormSubmit}
           onClose={handleCloseForm}
         />
+      )}
+    </div>
+  );
+}
+
+// ── Reservation History Component ───────────────────────────
+
+function CustomerReservationHistory({ storeId, customerId }: { storeId: string; customerId: string }) {
+  const [reservations, setReservations] = useState<ReservationRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await api.getCustomerReservations(storeId, customerId);
+        if (!cancelled) setReservations(r.reservations);
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [storeId, customerId]);
+
+  const statusColor = (s: string) => {
+    switch (s) {
+      case 'cancelled': return { bg: '#fee2e2', fg: '#dc2626' };
+      case 'completed': return { bg: '#dcfce7', fg: '#16a34a' };
+      case 'no_show': return { bg: '#fef3c7', fg: '#92400e' };
+      default: return { bg: '#dbeafe', fg: '#1e40af' };
+    }
+  };
+
+  const typeLabel = (t: string) => {
+    switch (t) {
+      case 'table': return 'テーブル';
+      case 'school': return 'スクール';
+      case 'timeslot': return '時間帯';
+      case 'event': return 'イベント';
+      default: return t;
+    }
+  };
+
+  return (
+    <div className="records-section" style={{ marginTop: 16 }}>
+      <h3 style={{ marginBottom: 8 }}>予約履歴</h3>
+      {loading ? (
+        <p style={{ color: '#666', fontSize: '0.875rem' }}>読み込み中...</p>
+      ) : reservations.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">📅</div>
+          <p className="empty-state-text">予約履歴がありません</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: 6 }}>
+          {reservations.map((r) => {
+            const sc = statusColor(r.status);
+            return (
+              <div key={r.id} style={{ padding: '10px 12px', background: '#fafafa', borderRadius: 8, border: '1px solid #f0f0f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>
+                      {new Date(r.starts_at).toLocaleDateString('ja-JP')}
+                    </span>
+                    <span style={{ fontSize: 12, color: '#666', marginLeft: 8 }}>
+                      {typeLabel(r.reservation_type)} / {r.party_size}名
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: sc.bg, color: sc.fg }}>
+                    {r.status}
+                  </span>
+                </div>
+                {(r.metadata as { school_name?: string })?.school_name && (
+                  <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>
+                    {(r.metadata as { school_name?: string }).school_name}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

@@ -10,7 +10,12 @@
 // 将来的には DB 関数 + トランザクション化を検討する。
 
 import { supabaseAdmin } from '../../config/supabase';
-import { createReservation } from './core';
+import {
+  allocateConfirmationCode,
+  upsertCustomerFromReservation,
+  writeReservationLog,
+  enqueueNotification,
+} from './core';
 import type { ReservationRow, ReservationType, ReservationSource } from './types';
 
 export async function getBookedPartySize(
@@ -65,44 +70,77 @@ export interface CapacityBookingInput {
   notes?: string | null;
   metadata?: Record<string, unknown>;
   createdBy?: string | null;
+  sendConfirmationEmail?: boolean;
 }
 
 export async function createCapacityReservation(
   input: CapacityBookingInput,
 ): Promise<ReservationRow> {
-  const remaining = await getRemainingCapacity({
-    storeId: input.storeId,
-    resourceRef: input.resourceRef,
-    capacity: input.capacity,
-    startsAt: input.startsAt,
-    endsAt: input.endsAt,
+  const code = await allocateConfirmationCode(input.storeId);
+  const customerId = await upsertCustomerFromReservation(input.storeId, {
+    name: input.customerName,
+    phone: input.customerPhone,
+    email: input.customerEmail,
   });
 
-  if (remaining < input.partySize) {
-    const err = new Error(
-      remaining === 0
-        ? 'この枠は満席です'
-        : `残り ${remaining} 名分しか受け付けられません`,
-    );
-    (err as Error & { statusCode?: number }).statusCode = 409;
-    throw err;
+  const { data, error } = await supabaseAdmin.rpc('reserve_with_capacity_check', {
+    p_store_id: input.storeId,
+    p_resource_ref: input.resourceRef,
+    p_capacity: input.capacity,
+    p_starts_at: input.startsAt.toISOString(),
+    p_ends_at: input.endsAt.toISOString(),
+    p_party_size: input.partySize,
+    p_type: input.type,
+    p_source: input.source,
+    p_confirmation_code: code,
+    p_customer_id: customerId,
+    p_customer_name: input.customerName,
+    p_customer_phone: input.customerPhone || null,
+    p_customer_email: input.customerEmail || null,
+    p_notes: input.notes || null,
+    p_metadata: input.metadata || {},
+    p_created_by: input.createdBy || null,
+  });
+
+  if (error) {
+    if (error.message.includes('満席') || error.message.includes('残り')) {
+      const err = new Error(error.message);
+      (err as Error & { statusCode?: number }).statusCode = 409;
+      throw err;
+    }
+    throw new Error(error.message);
   }
 
-  const result = await createReservation({
-    storeId: input.storeId,
-    type: input.type,
-    source: input.source,
-    startsAt: input.startsAt,
-    endsAt: input.endsAt,
-    partySize: input.partySize,
-    resourceRef: input.resourceRef,
-    customerName: input.customerName,
-    customerPhone: input.customerPhone,
-    customerEmail: input.customerEmail,
-    notes: input.notes,
-    metadata: input.metadata,
-    createdBy: input.createdBy,
+  const reservationId = data as string;
+
+  // Fetch the full reservation row
+  const { data: reservation, error: fetchErr } = await supabaseAdmin
+    .from('reservations')
+    .select('*')
+    .eq('id', reservationId)
+    .single();
+  if (fetchErr || !reservation) throw new Error('Failed to fetch created reservation');
+
+  const row = reservation as ReservationRow;
+
+  // Audit log
+  await writeReservationLog({
+    reservationId: row.id,
+    action: 'created',
+    actorType: input.source === 'admin' ? 'staff' : 'customer',
+    actorId: input.createdBy || null,
+    metadata: { source: input.source },
   });
 
-  return result.reservation;
+  // Notification
+  if (input.customerEmail && input.sendConfirmationEmail !== false) {
+    await enqueueNotification({
+      reservationId: row.id,
+      channel: 'email',
+      kind: 'confirm',
+      recipient: input.customerEmail,
+    });
+  }
+
+  return row;
 }
