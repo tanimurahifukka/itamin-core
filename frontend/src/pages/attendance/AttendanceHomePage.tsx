@@ -5,10 +5,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
+import ChecklistGate from '../../components/ChecklistGate';
 /** Attendance today response shape as returned by the API. */
 interface AttendanceTodayData {
   businessDate: string;
   currentStatus: string;
+  membershipId: string;
   activeSession: {
     clockInAt: string;
     breakMinutes: number;
@@ -60,6 +62,8 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null);
   const [now, setNow] = useState(new Date());
+  const [showChecklist, setShowChecklist] = useState(false);
+  const [checklistTiming, setChecklistTiming] = useState<'clock_in' | 'clock_out'>('clock_in');
   const idempotencyRef = useRef<string>('');
 
   const storeId = selectedStore?.id;
@@ -111,10 +115,28 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
     }
   };
 
-  const handleClockIn = () => doAction(
-    () => api.attendanceClockIn(storeId!, 'web', genKey()),
-    '出勤しました'
-  );
+  // 出勤/退勤はチェックリストゲートを経由する
+  const handleClockIn = () => {
+    setChecklistTiming('clock_in');
+    setShowChecklist(true);
+  };
+  const handleClockOut = () => {
+    setChecklistTiming('clock_out');
+    setShowChecklist(true);
+  };
+  const handleChecklistComplete = () => {
+    setShowChecklist(false);
+    if (checklistTiming === 'clock_in') {
+      doAction(() => api.attendanceClockIn(storeId!, 'web', genKey()), '出勤しました');
+    } else {
+      doAction(() => api.attendanceClockOut(storeId!, genKey()), '退勤しました');
+    }
+  };
+  const handleChecklistCancel = () => {
+    setShowChecklist(false);
+  };
+
+  // 休憩はチェックリスト対象外
   const handleBreakStart = () => doAction(
     () => api.attendanceBreakStart(storeId!, undefined, genKey()),
     '休憩を開始しました'
@@ -123,15 +145,11 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
     () => api.attendanceBreakEnd(storeId!, genKey()),
     '休憩を終了しました'
   );
-  const handleClockOut = () => doAction(
-    () => api.attendanceClockOut(storeId!, genKey()),
-    '退勤しました'
-  );
 
   if (loading) return <div className="loading">読み込み中...</div>;
   if (!data) return <div className="alert alert-error">勤怠情報の取得に失敗しました</div>;
 
-  const { currentStatus, activeSession, recentEvents, todayShift, businessDate } = data;
+  const { currentStatus, activeSession, recentEvents, todayShift, businessDate, membershipId } = data;
 
   return (
     <div className="attendance-home">
@@ -140,6 +158,17 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
         <div className={`attendance-toast ${toast.type}`} data-testid="attendance-toast">
           {toast.msg}
         </div>
+      )}
+
+      {/* チェックリストゲート（出勤前/退勤前チェック） */}
+      {showChecklist && storeId && membershipId && (
+        <ChecklistGate
+          storeId={storeId}
+          staffId={membershipId}
+          timing={checklistTiming}
+          onComplete={handleChecklistComplete}
+          onCancel={handleChecklistCancel}
+        />
       )}
 
       {/* ヘッダー情報 */}
