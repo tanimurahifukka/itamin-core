@@ -172,8 +172,12 @@ DO $$ BEGIN
     SELECT 1 FROM pg_type WHERE typname = 'staff_role'
   ) THEN
     ALTER TABLE public.store_invitations
+      ALTER COLUMN intended_role DROP DEFAULT;
+    ALTER TABLE public.store_invitations
       ALTER COLUMN intended_role TYPE staff_role
         USING intended_role::staff_role;
+    ALTER TABLE public.store_invitations
+      ALTER COLUMN intended_role SET DEFAULT 'part_time'::staff_role;
   END IF;
 END $$;
 
