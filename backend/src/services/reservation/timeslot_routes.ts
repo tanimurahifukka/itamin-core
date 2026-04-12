@@ -11,6 +11,7 @@ import { supabaseAdmin } from '../../config/supabase';
 import { resolvePublicStoreBySlug, cancelReservation } from './core';
 import { createCapacityReservation, getRemainingCapacity } from './capacity';
 import { rateLimit } from './rate_limit';
+import { getEffectiveHours } from '../calendar/resolver';
 
 interface TimeslotRow {
   id: string;
@@ -219,15 +220,12 @@ timeslotPublicRouter.get('/availability', async (req: Request, res: Response) =>
   const targetDate = new Date(dateStr + 'T00:00:00+09:00');
   const dow = targetDate.getDay();
 
-  // 休業日
-  const { data: blackouts } = await supabaseAdmin
-    .from('reservation_blackouts')
-    .select('date')
-    .eq('store_id', store.id)
-    .eq('date', dateStr)
-    .or('plugin.is.null,plugin.eq.reservation_timeslot');
-  if ((blackouts || []).length > 0) {
-    res.json({ slots: [], reason: '休業日' });
+  // 営業時間 (unified calendar)
+  const effective = await getEffectiveHours(store.id, dateStr);
+
+  if (!effective.isOpen) {
+    const reason = effective.kind === 'holiday' ? '定休日' : '休業日';
+    res.json({ slots: [], reason });
     return;
   }
 

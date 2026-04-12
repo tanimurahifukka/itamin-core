@@ -14,10 +14,10 @@ import {
   resolvePublicStoreBySlug,
 } from './core';
 import { rateLimit } from './rate_limit';
+import { getEffectiveHours } from '../calendar/resolver';
 import type {
   ReservationRow,
   ReservationTableRow,
-  ReservationBusinessHoursRow,
 } from './types';
 
 // ============================================================
@@ -452,14 +452,10 @@ publicReservationRouter.get('/:slug/table/availability', async (req: Request, re
   const durationMin = config.default_duration_minutes || 120;
   const acceptDaysAhead = config.accept_days_ahead || 30;
 
-  // 営業時間
-  const { data: hours } = await supabaseAdmin
-    .from('reservation_business_hours')
-    .select('*')
-    .eq('store_id', store.id)
-    .eq('plugin', 'reservation_table');
+  // 営業時間 (unified calendar)
+  const effective = await getEffectiveHours(store.id, dateStr);
 
-  // 対象日 (JST 基準で曜日を計算)
+  // 対象日 (JST 基準)
   const targetDate = new Date(dateStr + 'T00:00:00+09:00');
   const today = new Date();
   const maxDate = new Date(today.getTime() + acceptDaysAhead * 86400000);
@@ -467,23 +463,10 @@ publicReservationRouter.get('/:slug/table/availability', async (req: Request, re
     res.json({ slots: [], reason: '受付期間外' });
     return;
   }
-  const dow = targetDate.getDay();
-  const todays = (hours || []).filter((h) => (h as ReservationBusinessHoursRow).day_of_week === dow);
 
-  if (todays.length === 0) {
-    res.json({ slots: [], reason: '定休日' });
-    return;
-  }
-
-  // 休業日チェック
-  const { data: blackouts } = await supabaseAdmin
-    .from('reservation_blackouts')
-    .select('date')
-    .eq('store_id', store.id)
-    .eq('date', dateStr)
-    .or('plugin.is.null,plugin.eq.reservation_table');
-  if ((blackouts || []).length > 0) {
-    res.json({ slots: [], reason: '臨時休業' });
+  if (!effective.isOpen) {
+    const reason = effective.kind === 'holiday' ? '定休日' : '臨時休業';
+    res.json({ slots: [], reason });
     return;
   }
 
@@ -514,17 +497,19 @@ publicReservationRouter.get('/:slug/table/availability', async (req: Request, re
     .in('status', ['pending', 'confirmed', 'seated']);
 
   // スロット生成
+  const slotMinutes = 30;
+  const lastOrderMin = 60;
   const slots: Array<{ starts_at: string; available_table_count: number }> = [];
-  for (const h of todays as ReservationBusinessHoursRow[]) {
-    const [oh, om] = h.open_time.split(':').map(Number);
-    const [ch, cm] = h.close_time.split(':').map(Number);
+  {
+    const [oh, om] = effective.openTime!.split(':').map(Number);
+    const [ch, cm] = effective.closeTime!.split(':').map(Number);
     const open = new Date(dateStr + `T${String(oh).padStart(2, '0')}:${String(om).padStart(2, '0')}:00+09:00`);
     const lastAccept = new Date(
       dateStr + `T${String(ch).padStart(2, '0')}:${String(cm).padStart(2, '0')}:00+09:00`,
     );
-    lastAccept.setMinutes(lastAccept.getMinutes() - (h.last_order_min || 60));
+    lastAccept.setMinutes(lastAccept.getMinutes() - lastOrderMin);
 
-    for (let t = new Date(open); t <= lastAccept; t = new Date(t.getTime() + h.slot_minutes * 60000)) {
+    for (let t = new Date(open); t <= lastAccept; t = new Date(t.getTime() + slotMinutes * 60000)) {
       const slotStart = new Date(t);
       const slotEnd = new Date(slotStart.getTime() + durationMin * 60000);
 
