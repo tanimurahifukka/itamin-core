@@ -58,13 +58,14 @@ function emptyVals(): ItemValues {
   return { bool_value: false, numeric_value: '', text_value: '', select_value: '' };
 }
 
-function isItemDone(item: ActiveItem, v: ItemValues): boolean {
+function isItemDone(item: ActiveItem, v: ItemValues, nfcStatuses?: Record<string, { done: boolean }>): boolean {
   if (!item.required) return true;
   switch (item.item_type) {
     case 'checkbox': return v.bool_value;
     case 'numeric':  return !isNaN(parseFloat(v.numeric_value));
     case 'text':     return v.text_value.trim().length > 0;
     case 'select':   return v.select_value.length > 0;
+    case 'nfc_location': return nfcStatuses?.[item.id]?.done ?? false;
     default:         return true;
   }
 }
@@ -86,12 +87,32 @@ function CheckForm({ template, items, timing, storeId, membershipId, onSubmitted
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [nfcStatuses, setNfcStatuses] = useState<Record<string, { done: boolean; submitted_at?: string }>>({});
+
+  const refreshNfcStatuses = useCallback(() => {
+    const today = todayStr();
+    items.filter(i => i.item_type === 'nfc_location').forEach(item => {
+      const locationId = (item.options?.nfc_location_id as string) || '';
+      if (!locationId) return;
+      checkApi.getNfcLocationStatus(storeId, locationId, today)
+        .then(d => setNfcStatuses(prev => ({ ...prev, [item.id]: { done: d.done, submitted_at: d.submitted_at } })))
+        .catch(() => {});
+    });
+  }, [items, storeId]);
+
+  useEffect(() => { refreshNfcStatuses(); }, [refreshNfcStatuses]);
+
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') refreshNfcStatuses(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refreshNfcStatuses]);
 
   const updateVal = (id: string, patch: Partial<ItemValues>) => {
     setValues(prev => ({ ...prev, [id]: { ...(prev[id] ?? emptyVals()), ...patch } }));
   };
 
-  const allDone = items.length > 0 && items.every(i => isItemDone(i, values[i.id] ?? emptyVals()));
+  const allDone = items.length > 0 && items.every(i => isItemDone(i, values[i.id] ?? emptyVals(), nfcStatuses));
 
   const handleSubmit = async () => {
     if (!allDone || submitting) return;
@@ -103,7 +124,7 @@ function CheckForm({ template, items, timing, storeId, membershipId, onSubmitted
         return {
           template_item_id: item.id,
           item_key: item.item_key,
-          bool_value: item.item_type === 'checkbox' ? v.bool_value : null,
+          bool_value: item.item_type === 'checkbox' ? v.bool_value : item.item_type === 'nfc_location' ? (nfcStatuses[item.id]?.done ?? false) : null,
           numeric_value: item.item_type === 'numeric' && v.numeric_value ? parseFloat(v.numeric_value) : null,
           text_value: item.item_type === 'text' ? v.text_value : null,
           select_value: item.item_type === 'select' ? v.select_value : null,
@@ -140,6 +161,57 @@ function CheckForm({ template, items, timing, storeId, membershipId, onSubmitted
               item={item}
               storeId={storeId}
             />
+          );
+        }
+
+        if (item.item_type === 'nfc_location') {
+          const nfcStatus = nfcStatuses[item.id];
+          const nfcDone = nfcStatus?.done ?? false;
+          const locationId = (item.options?.nfc_location_id as string) || '';
+          const submittedTime = nfcStatus?.submitted_at
+            ? new Date(nfcStatus.submitted_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+            : null;
+          return (
+            <div
+              key={item.id}
+              style={{
+                padding: '10px 12px',
+                marginBottom: 8,
+                borderRadius: 8,
+                border: `1px solid ${nfcDone ? '#86efac' : '#fcd34d'}`,
+                background: nfcDone ? '#f0fdf4' : '#fffbeb',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontWeight: 500 }}>
+                  {item.label}
+                  {item.is_ccp && (
+                    <span style={{
+                      marginLeft: 6, fontSize: '0.7rem', fontWeight: 700,
+                      color: '#dc2626', background: '#fee2e2', padding: '1px 5px', borderRadius: 3,
+                    }}>CCP</span>
+                  )}
+                </span>
+                {nfcDone ? (
+                  <span style={{ fontSize: '0.85rem', color: '#166534', fontWeight: 600 }}>
+                    ✓ 清掃済み{submittedTime ? ` ${submittedTime}` : ''}
+                  </span>
+                ) : (
+                  <a
+                    href={`/nfc/clean?loc=${locationId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      fontSize: '0.85rem', color: '#92400e', fontWeight: 600,
+                      padding: '4px 10px', borderRadius: 6, border: '1px solid #fcd34d',
+                      background: '#fef3c7', textDecoration: 'none',
+                    }}
+                  >
+                    清掃が必要です
+                  </a>
+                )}
+              </div>
+            </div>
           );
         }
 

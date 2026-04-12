@@ -133,6 +133,11 @@ export const kioskApi = {
       }>;
     }>(`/kiosk/${storeId}/switchbot/readings?date=${date}`),
 
+  getNfcLocationStatus: (storeId: string, locationId: string, date: string) =>
+    kioskRequest<{ done: boolean; submitted_at?: string; staff_name?: string }>(
+      `/kiosk/${storeId}/nfc-location-status?location_id=${locationId}&date=${date}`
+    ),
+
   punch: (storeId: string, staffId: string, action: 'clock-in' | 'clock-out') =>
     kioskRequest<{ ok: boolean; action: string; clockIn?: string; clockOut?: string }>(
       `/kiosk/${storeId}/punch`,

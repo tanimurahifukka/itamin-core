@@ -9,7 +9,8 @@ interface TemplateItem {
   min_value?: number;
   max_value?: number;
   unit?: string;
-  options?: string[];
+  options?: string[] | Record<string, unknown>;
+  nfc_location_id?: string;
 }
 
 interface Template {
@@ -67,7 +68,8 @@ export default function KioskHaccp({ storeId, staff }: Props) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [switchbotDevices, setSwitchbotDevices] = useState<Array<{ deviceId: string; deviceName: string; deviceType: string }>>([]);
-  const [fetchingDevice, setFetchingDevice] = useState<string | null>(null); // deviceId
+  const [fetchingDevice, setFetchingDevice] = useState<string | null>(null);
+  const [nfcStatuses, setNfcStatuses] = useState<Record<string, { done: boolean; submitted_at?: string }>>({});
 
   const today = toDateStr(new Date());
 
@@ -119,7 +121,6 @@ export default function KioskHaccp({ storeId, staff }: Props) {
 
   const openTemplate = (tpl: Template) => {
     setSelected(tpl);
-    // 初期値セット
     const init: Record<string, string | boolean> = {};
     for (const item of tpl.items) {
       if (item.item_type === 'checkbox') init[item.id] = false;
@@ -127,6 +128,16 @@ export default function KioskHaccp({ storeId, staff }: Props) {
       else init[item.id] = '';
     }
     setAnswers(init);
+    const nfcItems = tpl.items.filter(i => i.item_type === 'nfc_location');
+    if (nfcItems.length > 0) {
+      nfcItems.forEach(item => {
+        const locationId = item.nfc_location_id || (typeof item.options === 'object' && !Array.isArray(item.options) ? (item.options?.nfc_location_id as string) : '') || '';
+        if (!locationId) return;
+        kioskApi.getNfcLocationStatus(storeId, locationId, today)
+          .then(d => setNfcStatuses(prev => ({ ...prev, [item.id]: { done: d.done, submitted_at: d.submitted_at } })))
+          .catch(() => {});
+      });
+    }
   };
 
   const handleSubmit = async () => {
@@ -134,6 +145,10 @@ export default function KioskHaccp({ storeId, staff }: Props) {
 
     // 必須チェック
     for (const item of selected.items) {
+      if (item.item_type === 'nfc_location') {
+        if (item.required && !nfcStatuses[item.id]?.done) { showMsg(`「${item.label}」のNFC清掃が未完了です`, false); return; }
+        continue;
+      }
       if (item.required) {
         const val = answers[item.id];
         if (item.item_type === 'checkbox' && !val) { showMsg(`「${item.label}」は必須です`, false); return; }
@@ -151,7 +166,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
     try {
       const items = selected.items.map(item => ({
         template_item_id: item.id,
-        bool_value: item.item_type === 'checkbox' ? (answers[item.id] ?? false) : null,
+        bool_value: item.item_type === 'checkbox' ? (answers[item.id] ?? false) : item.item_type === 'nfc_location' ? (nfcStatuses[item.id]?.done ?? false) : null,
         numeric_value: item.item_type === 'numeric' && answers[item.id] !== '' ? Number(answers[item.id]) : null,
         text_value: item.item_type === 'text' ? (answers[item.id] || null) : null,
         select_value: item.item_type === 'select' ? (answers[item.id] || null) : null,
@@ -390,7 +405,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
                         data-testid={`haccp-item-${item.id}`}
                       />
                     )}
-                    {item.item_type === 'select' && item.options && (
+                    {item.item_type === 'select' && item.options && Array.isArray(item.options) && (
                       <select
                         value={(answers[item.id] as string) || ''}
                         onChange={e => setAnswers(a => ({ ...a, [item.id]: e.target.value }))}
@@ -398,11 +413,33 @@ export default function KioskHaccp({ storeId, staff }: Props) {
                         data-testid={`haccp-item-${item.id}`}
                       >
                         <option value="">選択</option>
-                        {item.options.map(opt => (
+                        {(item.options as string[]).map(opt => (
                           <option key={opt} value={opt}>{opt}</option>
                         ))}
                       </select>
                     )}
+                    {item.item_type === 'nfc_location' && (() => {
+                      const nfcStatus = nfcStatuses[item.id];
+                      const nfcDone = nfcStatus?.done ?? false;
+                      const locationId = item.nfc_location_id || (typeof item.options === 'object' && !Array.isArray(item.options) ? (item.options?.nfc_location_id as string) : '') || '';
+                      const submittedTime = nfcStatus?.submitted_at
+                        ? new Date(nfcStatus.submitted_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+                        : null;
+                      return nfcDone ? (
+                        <span style={{ fontSize: 13, color: '#2e7d32', fontWeight: 600 }}>
+                          ✓ 清掃済み{submittedTime ? ` ${submittedTime}` : ''}
+                        </span>
+                      ) : (
+                        <a
+                          href={`/nfc/clean?loc=${locationId}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ fontSize: 13, color: '#c2410c', fontWeight: 600, padding: '6px 12px', borderRadius: 6, border: '1px solid #fcd34d', background: '#fef3c7', textDecoration: 'none' }}
+                        >
+                          清掃が必要です
+                        </a>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}

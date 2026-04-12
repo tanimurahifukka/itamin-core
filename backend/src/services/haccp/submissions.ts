@@ -454,6 +454,54 @@ submissionsRouter.post('/:storeId/submissions', requireAuth, async (req: Request
   }
 });
 
+// GET /api/haccp/:storeId/nfc-location-status?location_id=<uuid>&date=YYYY-MM-DD
+submissionsRouter.get('/:storeId/nfc-location-status', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    const locationId = req.query.location_id ? String(req.query.location_id) : null;
+    const date = req.query.date ? String(req.query.date) : null;
+
+    if (!locationId) { res.status(400).json({ error: 'location_id は必須です' }); return; }
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { res.status(400).json({ error: 'date は YYYY-MM-DD 形式で指定してください' }); return; }
+
+    const dayStart = `${date}T00:00:00+09:00`;
+    const nextDate = new Date(`${date}T00:00:00+09:00`);
+    nextDate.setDate(nextDate.getDate() + 1);
+    const dayEnd = `${nextDate.toISOString().slice(0, 10)}T00:00:00+09:00`;
+
+    const { data, error } = await supabaseAdmin
+      .from('checklist_submissions')
+      .select('submitted_at, snapshot')
+      .eq('store_id', storeId)
+      .eq('snapshot->>source', 'nfc')
+      .eq('snapshot->>location_id', locationId)
+      .gte('submitted_at', dayStart)
+      .lt('submitted_at', dayEnd)
+      .order('submitted_at', { ascending: false })
+      .limit(1);
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    if (!data || data.length === 0) {
+      res.json({ done: false });
+      return;
+    }
+
+    const row = data[0] as { submitted_at: string; snapshot: Record<string, unknown> | null };
+    res.json({
+      done: true,
+      submitted_at: row.submitted_at,
+      staff_name: row.snapshot?.staff_name ?? null,
+    });
+  } catch (e: any) {
+    console.error('[haccp GET /:storeId/nfc-location-status] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
 // GET /api/haccp/:storeId/submissions
 submissionsRouter.get('/:storeId/submissions', requireAuth, async (req: Request, res: Response) => {
   try {

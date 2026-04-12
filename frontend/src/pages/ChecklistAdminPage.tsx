@@ -41,11 +41,12 @@ const SCOPE_LABEL: Record<CheckScope, string> = { personal: '個人', store: '�
 const LAYER_LABEL: Record<CheckLayer, string>  = { base: '基本', shift: 'シフト別' };
 
 const ITEM_TYPE_LABEL: Record<CheckItemType, string> = {
-  checkbox: 'チェックボックス',
-  numeric:  '数値入力',
-  text:     'テキスト入力',
-  photo:    '写真',
-  select:   '選択肢',
+  checkbox:     'チェックボックス',
+  numeric:      '数値入力',
+  text:         'テキスト入力',
+  photo:        '写真',
+  select:       '選択肢',
+  nfc_location: 'NFC清掃連携',
 };
 
 const TRACKING_LABEL: Record<TrackingMode, string> = {
@@ -82,6 +83,7 @@ interface ItemForm {
   deviation_action: string;
   sort_order: number;
   switchbot_device_id: string;
+  nfc_location_id: string;
 }
 
 function emptyItemForm(): ItemForm {
@@ -89,7 +91,7 @@ function emptyItemForm(): ItemForm {
     id: null, label: '', item_key: '', item_type: 'checkbox',
     required: true, min_value: '', max_value: '', unit: '',
     is_ccp: false, tracking_mode: 'submission_only', deviation_action: '', sort_order: 0,
-    switchbot_device_id: '',
+    switchbot_device_id: '', nfc_location_id: '',
   };
 }
 
@@ -125,6 +127,7 @@ function TemplatesTab({ storeId }: { storeId: string }) {
   const [systemTemplates, setSystemTemplates] = useState<SystemTemplate[]>([]);
   const [fromSystemLoading, setFromSystemLoading] = useState(false);
   const [switchbotDevices, setSwitchbotDevices] = useState<SwitchBotDevice[]>([]);
+  const [nfcLocations, setNfcLocations] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [showCreateFlow, setShowCreateFlow] = useState<'closed' | 'step1' | 'step2'>('closed');
 
   const load = useCallback(async () => {
@@ -150,6 +153,10 @@ function TemplatesTab({ storeId }: { storeId: string }) {
     api.getSwitchBotDevices(storeId)
       .then((d: { devices: SwitchBotDevice[] }) => setSwitchbotDevices(d.devices || []))
       .catch(() => setSwitchbotDevices([]));
+  }, [storeId]);
+
+  useEffect(() => {
+    api.listNfcLocations(storeId).then(d => setNfcLocations(d.locations || [])).catch(() => {});
   }, [storeId]);
 
   const handleCreate = async () => {
@@ -257,21 +264,27 @@ function TemplatesTab({ storeId }: { storeId: string }) {
   const handleAddItem = async () => {
     if (!selectedTpl || !itemForm.label.trim()) return;
     setItemSaving(true);
+    const payload = {
+      label: itemForm.label,
+      item_key: itemForm.item_key || undefined,
+      item_type: itemForm.item_type,
+      required: itemForm.required,
+      min_value: itemForm.min_value ? parseFloat(itemForm.min_value) : null,
+      max_value: itemForm.max_value ? parseFloat(itemForm.max_value) : null,
+      unit: itemForm.unit || null,
+      is_ccp: itemForm.is_ccp,
+      tracking_mode: itemForm.tracking_mode,
+      deviation_action: itemForm.deviation_action || null,
+      sort_order: itemForm.sort_order,
+      switchbot_device_id: itemForm.switchbot_device_id || null,
+      ...(itemForm.item_type === 'nfc_location' ? { options: { nfc_location_id: itemForm.nfc_location_id } } : {}),
+    };
     try {
-      await checkApi.addItem(storeId, selectedTpl.id, {
-        label: itemForm.label,
-        item_key: itemForm.item_key || undefined,
-        item_type: itemForm.item_type,
-        required: itemForm.required,
-        min_value: itemForm.min_value ? parseFloat(itemForm.min_value) : null,
-        max_value: itemForm.max_value ? parseFloat(itemForm.max_value) : null,
-        unit: itemForm.unit || null,
-        is_ccp: itemForm.is_ccp,
-        tracking_mode: itemForm.tracking_mode,
-        deviation_action: itemForm.deviation_action || null,
-        sort_order: itemForm.sort_order,
-        switchbot_device_id: itemForm.switchbot_device_id || null,
-      });
+      if (itemForm.id) {
+        await checkApi.updateItem(storeId, itemForm.id, payload);
+      } else {
+        await checkApi.addItem(storeId, selectedTpl.id, payload);
+      }
       setItemForm(emptyItemForm());
       await openTemplateItems(selectedTpl);
     } catch (e: unknown) {
@@ -279,6 +292,25 @@ function TemplatesTab({ storeId }: { storeId: string }) {
     } finally {
       setItemSaving(false);
     }
+  };
+
+  const handleEditItem = (item: TemplateItem) => {
+    setItemForm({
+      id: item.id,
+      label: item.label,
+      item_key: item.item_key,
+      item_type: item.item_type,
+      required: item.required,
+      min_value: item.min_value != null ? String(item.min_value) : '',
+      max_value: item.max_value != null ? String(item.max_value) : '',
+      unit: item.unit || '',
+      is_ccp: item.is_ccp,
+      tracking_mode: item.tracking_mode,
+      deviation_action: item.deviation_action || '',
+      sort_order: item.sort_order,
+      switchbot_device_id: item.switchbot_device_id || '',
+      nfc_location_id: (item.options?.nfc_location_id as string) || '',
+    });
   };
 
   const handleDeleteItem = async (itemId: string) => {
@@ -518,14 +550,17 @@ function TemplatesTab({ storeId }: { storeId: string }) {
                               {' | '}{TRACKING_LABEL[item.tracking_mode]}
                             </span>
                           </div>
-                          <button onClick={() => handleDeleteItem(item.id)} style={{ ...miniBtn(), color: '#dc2626', borderColor: '#fecaca' }}>削除</button>
+                          <div>
+                            <button onClick={() => handleEditItem(item)} style={{ ...miniBtn(), color: '#2563eb', borderColor: '#bfdbfe', marginRight: 4 }}>編集</button>
+                            <button onClick={() => handleDeleteItem(item.id)} style={{ ...miniBtn(), color: '#dc2626', borderColor: '#fecaca' }}>削除</button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
 
                   {/* 新規項目追加 */}
-                  <div style={{ fontWeight: 600, marginBottom: 8, fontSize: '0.9rem' }}>項目を追加</div>
+                  <div style={{ fontWeight: 600, marginBottom: 8, fontSize: '0.9rem' }}>{itemForm.id ? '項目を編集' : '項目を追加'}</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 6, marginBottom: 6 }}>
                     <input type="text" placeholder="項目ラベル *" value={itemForm.label}
                       onChange={e => setItemForm(p => ({ ...p, label: e.target.value }))}
@@ -586,6 +621,18 @@ function TemplatesTab({ storeId }: { storeId: string }) {
                       </div>
                     </div>
                   )}
+                  {itemForm.item_type === 'nfc_location' && (
+                    <div style={{ marginBottom: 6 }}>
+                      <select value={itemForm.nfc_location_id}
+                        onChange={e => setItemForm(p => ({ ...p, nfc_location_id: e.target.value }))}
+                        style={{ width: '100%', padding: '7px 9px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}>
+                        <option value="">NFC清掃場所を選択...</option>
+                        {nfcLocations.map(loc => (
+                          <option key={loc.id} value={loc.id}>{loc.name} ({loc.slug})</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                       <input type="checkbox" checked={itemForm.required} onChange={e => setItemForm(p => ({ ...p, required: e.target.checked }))} />
@@ -596,12 +643,17 @@ function TemplatesTab({ storeId }: { storeId: string }) {
                       <span style={{ color: '#dc2626', fontWeight: 600 }}>CCP（重要管理点）</span>
                     </label>
                   </div>
-                  <button
-                    onClick={handleAddItem} disabled={!itemForm.label.trim() || itemSaving}
-                    style={{ padding: '8px 14px', borderRadius: 6, border: 'none', background: '#0f3460', color: '#fff', cursor: 'pointer', fontSize: '0.9rem' }}
-                  >
-                    {itemSaving ? '追加中...' : '項目を追加'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button
+                      onClick={handleAddItem} disabled={!itemForm.label.trim() || itemSaving}
+                      style={{ padding: '8px 14px', borderRadius: 6, border: 'none', background: '#0f3460', color: '#fff', cursor: 'pointer', fontSize: '0.9rem' }}
+                    >
+                      {itemSaving ? '保存中...' : itemForm.id ? '更新する' : '項目を追加'}
+                    </button>
+                    {itemForm.id && (
+                      <button onClick={() => setItemForm(emptyItemForm())} style={miniBtn()}>キャンセル</button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

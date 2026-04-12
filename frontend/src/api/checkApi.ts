@@ -35,7 +35,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export type CheckTiming = 'clock_in' | 'clock_out' | 'store_opening' | 'store_closing' | 'store_daily' | 'ad_hoc';
 export type CheckScope  = 'store' | 'personal';
 export type CheckLayer  = 'base' | 'shift';
-export type CheckItemType = 'checkbox' | 'numeric' | 'text' | 'photo' | 'select';
+export type CheckItemType = 'checkbox' | 'numeric' | 'text' | 'photo' | 'select' | 'nfc_location';
 export type TrackingMode = 'submission_only' | 'measurement_only' | 'both';
 export type AuditLevel   = 'simple' | 'shift' | 'item' | 'approval';
 export type DeviationSeverity = 'info' | 'warning' | 'ccp';
@@ -414,4 +414,9 @@ export const checkApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+
+  getNfcLocationStatus: (storeId: string, locationId: string, date: string) =>
+    request<{ done: boolean; submitted_at?: string; staff_name?: string }>(
+      `/${storeId}/nfc-location-status?location_id=${locationId}&date=${date}`
+    ),
 };

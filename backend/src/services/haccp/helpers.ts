@@ -10,7 +10,7 @@ import { supabaseAdmin } from '../../config/supabase';
 export const VALID_TIMINGS = ['clock_in', 'clock_out', 'store_opening', 'store_closing', 'store_daily', 'ad_hoc'] as const;
 export const VALID_SCOPES = ['store', 'personal'] as const;
 export const VALID_LAYERS = ['base', 'shift'] as const;
-export const VALID_ITEM_TYPES = ['checkbox', 'numeric', 'text', 'photo', 'select'] as const;
+export const VALID_ITEM_TYPES = ['checkbox', 'numeric', 'text', 'photo', 'select', 'nfc_location'] as const;
 export const VALID_TRACKING_MODES = ['submission_only', 'measurement_only', 'both'] as const;
 export const VALID_AUDIT_LEVELS = ['simple', 'shift', 'item', 'approval'] as const;
 export const VALID_SEVERITIES = ['info', 'warning', 'ccp'] as const;
@@ -62,6 +62,8 @@ export function calcPassed(item: TemplateItemLike, values: SubmissionValues): bo
       return (values.select_value ?? '').length > 0;
     case 'photo':
       return (values.file_path ?? '').length > 0;
+    case 'nfc_location':
+      return values.bool_value === true;
     default:
       return null;
   }
