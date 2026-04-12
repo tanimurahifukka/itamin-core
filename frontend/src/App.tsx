@@ -417,7 +417,7 @@ export default function App() {
     return <KioskApp />;
   }
 
-  // NFC 清掃チェック（認証不要の公開ページ）
+  // NFC チェック（認証不要の公開ページ）
   if (window.location.pathname === '/nfc/clean') {
     return <NfcCleanPage />;
   }

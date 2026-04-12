@@ -194,7 +194,7 @@ function CheckForm({ template, items, timing, storeId, membershipId, onSubmitted
                 </span>
                 {nfcDone ? (
                   <span style={{ fontSize: '0.85rem', color: '#166534', fontWeight: 600 }}>
-                    ✓ 清掃済み{submittedTime ? ` ${submittedTime}` : ''}
+                    ✓ チェック済み{submittedTime ? ` ${submittedTime}` : ''}
                   </span>
                 ) : (
                   <a
@@ -207,7 +207,7 @@ function CheckForm({ template, items, timing, storeId, membershipId, onSubmitted
                       background: '#fef3c7', textDecoration: 'none',
                     }}
                   >
-                    清掃が必要です
+                    チェックが必要です
                   </a>
                 )}
               </div>

@@ -46,7 +46,7 @@ const ITEM_TYPE_LABEL: Record<CheckItemType, string> = {
   text:         'テキスト入力',
   photo:        '写真',
   select:       '選択肢',
-  nfc_location: 'NFC清掃連携',
+  nfc_location: 'NFCチェック連携',
 };
 
 const TRACKING_LABEL: Record<TrackingMode, string> = {
@@ -626,7 +626,7 @@ function TemplatesTab({ storeId }: { storeId: string }) {
                       <select value={itemForm.nfc_location_id}
                         onChange={e => setItemForm(p => ({ ...p, nfc_location_id: e.target.value }))}
                         style={{ width: '100%', padding: '7px 9px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}>
-                        <option value="">NFC清掃場所を選択...</option>
+                        <option value="">NFCチェック場所を選択...</option>
                         {nfcLocations.map(loc => (
                           <option key={loc.id} value={loc.id}>{loc.name} ({loc.slug})</option>
                         ))}

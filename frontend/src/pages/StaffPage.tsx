@@ -879,7 +879,7 @@ export default function StaffPage() {
             <h3 className="remove-modal-title">PIN を再発行しました</h3>
             <p className="remove-modal-desc">
               <strong>{pinResult.staffName}</strong> さんの新しい PIN です。
-              NFC 清掃チェックインと NFC 打刻の両方で使用します。
+              NFC チェックインと NFC 打刻の両方で使用します。
             </p>
             <div
               style={{

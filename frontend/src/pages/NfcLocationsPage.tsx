@@ -114,9 +114,9 @@ export default function NfcLocationsPage() {
 
   return (
     <div style={{ padding: '20px 16px', maxWidth: 900, margin: '0 auto' }}>
-      <h2 style={{ marginBottom: 8 }}>🧹 NFC 清掃チェックポイント</h2>
+      <h2 style={{ marginBottom: 8 }}>🧹 NFC チェックポイント</h2>
       <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: 20 }}>
-        トイレなどの物理的な清掃場所ごとに NFC タグを作成できます。
+        トイレなどの物理的なチェック場所ごとに NFC タグを作成できます。
         表示されている URL を NFC タグに書き込むと、スタッフがスマホをかざして
         PIN + チェック入力 → HACCP 帳票に自動反映されます。
       </p>
@@ -172,7 +172,7 @@ export default function NfcLocationsPage() {
               ))}
             </select>
             <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: 4 }}>
-              テンプレートは HACCP チェックリスト管理画面から作成できます。トイレ清掃用テンプレートも seed 済みです。
+              テンプレートはチェックリスト管理画面から作成できます。トイレチェック用テンプレートも seed 済みです。
             </p>
           </div>
           <button

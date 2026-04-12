@@ -73,9 +73,9 @@ export default function AccountPage() {
       </div>
 
       <div className="attendance-account-section">
-        <h3>NFC 打刻 / 清掃 PIN</h3>
+        <h3>NFC 打刻 / チェック PIN</h3>
         <p style={{ fontSize: 13, color: '#64748b', marginTop: -4, marginBottom: 10 }}>
-          店舗入口の NFC タグをかざして打刻するとき、またはトイレ等の清掃チェックのときに使う 4 桁 PIN です。
+          店舗入口の NFC タグをかざして打刻するとき、またはNFCチェックのときに使う 4 桁 PIN です。
           他人に知られないように管理してください。
         </p>
         {pinLoading ? (

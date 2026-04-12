@@ -223,7 +223,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
     // 必須チェック
     for (const item of selected.items) {
       if (item.item_type === 'nfc_location') {
-        if (item.required && !nfcStatuses[item.id]?.done) { showMsg(`「${item.label}」のNFC清掃が未完了です`, false); return; }
+        if (item.required && !nfcStatuses[item.id]?.done) { showMsg(`「${item.label}」のNFCチェックが未完了です`, false); return; }
         continue;
       }
       if (item.required) {
@@ -665,7 +665,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
                         : null;
                       return nfcDone ? (
                         <span style={{ fontSize: 13, color: '#2e7d32', fontWeight: 600 }}>
-                          ✓ 清掃済み{submittedTime ? ` ${submittedTime}` : ''}
+                          ✓ チェック済み{submittedTime ? ` ${submittedTime}` : ''}
                         </span>
                       ) : (
                         <a
@@ -674,7 +674,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
                           rel="noreferrer"
                           style={{ fontSize: 13, color: '#c2410c', fontWeight: 600, padding: '6px 12px', borderRadius: 6, border: '1px solid #fcd34d', background: '#fef3c7', textDecoration: 'none' }}
                         >
-                          清掃が必要です
+                          チェックが必要です
                         </a>
                       );
                     })()}

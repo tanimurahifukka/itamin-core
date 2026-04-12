@@ -11,8 +11,8 @@ import type { Express } from 'express';
 export const nfcCleaningPlugin: Plugin = {
   name: 'nfc_cleaning',
   version: '1.0.0',
-  description: 'NFC タグから開く清掃チェック入力 (PIN 認証 + HACCP 自動記録)',
-  label: 'NFC 清掃',
+  description: 'NFC タグから開くチェック入力 (PIN 認証 + チェックリスト自動記録)',
+  label: 'NFC チェック',
   icon: '🧹',
   core: false,
   defaultRoles: ['owner', 'manager', 'leader', 'full_time', 'part_time'],

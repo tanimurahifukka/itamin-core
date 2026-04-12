@@ -223,7 +223,7 @@ nfcRouter.post('/submit', async (req: Request, res: Response) => {
       ok: true,
       submissionId: (submission as any).id,
       staffName,
-      message: '清掃記録を送信しました',
+      message: 'チェック記録を送信しました',
     });
   } catch (e: any) {
     console.error('[nfc POST /submit] error:', e);
