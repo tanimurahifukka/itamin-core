@@ -28,6 +28,8 @@ vi.mock('../auth/authorization', () => ({
   staffBelongsToStore: vi.fn(),
   isManagedRole: vi.fn(),
   isShiftRequestEnabled: vi.fn(),
+  requireOrgManager: vi.fn(),
+  getOrgStoreIds: vi.fn(() => []),
   VALID_STAFF_ROLES: ['owner', 'manager', 'leader', 'full_time', 'part_time'],
 }));
 
@@ -64,6 +66,7 @@ import { shiftPlugin } from '../plugins/shift';
 import { shiftRequestPlugin } from '../plugins/shift_request';
 import { staffPlugin } from '../plugins/staff';
 import { switchbotPlugin } from '../plugins/switchbot';
+import { shiftMultiPlugin } from '../plugins/shift_multi';
 
 const ALL_PLUGINS: Plugin[] = [
   attendancePlugin,
@@ -85,6 +88,7 @@ const ALL_PLUGINS: Plugin[] = [
   settingsPlugin,
   shiftPlugin,
   shiftRequestPlugin,
+  shiftMultiPlugin,
   staffPlugin,
   switchbotPlugin,
 ];

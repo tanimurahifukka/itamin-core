@@ -45,6 +45,7 @@ import PublicTimeslotBookingPage from './pages/reservation/PublicTimeslotBooking
 import PublicSchoolBookingPage from './pages/reservation/PublicSchoolBookingPage';
 import PublicEventBookingPage from './pages/reservation/PublicEventBookingPage';
 import CalendarAdminPage from './pages/CalendarAdminPage';
+import ShiftMultiPage from './pages/ShiftMultiPage';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -512,7 +513,7 @@ export default function App() {
 
   // 組織管理・プラットフォーム管理ルート
   const pathname = window.location.pathname;
-  if (pathname === '/organizations' || pathname === '/platform') {
+  if (pathname === '/organizations' || pathname === '/platform' || pathname === '/shift-multi') {
     if (loading) {
       return <div className="loading">読み込み中...</div>;
     }
@@ -520,6 +521,11 @@ export default function App() {
       return <LoginPage />;
     }
     const displayName = user.user_metadata?.full_name || user.email || '';
+    const pageContent = pathname === '/organizations'
+      ? <OrganizationsPage />
+      : pathname === '/shift-multi'
+        ? <ShiftMultiPage />
+        : <PlatformDashboard />;
     return (
       <div className="app">
         <header className="header">
@@ -532,7 +538,7 @@ export default function App() {
           </div>
         </header>
         <main className="main-content">
-          {pathname === '/organizations' ? <OrganizationsPage /> : <PlatformDashboard />}
+          {pageContent}
         </main>
       </div>
     );

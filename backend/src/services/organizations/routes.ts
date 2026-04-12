@@ -2,24 +2,7 @@ import { Router, Request, Response } from 'express';
 import { supabaseAdmin } from '../../config/supabase';
 import { requireAuth } from '../../middleware/auth';
 import { checkOrgLimits } from '../../lib/billing';
-
-export const organizationsRouter = Router();
-
-organizationsRouter.use(requireAuth);
-
-// Helper: check if user is owner/admin of org
-async function requireOrgManager(userId: string, orgId: string): Promise<{ role: string } | null> {
-  const { data } = await supabaseAdmin
-    .from('organization_members')
-    .select('role')
-    .eq('org_id', orgId)
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (!data) return null;
-  const role = (data as any).role;
-  if (role !== 'owner' && role !== 'admin') return null;
-  return { role };
-}
+import { requireOrgManager } from '../../auth/authorization';
 
 // GET /api/organizations — 自分の所属組織一覧
 organizationsRouter.get('/', async (req: Request, res: Response) => {
@@ -186,11 +169,8 @@ organizationsRouter.put('/:orgId', async (req: Request, res: Response) => {
   const userId = req.user!.id;
   const { orgId } = req.params as { orgId: string };
 
-  const manager = await requireOrgManager(userId, orgId);
-  if (!manager) {
-    res.status(403).json({ error: '組織の管理権限がありません' });
-    return;
-  }
+  const manager = await requireOrgManager(req, res, orgId);
+  if (!manager) return;
 
   const { name, settings } = req.body as { name?: string; settings?: Record<string, unknown> };
 
@@ -249,11 +229,8 @@ organizationsRouter.post('/:orgId/members', async (req: Request, res: Response) 
   const { orgId } = req.params as { orgId: string };
   const { email, role } = req.body as { email?: string; role?: string };
 
-  const manager = await requireOrgManager(userId, orgId);
-  if (!manager) {
-    res.status(403).json({ error: '組織の管理権限がありません' });
-    return;
-  }
+  const manager = await requireOrgManager(req, res, orgId);
+  if (!manager) return;
 
   if (!email) {
     res.status(400).json({ error: 'email は必須です' });
@@ -301,8 +278,9 @@ organizationsRouter.delete('/:orgId/members/:memberId', async (req: Request, res
   const userId = req.user!.id;
   const { orgId, memberId } = req.params as { orgId: string; memberId: string };
 
-  const manager = await requireOrgManager(userId, orgId);
-  if (!manager || manager.role !== 'owner') {
+  const manager = await requireOrgManager(req, res, orgId);
+  if (!manager) return;
+  if (manager.role !== 'owner') {
     res.status(403).json({ error: 'オーナー権限が必要です' });
     return;
   }
@@ -327,8 +305,9 @@ organizationsRouter.put('/:orgId/members/:memberId/role', async (req: Request, r
   const { orgId, memberId } = req.params as { orgId: string; memberId: string };
   const { role } = req.body as { role?: string };
 
-  const manager = await requireOrgManager(userId, orgId);
-  if (!manager || manager.role !== 'owner') {
+  const manager = await requireOrgManager(req, res, orgId);
+  if (!manager) return;
+  if (manager.role !== 'owner') {
     res.status(403).json({ error: 'オーナー権限が必要です' });
     return;
   }
@@ -387,11 +366,8 @@ organizationsRouter.post('/:orgId/stores/:storeId/assign', async (req: Request, 
   const userId = req.user!.id;
   const { orgId, storeId } = req.params as { orgId: string; storeId: string };
 
-  const manager = await requireOrgManager(userId, orgId);
-  if (!manager) {
-    res.status(403).json({ error: '組織の管理権限がありません' });
-    return;
-  }
+  const manager = await requireOrgManager(req, res, orgId);
+  if (!manager) return;
 
   // User must also be owner of the store being assigned
   const { data: staff } = await supabaseAdmin
