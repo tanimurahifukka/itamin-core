@@ -748,4 +748,38 @@ router.get('/:storeId/switchbot/:deviceId', requireKiosk, async (req: Request, r
   }
 });
 
+// ============================================================
+// 予約一覧（キオスク認証）— 当日＋未来の予約を返す
+// ============================================================
+router.get('/:storeId/reservations', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    if (storeId !== req.kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    // date パラメータ（省略時は今日）
+    const dateParam = typeof req.query.date === 'string' ? req.query.date : new Date().toISOString().split('T')[0];
+    const dayStart = `${dateParam}T00:00:00`;
+    const dayEnd = `${dateParam}T23:59:59`;
+
+    const { data, error } = await supabaseAdmin
+      .from('reservations')
+      .select('id, reservation_type, status, starts_at, ends_at, party_size, customer_name, customer_phone, notes, confirmation_code, metadata, resource_ref')
+      .eq('store_id', storeId)
+      .gte('starts_at', dayStart)
+      .lte('starts_at', dayEnd)
+      .not('status', 'eq', 'cancelled')
+      .order('starts_at', { ascending: true });
+
+    if (error) {
+      res.status(500).json({ error: error.message }); return;
+    }
+
+    res.json({ reservations: data || [] });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
 export const kioskRouter = router;

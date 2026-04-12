@@ -140,6 +140,22 @@ export const kioskApi = {
       }>;
     }>(`/kiosk/${storeId}/switchbot/readings?date=${date}`),
 
+  getReservations: (storeId: string, date?: string) =>
+    kioskRequest<{ reservations: Array<{
+      id: string;
+      reservation_type: string;
+      status: string;
+      starts_at: string;
+      ends_at: string;
+      party_size: number;
+      customer_name: string;
+      customer_phone: string | null;
+      notes: string | null;
+      confirmation_code: string;
+      metadata: Record<string, unknown>;
+      resource_ref: string | null;
+    }> }>(`/kiosk/${storeId}/reservations${date ? `?date=${date}` : ''}`),
+
   getNfcLocationStatus: (storeId: string, locationId: string, date: string) =>
     kioskRequest<{ done: boolean; submitted_at?: string; staff_name?: string }>(
       `/kiosk/${storeId}/nfc-location-status?location_id=${locationId}&date=${date}`

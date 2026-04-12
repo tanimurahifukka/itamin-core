@@ -3,6 +3,7 @@ import { kioskApi, clearKioskSession } from '../api/kioskClient';
 import KioskShiftManager from './KioskShiftManager';
 import KioskHaccp from './KioskHaccp';
 import KioskSwitchBotLog from './KioskSwitchBotLog';
+import KioskReservations from './KioskReservations';
 import type { Shift } from '../types/api';
 
 interface Staff {
@@ -63,7 +64,7 @@ const EMPTY_FORM = { staffId: '', startTime: '09:00', endTime: '17:00', breakMin
 export default function KioskDashboard({ storeId, storeName, onLogout }: Props) {
   const today = toDateStr(new Date());
 
-  const [tab, setTab] = useState<'punch' | 'shift' | 'haccp' | 'switchbot'>('punch');
+  const [tab, setTab] = useState<'punch' | 'shift' | 'haccp' | 'switchbot' | 'reservations'>('punch');
   const [enabledPlugins, setEnabledPlugins] = useState<string[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -187,6 +188,9 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
           {enabledPlugins.includes('switchbot') && (
             <button style={{ ...s.tab, ...(tab === 'switchbot' ? s.tabActive : {}) }} onClick={() => setTab('switchbot')}>温度ログ</button>
           )}
+          {enabledPlugins.some(p => p.startsWith('reservation_')) && (
+            <button style={{ ...s.tab, ...(tab === 'reservations' ? s.tabActive : {}) }} onClick={() => setTab('reservations')}>予約</button>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={s.headerStore}>{storeName}</div>
@@ -218,6 +222,13 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
       {tab === 'switchbot' && (
         <div style={{ ...s.body, maxWidth: '100%', padding: '16px 20px' }}>
           <KioskSwitchBotLog storeId={storeId} />
+        </div>
+      )}
+
+      {/* 予約タブ */}
+      {tab === 'reservations' && (
+        <div style={{ ...s.body, maxWidth: '100%', padding: '16px 20px' }}>
+          <KioskReservations storeId={storeId} />
         </div>
       )}
 
