@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
 import type { TimeRecord, MonthlySummaryStaff, StaffMember } from '../types/api';
+import { todayJST } from '../lib/dateUtils';
 
 type ViewMode = 'daily' | 'monthly' | 'staff';
 
@@ -59,7 +60,7 @@ export default function DashboardPage() {
       });
   }, [selectedStore]);
   const [records, setRecords] = useState<TimeRecord[]>([]);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayJST());
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
   const [monthlyData, setMonthlyData] = useState<MonthlyData | null>(null);
   const [year, setYear] = useState(new Date().getFullYear());
@@ -285,7 +286,7 @@ export default function DashboardPage() {
   };
 
   // 今日のサマリー計算
-  const isToday = date === new Date().toISOString().split('T')[0];
+  const isToday = date === todayJST();
   const working = records.filter(r => !r.clockOut);
   const finished = records.filter(r => r.clockOut);
   const totalHoursToday = finished.reduce((sum, r) => sum + (calcHours(r) || 0), 0);

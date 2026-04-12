@@ -10,7 +10,14 @@ export default function OvertimeAlertPage() {
   const [staffOvertime, setStaffOvertime] = useState<StaffOvertime[]>([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [settings] = useState({ monthlyLimitHours: 45, standardHoursPerDay: 8 });
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem('overtime_settings');
+    try { return saved ? JSON.parse(saved) : { monthlyLimitHours: 45, dailyLimitHours: 10, warningThresholdPercent: 80 }; }
+    catch { return { monthlyLimitHours: 45, dailyLimitHours: 10, warningThresholdPercent: 80 }; }
+  });
+  const [showSettingsForm, setShowSettingsForm] = useState(false);
+
+  useEffect(() => { localStorage.setItem('overtime_settings', JSON.stringify(settings)); }, [settings]);
 
   const loadData = useCallback(() => {
     if (!selectedStore) return;
@@ -42,7 +49,33 @@ export default function OvertimeAlertPage() {
         <button onClick={() => changeMonth(-1)} style={{ padding: '4px 12px', border: '1px solid #d4d9df', borderRadius: 6, background: 'white', cursor: 'pointer' }}>◀</button>
         <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>{year}年{month}月</span>
         <button onClick={() => changeMonth(1)} style={{ padding: '4px 12px', border: '1px solid #d4d9df', borderRadius: 6, background: 'white', cursor: 'pointer' }}>▶</button>
+        <button
+          onClick={() => setShowSettingsForm(v => !v)}
+          style={{ marginLeft: 'auto', padding: '4px 12px', border: '1px solid #d4d9df', borderRadius: 6, background: 'white', cursor: 'pointer', fontSize: '0.85rem' }}
+        >
+          上限設定
+        </button>
       </div>
+
+      {/* 上限設定フォーム */}
+      {showSettingsForm && (
+        <div style={{ background: '#fff', border: '1px solid #d4d9df', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+          <h4 style={{ fontSize: '0.9rem', marginBottom: 12 }}>残業上限設定</h4>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <label style={{ fontSize: '0.85rem', color: '#555' }}>
+              月間上限（時間）
+              <input
+                type="number"
+                min={1}
+                max={300}
+                value={settings.monthlyLimitHours}
+                onChange={e => setSettings((prev: typeof settings) => ({ ...prev, monthlyLimitHours: Number(e.target.value) || 45 }))}
+                style={{ marginLeft: 8, width: 70, padding: '4px 8px', border: '1px solid #d4d9df', borderRadius: 4, fontSize: '0.9rem' }}
+              />
+            </label>
+          </div>
+        </div>
+      )}
 
       {/* サマリー */}
       <div className="today-summary">

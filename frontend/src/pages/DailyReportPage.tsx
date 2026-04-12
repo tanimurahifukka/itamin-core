@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
 import type { DailyReport, DailyReportSummary, MenuItem, DailyReportItem, InventoryItem } from '../types/api';
+import { todayJST } from '../lib/dateUtils';
 
 type InputMode = 'manual' | 'menu';
 
@@ -16,7 +17,7 @@ export default function DailyReportPage() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
   // 入力フォーム
-  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [formDate, setFormDate] = useState(todayJST());
   const [formSales, setFormSales] = useState('');
   const [formCustomers, setFormCustomers] = useState('');
   const [formWeather, setFormWeather] = useState('晴れ');
@@ -366,7 +367,7 @@ export default function DailyReportPage() {
                         </div>
                       )}
                       <button
-                        onClick={(e) => { e.stopPropagation(); setFormDate(r.date); }}
+                        onClick={(e) => { e.stopPropagation(); setFormDate(r.date); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                         style={{ marginTop: 8, padding: '6px 14px', fontSize: '0.8rem', border: '1px solid #d4d9df', borderRadius: 6, background: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
                       >
                         編集

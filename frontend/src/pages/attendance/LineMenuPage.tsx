@@ -36,13 +36,14 @@ export default function LineMenuPage({ lineUserId, storeId, displayName, picture
 
   return (
     <div className="line-menu-page">
-      <div className="line-menu-tabs" data-testid="line-menu-tabs">
+      <div className="line-menu-tabs" data-testid="line-menu-tabs" style={{ overflowX: 'auto', whiteSpace: 'nowrap', WebkitOverflowScrolling: 'touch' }}>
         {TABS.map(tab => (
           <button
             key={tab.key}
             className={`line-menu-tab ${activeTab === tab.key ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.key)}
             data-testid={`line-tab-${tab.key}`}
+            style={{ display: 'inline-flex' }}
           >
             <span className="line-menu-tab-icon">{tab.icon}</span>
             <span className="line-menu-tab-label">{tab.label}</span>

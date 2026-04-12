@@ -363,16 +363,26 @@ tableReservationAdminRouter.post(
     if (!membership) return;
 
     try {
+      // store_id を先に確認してから cancel する (cancel-after-check 脆弱性の修正)
+      const { data: existing, error: fetchError } = await supabaseAdmin
+        .from('reservations')
+        .select('store_id')
+        .eq('id', reservationId)
+        .single();
+      if (fetchError || !existing) {
+        res.status(404).json({ error: '予約が見つかりません' });
+        return;
+      }
+      if (existing.store_id !== storeId) {
+        res.status(403).json({ error: 'この予約は別店舗のものです' });
+        return;
+      }
       const reservation = await cancelReservation({
         reservationId,
         reason: req.body?.reason as string | undefined,
         actorType: 'staff',
         actorId: req.user!.id,
       });
-      if (reservation.store_id !== storeId) {
-        res.status(403).json({ error: 'この予約は別店舗のものです' });
-        return;
-      }
       res.json({ reservation });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -496,9 +506,19 @@ publicReservationRouter.get('/:slug/table/availability', async (req: Request, re
     .lt('starts_at', dayEnd)
     .in('status', ['pending', 'confirmed', 'seated']);
 
+  // reservation_business_hours から slot_minutes / last_order_min を取得する。
+  // 曜日は effective.dayOfWeek を使う。
+  const { data: bizHoursRow } = await supabaseAdmin
+    .from('reservation_business_hours')
+    .select('slot_minutes, last_order_min')
+    .eq('store_id', store.id)
+    .eq('plugin', 'reservation_table')
+    .eq('day_of_week', effective.dayOfWeek)
+    .maybeSingle();
+
   // スロット生成
-  const slotMinutes = 30;
-  const lastOrderMin = 60;
+  const slotMinutes: number = (bizHoursRow as { slot_minutes?: number } | null)?.slot_minutes ?? 30;
+  const lastOrderMin: number = (bizHoursRow as { last_order_min?: number } | null)?.last_order_min ?? 60;
   const slots: Array<{ starts_at: string; available_table_count: number }> = [];
   {
     const [oh, om] = effective.openTime!.split(':').map(Number);

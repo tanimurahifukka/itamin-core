@@ -166,6 +166,62 @@ function KioskApp() {
   );
 }
 
+interface ProfileDropdownProps {
+  displayName: string;
+  picture?: string;
+  showProfileMenu: boolean;
+  setShowProfileMenu: (v: boolean) => void;
+  profileRef: React.RefObject<HTMLDivElement | null>;
+  user: { email?: string } | null;
+  selectedStore: { id: string; name: string } | null;
+  selectStore: (store: null) => void;
+  signOut: () => void;
+}
+
+function ProfileDropdown({
+  displayName,
+  picture,
+  showProfileMenu,
+  setShowProfileMenu,
+  profileRef,
+  user,
+  selectedStore,
+  selectStore,
+  signOut,
+}: ProfileDropdownProps) {
+  return (
+    <div className="profile-area" ref={profileRef}>
+      <button
+        className="profile-trigger"
+        onClick={() => setShowProfileMenu(!showProfileMenu)}
+      >
+        {picture ? (
+          <img src={picture} alt={displayName} className="profile-avatar" />
+        ) : (
+          <span className="profile-avatar-placeholder">
+            {displayName.charAt(0).toUpperCase()}
+          </span>
+        )}
+        <span className="profile-name">{displayName}</span>
+      </button>
+      {showProfileMenu && (
+        <div className="profile-dropdown">
+          <div className="profile-dropdown-name">{displayName}</div>
+          {user?.email && <div className="profile-dropdown-email">{user.email}</div>}
+          {selectedStore && (
+            <button className="profile-dropdown-switch" onClick={() => { selectStore(null); setShowProfileMenu(false); }}>
+              事業所を切り替え
+            </button>
+          )}
+          <button className="profile-dropdown-logout" onClick={signOut}>
+            ログアウト
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const { user, loading, selectedStore, selectStore, signOut, stores, requiresPasswordChange, changePassword } = useAuth();
   const [activeTab, setActiveTab] = useState('');
@@ -546,45 +602,23 @@ export default function App() {
   const displayName = user.user_metadata?.full_name || user.email || '';
   const picture = user.user_metadata?.avatar_url;
 
-  const ProfileDropdown = () => (
-    <div className="profile-area" ref={profileRef}>
-      <button
-        className="profile-trigger"
-        onClick={() => setShowProfileMenu(!showProfileMenu)}
-      >
-        {picture ? (
-          <img src={picture} alt={displayName} className="profile-avatar" />
-        ) : (
-          <span className="profile-avatar-placeholder">
-            {displayName.charAt(0).toUpperCase()}
-          </span>
-        )}
-        <span className="profile-name">{displayName}</span>
-      </button>
-      {showProfileMenu && (
-        <div className="profile-dropdown">
-          <div className="profile-dropdown-name">{displayName}</div>
-          {user.email && <div className="profile-dropdown-email">{user.email}</div>}
-          {selectedStore && (
-            <button className="profile-dropdown-switch" onClick={() => { selectStore(null); setShowProfileMenu(false); }}>
-              事業所を切り替え
-            </button>
-          )}
-          <button className="profile-dropdown-logout" onClick={signOut}>
-            ログアウト
-          </button>
-        </div>
-      )}
-    </div>
-  );
-
   if (!selectedStore) {
     return (
       <div className="app">
         <header className="header">
           <div className="header-logo">ITA<span>MIN</span></div>
           <div className="header-user">
-            <ProfileDropdown />
+            <ProfileDropdown
+              displayName={displayName}
+              picture={picture}
+              showProfileMenu={showProfileMenu}
+              setShowProfileMenu={setShowProfileMenu}
+              profileRef={profileRef}
+              user={user}
+              selectedStore={selectedStore}
+              selectStore={selectStore}
+              signOut={signOut}
+            />
           </div>
         </header>
         <StoreSelectPage />
@@ -613,7 +647,17 @@ export default function App() {
           >
             {selectedStore.name}
           </span>
-          <ProfileDropdown />
+          <ProfileDropdown
+              displayName={displayName}
+              picture={picture}
+              showProfileMenu={showProfileMenu}
+              setShowProfileMenu={setShowProfileMenu}
+              profileRef={profileRef}
+              user={user}
+              selectedStore={selectedStore}
+              selectStore={selectStore}
+              signOut={signOut}
+            />
         </div>
       </header>
 

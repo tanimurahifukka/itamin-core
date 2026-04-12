@@ -24,7 +24,7 @@ export default function PublicTableBookingPage() {
   const [store, setStore] = useState<PublicStoreInfo | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' }));
   const [partySize, setPartySize] = useState(2);
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -128,7 +128,7 @@ export default function PublicTableBookingPage() {
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
               <label style={{ flex: 1 }}>
                 <div style={labelStyle}>日付</div>
-                <input type="date" value={date} min={new Date().toISOString().slice(0, 10)}
+                <input type="date" value={date} min={new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' })}
                   onChange={(e) => setDate(e.target.value)} style={inputStyle} />
               </label>
               <label style={{ flex: 1 }}>

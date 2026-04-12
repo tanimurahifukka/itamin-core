@@ -3,6 +3,7 @@
  * 今週〜来週の自分のシフトを表示する。
  */
 import { useState, useEffect, useCallback } from 'react';
+import { todayJST } from '../../lib/dateUtils';
 
 interface Props {
   lineUserId: string;
@@ -71,7 +72,7 @@ export default function LineShiftPage({ lineUserId, storeId, displayName }: Prop
   if (error) return <div className="attendance-home"><p style={{ color: '#ef4444' }}>{error}</p></div>;
 
   // 今週と来週に分ける
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayJST();
   const now = new Date();
   const day = now.getDay();
   const monday = new Date(now);

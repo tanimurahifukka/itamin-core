@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
 import type { FeedbackItem } from '../types/api';
+import { todayJST } from '../lib/dateUtils';
 
 const TYPE_OPTIONS = [
   { value: 'praise', label: 'お褒め', color: '#22c55e', bg: '#f0fdf4' },
@@ -20,7 +21,7 @@ export default function FeedbackPage() {
   const [filterType, setFilterType] = useState('');
 
   // 追加フォーム
-  const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newDate, setNewDate] = useState(todayJST());
   const [newType, setNewType] = useState('suggestion');
   const [newContent, setNewContent] = useState('');
   const [newResponse, setNewResponse] = useState('');

@@ -5,6 +5,7 @@ import ChecklistGate from '../components/ChecklistGate';
 import PunchRouteHint from '../components/PunchRouteHint';
 import { showToast } from '../components/Toast';
 import type { MenuItem, InventoryItem, DailyReportItem } from '../types/api';
+import { todayJST } from '../lib/dateUtils';
 
 const WEATHER_OPTIONS = ['晴れ', '曇り', '雨', '雪'];
 const MANAGED_ROLES = ['manager', 'leader'];
@@ -86,7 +87,7 @@ export default function PunchClockPage() {
       if (data.currentRecord) {
         setClockInTime(new Date(data.currentRecord.clockIn));
       }
-    }).catch(() => {});
+    }).catch((e) => { setError('勤怠状態の取得に失敗しました。再読込してください。'); void e; });
   }, [selectedStore]);
 
   // マネージャー/リーダーの場合、メニュー・在庫データを事前読込
@@ -128,7 +129,7 @@ export default function PunchClockPage() {
 
     if (isClockedIn && isManagerRole) {
       // 今日の既存日報を読み込み
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayJST();
       try {
         const data = await api.getDailyReport(selectedStore.id, today);
         if (data.report) {
@@ -163,7 +164,7 @@ export default function PunchClockPage() {
     setError('');
 
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayJST();
       const menuTotal = Object.entries(menuQuantities).reduce((sum, [id, qty]) => {
         const item = menuItems.find(m => m.id === id);
         return sum + (item ? item.price * qty : 0);
@@ -212,6 +213,7 @@ export default function PunchClockPage() {
 
   // レポートをスキップして退勤
   const handleReportSkip = async () => {
+    if (submittingReport) return;
     setShowClockOutReport(false);
     resetReportForm();
     await executePunch();
@@ -339,7 +341,7 @@ export default function PunchClockPage() {
       <button
         className={`punch-btn ${isClockedIn ? 'clock-out' : 'clock-in'} ${punchSuccess ? 'punch-success' : ''}`}
         onClick={handlePunchRequest}
-        disabled={loading}
+        disabled={loading || (!staffId && !error && selectedStore?.role !== 'owner')}
       >
         {loading ? '...' : punchSuccess === 'in' ? '✓' : punchSuccess === 'out' ? '✓' : isClockedIn ? '退勤' : '出勤'}
       </button>

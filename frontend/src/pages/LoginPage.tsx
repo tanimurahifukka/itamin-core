@@ -93,10 +93,10 @@ function NormalLoginPage({ signIn, signUp }: {
         />
         <input
           type="password"
-          placeholder="パスワード（6文字以上）"
+          placeholder="パスワード（8文字以上）"
           value={password}
           onChange={e => setPassword(e.target.value)}
-          minLength={6}
+          minLength={8}
           required
         />
 
@@ -132,7 +132,7 @@ function InviteRegisterPage({ email, defaultName, storeName, onComplete }: {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const passwordMatch = password === confirmPassword && password.length >= 6;
+  const passwordMatch = password === confirmPassword && password.length >= 8;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,13 +191,13 @@ function InviteRegisterPage({ email, defaultName, storeName, onComplete }: {
           </div>
 
           <div className="invite-field">
-            <label className="invite-label">パスワード（6文字以上）</label>
+            <label className="invite-label">パスワード（8文字以上）</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder="••••••"
-              minLength={6}
+              placeholder="••••••••"
+              minLength={8}
               required
               className="invite-input"
             />
@@ -209,8 +209,8 @@ function InviteRegisterPage({ email, defaultName, storeName, onComplete }: {
               type="password"
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
-              placeholder="••••••"
-              minLength={6}
+              placeholder="••••••••"
+              minLength={8}
               required
               className={`invite-input ${confirmPassword && !passwordMatch ? 'invite-input-error' : ''}`}
             />
@@ -358,12 +358,12 @@ function JoinStorePage({ storeId, inviteToken }: { storeId: string; inviteToken:
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="invite-input" placeholder="you@example.com" />
           </div>
           <div className="invite-field">
-            <label className="invite-label">パスワード（6文字以上）</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={6} required className="invite-input" />
+            <label className="invite-label">パスワード（8文字以上）</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={8} required className="invite-input" />
           </div>
           <div className="invite-field">
             <label className="invite-label">パスワード（確認）</label>
-            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} minLength={6} required className="invite-input" />
+            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} minLength={8} required className="invite-input" />
           </div>
 
           {error && <div className="error-msg">{error}</div>}

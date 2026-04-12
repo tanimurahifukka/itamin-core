@@ -118,7 +118,7 @@ export default function PolicySettingsPage() {
         <label className="form-label">
           <input
             type="checkbox"
-            checked={policy.auto_close_break_before_clock_out}
+            checked={!!policy.auto_close_break_before_clock_out}
             onChange={e => setPolicy({ ...policy, auto_close_break_before_clock_out: e.target.checked })}
             data-testid="policy-auto-close-break-checkbox"
           />
@@ -130,7 +130,7 @@ export default function PolicySettingsPage() {
         <label className="form-label">
           <input
             type="checkbox"
-            checked={policy.require_manager_approval}
+            checked={!!policy.require_manager_approval}
             onChange={e => setPolicy({ ...policy, require_manager_approval: e.target.checked })}
             data-testid="policy-require-approval-checkbox"
           />

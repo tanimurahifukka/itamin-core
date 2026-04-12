@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
+import { todayJST } from '../../lib/dateUtils';
 
 const REQUEST_TYPES = [
   { value: 'clock_in_missing', label: '出勤漏れ' },
@@ -28,7 +29,7 @@ interface Props {
 export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
   const { selectedStore } = useAuth();
   const [requestType, setRequestType] = useState(REQUEST_TYPES[0].value);
-  const [businessDate, setBusinessDate] = useState(record?.businessDate || new Date().toISOString().split('T')[0]);
+  const [businessDate, setBusinessDate] = useState(record?.businessDate || todayJST());
   const [clockInAt, setClockInAt] = useState('');
   const [clockOutAt, setClockOutAt] = useState('');
   const [reason, setReason] = useState('');

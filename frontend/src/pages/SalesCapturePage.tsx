@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { supabase } from '../api/supabase';
 import { showToast } from '../components/Toast';
 import type { SalesClose, SalesReceipt, CashClose } from '../types/api';
+import { todayJST } from '../lib/dateUtils';
 
 type Tab = 'close' | 'receipts' | 'cash';
 
@@ -13,7 +14,7 @@ export default function SalesCapturePage() {
   const isManager = selectedStore?.role === 'manager';
   const canManage = isOwner || isManager || selectedStore?.role === 'leader';
   const [tab, setTab] = useState<Tab>('close');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayJST());
 
   // 売上締め
   const [closeData, setCloseData] = useState<SalesClose | null>(null);

@@ -19,6 +19,14 @@ export function calcBusinessDate(at: Date, timezone: string, cutoffHour: number)
 /**
  * 次の session_no を決定する。
  * store_id + user_id + business_date でスコープ (複数店舗勤務時の衝突防止)。
+ *
+ * 注意: SELECT max → +1 はアトミックではないため、同一スタッフが同時に打刻した場合に
+ * 重複する session_no が生成される可能性がある (race condition)。
+ * 呼び出し側の INSERT で UNIQUE 制約 (store_id, user_id, business_date, session_no) が
+ * 衝突を検知してエラーを返す必要がある。
+ * TODO: attendance_records テーブルに (store_id, user_id, business_date, session_no) の
+ *       UNIQUE 制約が存在することをマイグレーションで保証すること。
+ *       将来的には DB の sequences または INSERT ... SELECT max()+1 サブクエリに置き換える。
  */
 export async function nextSessionNo(
   supabase: any,

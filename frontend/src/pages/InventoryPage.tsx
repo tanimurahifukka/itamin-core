@@ -141,7 +141,6 @@ export default function InventoryPage() {
           className="item-edit-input"
           value={editingValue}
           onChange={e => setEditingValue(e.target.value)}
-          onBlur={saveEdit}
           onKeyDown={e => {
             if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
               e.preventDefault();

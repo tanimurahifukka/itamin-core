@@ -178,6 +178,7 @@ export default function NoticePage() {
 
   // コメント削除
   const handleDeleteComment = async (noticeId: string, commentId: string) => {
+    if (!confirm('このコメントを削除しますか？')) return;
     if (!selectedStore) return;
     try {
       await api.deleteNoticeComment(selectedStore.id, noticeId, commentId);

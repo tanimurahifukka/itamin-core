@@ -125,6 +125,7 @@ export default function ShiftPage() {
   };
 
   const handleDelete = async (shiftId: string) => {
+    if (!confirm('このシフトを削除しますか？')) return;
     if (!selectedStore) return;
     try {
       await api.deleteShift(selectedStore.id, shiftId);
@@ -166,9 +167,11 @@ export default function ShiftPage() {
   };
 
   const handleDeleteTemplate = async (id: string) => {
+    if (!confirm('このシフトを削除しますか？')) return;
     if (!selectedStore) return;
     try {
       await api.deleteTemplate(selectedStore.id, id);
+      showToast('テンプレートを削除しました', 'info');
       loadData();
     } catch {}
   };

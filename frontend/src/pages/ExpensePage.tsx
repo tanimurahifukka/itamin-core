@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
 import type { ExpenseSummary } from '../types/api';
+import { todayJST } from '../lib/dateUtils';
 
 // Local Expense omits server-only fields (storeId, createdBy, createdAt)
 interface Expense {
@@ -24,13 +25,14 @@ export default function ExpensePage() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [filterCategory, setFilterCategory] = useState('');
 
-  // 追加フォーム
-  const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
+  // 追加/編集フォーム
+  const [newDate, setNewDate] = useState(todayJST());
   const [newCategory, setNewCategory] = useState('仕入れ');
   const [newDescription, setNewDescription] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newReceiptNote, setNewReceiptNote] = useState('');
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const loadData = useCallback(() => {
     if (!selectedStore) return;
@@ -44,24 +46,54 @@ export default function ExpensePage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  const startEdit = (expense: Expense) => {
+    setEditingId(expense.id);
+    setNewDate(expense.date);
+    setNewCategory(expense.category);
+    setNewDescription(expense.description);
+    setNewAmount(String(expense.amount));
+    setNewReceiptNote(expense.receiptNote || '');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setNewDate(todayJST());
+    setNewCategory('仕入れ');
+    setNewDescription('');
+    setNewAmount('');
+    setNewReceiptNote('');
+  };
+
   const handleAdd = async () => {
     if (!selectedStore || !newDescription.trim() || !newAmount || adding) return;
     setAdding(true);
     try {
-      await api.addExpense(selectedStore.id, {
-        date: newDate,
-        category: newCategory,
-        description: newDescription.trim(),
-        amount: Number(newAmount),
-        receiptNote: newReceiptNote,
-      });
-      setNewDescription('');
-      setNewAmount('');
-      setNewReceiptNote('');
-      showToast('経費を追加しました', 'success');
+      if (editingId) {
+        await api.updateExpense(selectedStore.id, editingId, {
+          date: newDate,
+          category: newCategory,
+          description: newDescription.trim(),
+          amount: Number(newAmount),
+          receiptNote: newReceiptNote,
+        });
+        showToast('経費を更新しました', 'success');
+        cancelEdit();
+      } else {
+        await api.addExpense(selectedStore.id, {
+          date: newDate,
+          category: newCategory,
+          description: newDescription.trim(),
+          amount: Number(newAmount),
+          receiptNote: newReceiptNote,
+        });
+        setNewDescription('');
+        setNewAmount('');
+        setNewReceiptNote('');
+        showToast('経費を追加しました', 'success');
+      }
       loadData();
     } catch (e: unknown) {
-      showToast(e instanceof Error ? e.message : '追加に失敗しました', 'error');
+      showToast(e instanceof Error ? e.message : (editingId ? '更新に失敗しました' : '追加に失敗しました'), 'error');
     } finally {
       setAdding(false);
     }
@@ -90,9 +122,9 @@ export default function ExpensePage() {
 
   return (
     <div className="main-content">
-      {/* 追加フォーム */}
+      {/* 追加/編集フォーム */}
       <div className="records-section" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginBottom: 12 }}>経費追加</h3>
+        <h3 style={{ marginBottom: 12 }}>{editingId ? '経費編集' : '経費追加'}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '140px 120px 1fr 120px', gap: 8, marginBottom: 8 }}>
           <div>
             <label style={{ fontSize: '0.8rem', color: '#666', marginBottom: 2, display: 'block' }}>日付</label>
@@ -145,12 +177,20 @@ export default function ExpensePage() {
               style={{ width: '100%', padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
             />
           </div>
+          {editingId && (
+            <button
+              onClick={cancelEdit}
+              style={{ padding: '8px 16px', background: 'white', color: '#555', border: '1px solid #d4d9df', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap', fontFamily: 'inherit', fontSize: '0.9rem', height: 38 }}
+            >
+              キャンセル
+            </button>
+          )}
           <button
             onClick={handleAdd}
             disabled={adding || !newDescription.trim() || !newAmount}
             style={{ padding: '8px 20px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap', fontFamily: 'inherit', fontSize: '0.9rem', height: 38 }}
           >
-            {adding ? '追加中...' : '追加'}
+            {adding ? (editingId ? '更新中...' : '追加中...') : (editingId ? '更新' : '追加')}
           </button>
         </div>
       </div>
@@ -231,13 +271,19 @@ export default function ExpensePage() {
             </thead>
             <tbody>
               {expenses.map(e => (
-                <tr key={e.id}>
+                <tr key={e.id} style={editingId === e.id ? { background: '#eff6ff' } : {}}>
                   <td style={{ whiteSpace: 'nowrap' }}>{new Date(e.date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}</td>
                   <td>{e.category}</td>
                   <td>{e.description}</td>
                   <td style={{ fontWeight: 600 }}>¥{Number(e.amount).toLocaleString()}</td>
                   <td style={{ fontSize: '0.85rem', color: '#666' }}>{e.receiptNote || '—'}</td>
-                  <td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <button
+                      onClick={() => startEdit(e)}
+                      style={{ background: 'none', border: '1px solid #d4d9df', color: '#555', cursor: 'pointer', fontSize: '0.8rem', padding: '2px 8px', borderRadius: 4, marginRight: 4 }}
+                    >
+                      編集
+                    </button>
                     <button
                       onClick={() => handleDelete(e)}
                       style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '1rem', padding: '4px 8px' }}

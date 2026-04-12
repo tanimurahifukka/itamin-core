@@ -243,25 +243,33 @@ async function executePunch(action: PunchAction, userId: string, storeId: string
 // Webhook メイン
 // ================================================================
 /**
- * 全店舗の LINE Bot 設定を検索し、channelSecret が一致するものを返す。
+ * 全店舗の LINE Bot 設定を検索し、署名が一致する店舗の設定を返す。
  * Webhook は LINE 側で1つのURLしか設定できないため、
- * 署名検証で使う channelSecret から店舗を逆引きする。
+ * rawBody と署名を各店舗の channelSecret で検証し、一致した店舗を逆引きする。
+ *
+ * @param rawBody  リクエストの生バイト列
+ * @param signature  x-line-signature ヘッダ値
  */
-async function findBotConfig(): Promise<{
+async function findBotConfig(rawBody: Buffer, signature: string): Promise<{
   channelSecret: string;
   accessToken: string;
   storeId: string;
 } | null> {
   // process.env フォールバック
+  // 注意: env var フォールバックは単一店舗のみ対応。複数店舗環境では DB 設定を使うこと。
   if (process.env.LINE_BOT_CHANNEL_SECRET && process.env.LINE_BOT_CHANNEL_ACCESS_TOKEN) {
-    return {
-      channelSecret: process.env.LINE_BOT_CHANNEL_SECRET,
-      accessToken: process.env.LINE_BOT_CHANNEL_ACCESS_TOKEN,
-      storeId: '',
-    };
+    const secret = process.env.LINE_BOT_CHANNEL_SECRET;
+    if (verifySignature(rawBody, signature, secret)) {
+      return {
+        channelSecret: secret,
+        accessToken: process.env.LINE_BOT_CHANNEL_ACCESS_TOKEN,
+        storeId: '',
+      };
+    }
+    return null;
   }
 
-  // store_plugins.config から取得
+  // store_plugins.config から全店舗の設定を取得し、署名が一致するものを返す
   const { data } = await supabaseAdmin
     .from('store_plugins')
     .select('store_id, config')
@@ -271,24 +279,19 @@ async function findBotConfig(): Promise<{
   for (const row of data || []) {
     const cfg = row.config || {};
     if (cfg.line_bot_channel_secret && cfg.line_bot_channel_access_token) {
-      return {
-        channelSecret: cfg.line_bot_channel_secret,
-        accessToken: cfg.line_bot_channel_access_token,
-        storeId: row.store_id,
-      };
+      if (verifySignature(rawBody, signature, cfg.line_bot_channel_secret)) {
+        return {
+          channelSecret: cfg.line_bot_channel_secret,
+          accessToken: cfg.line_bot_channel_access_token,
+          storeId: row.store_id,
+        };
+      }
     }
   }
   return null;
 }
 
 router.post('/', async (req: Request, res: Response) => {
-  const botConfig = await findBotConfig();
-  if (!botConfig) {
-    res.status(200).json({ ok: true });
-    return;
-  }
-  const { channelSecret, accessToken } = botConfig;
-
   // 署名検証: 必ず生バイト列に対して HMAC を計算する。
   // 署名が無い、または rawBody が取得できない場合は安全側に倒して拒否する。
   const signature = req.headers['x-line-signature'];
@@ -298,11 +301,15 @@ router.post('/', async (req: Request, res: Response) => {
     res.status(200).json({ ok: true });
     return;
   }
-  if (!verifySignature(rawBody, signature, channelSecret)) {
-    console.error('[webhook] signature verification failed');
+
+  // 署名検証を兼ねて対象店舗を特定する
+  const botConfig = await findBotConfig(rawBody, signature);
+  if (!botConfig) {
+    console.error('[webhook] signature verification failed for all store configs');
     res.status(200).json({ ok: true });
     return;
   }
+  const { accessToken } = botConfig;
 
   const events = req.body?.events || [];
 

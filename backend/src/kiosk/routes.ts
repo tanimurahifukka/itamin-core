@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import { timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '../config/supabase';
 import { config } from '../config';
 import { requireAuth } from '../middleware/auth';
@@ -111,7 +112,9 @@ router.post('/:storeId/login', async (req: Request, res: Response) => {
       return;
     }
 
-    if (pin !== kioskPin) {
+    const pinBuf = Buffer.from(String(pin));
+    const expectedBuf = Buffer.from(String(kioskPin));
+    if (pinBuf.length !== expectedBuf.length || !timingSafeEqual(pinBuf, expectedBuf)) {
       res.status(401).json({ error: 'PINが正しくありません' });
       return;
     }

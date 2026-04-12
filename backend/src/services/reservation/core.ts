@@ -280,10 +280,13 @@ export async function cancelReservation(params: {
       cancelled_reason: params.reason || null,
     })
     .eq('id', params.reservationId)
+    .neq('status', 'cancelled')
     .select('*')
     .single();
 
   if (error) throw new Error(error.message);
+  // data が null の場合、既にキャンセル済みか存在しない
+  if (!data) throw new Error('この予約は既にキャンセル済みか存在しません');
 
   const reservation = data as ReservationRow;
 

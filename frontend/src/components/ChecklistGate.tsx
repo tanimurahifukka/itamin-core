@@ -40,7 +40,7 @@ function isItemComplete(item: ActiveItem, values: ItemValues): boolean {
     case 'select':
       return values.select_value.trim().length > 0;
     case 'photo':
-      return false; // photo は always passing（ゲートでは簡略化）
+      return true; // photo は always passing（ゲートでは簡略化）
     default:
       return true;
   }

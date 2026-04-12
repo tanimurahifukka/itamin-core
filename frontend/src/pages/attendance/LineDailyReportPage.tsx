@@ -3,6 +3,7 @@
  * 本日の日報を閲覧・保存する。
  */
 import { useState, useEffect, useCallback } from 'react';
+import { todayJST } from '../../lib/dateUtils';
 
 interface Props {
   lineUserId: string;
@@ -25,7 +26,7 @@ async function lineStaffApi(path: string, body: Record<string, unknown>) {
 }
 
 export default function LineDailyReportPage({ lineUserId, storeId }: Props) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayJST();
   const [date, setDate] = useState(today);
   const [sales, setSales] = useState('');
   const [customerCount, setCustomerCount] = useState('');

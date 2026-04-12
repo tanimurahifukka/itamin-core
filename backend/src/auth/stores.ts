@@ -348,9 +348,13 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
       return;
     }
 
-    // 既存ユーザーチェック
-    const { data: { users: authUsers } } = await supabaseAdmin.auth.admin.listUsers();
-    let authUser = (authUsers as { id: string; email?: string }[]).find(u => u.email === email);
+    // 既存ユーザーチェック（profilesテーブルで直接検索）
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email')
+      .eq('email', email)
+      .maybeSingle();
+    let authUser: { id: string; email?: string } | undefined = existingProfile ?? undefined;
 
     if (authUser) {
       const { data: existing } = await supabaseAdmin
@@ -406,11 +410,23 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
       await ensureStaffPin(storeId, newMembership.id);
     }
 
-    // 招待トークンの使用回数を増やす
-    await supabaseAdmin
+    // 招待トークンの使用回数をアトミックに増やす (race condition 防止)
+    const { data: updatedInvitation, error: invUpdateErr } = await supabaseAdmin
       .from('store_invitations')
       .update({ used_count: ((invitation as any).used_count || 0) + 1 })
-      .eq('id', (invitation as any).id);
+      .eq('id', (invitation as any).id)
+      .lt('used_count', (invitation as any).max_uses)
+      .select('id')
+      .maybeSingle();
+
+    if (invUpdateErr || !updatedInvitation) {
+      // 同時リクエストで上限に達した場合はロールバック
+      if (newMembership?.id) {
+        await supabaseAdmin.from('store_staff').delete().eq('id', newMembership.id);
+      }
+      res.status(409).json({ error: 'この招待は使用上限に達しています' });
+      return;
+    }
 
     await writeAuditLog({
       storeId,
@@ -1059,68 +1075,6 @@ router.post('/:storeId/staff/assign-existing', requireAuth, async (req: Request,
   }
 });
 
-// 未登録の招待一覧
-router.get('/:storeId/invitations', requireAuth, async (req: Request, res: Response) => {
-  try {
-    const storeId = req.params.storeId as string;
-    const membership = await requireManagedStore(req, res, storeId);
-    if (!membership) {
-      return;
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('store_invitations')
-      .select('id, name, email, role, hourly_wage, created_at')
-      .eq('store_id', storeId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      res.status(500).json({ error: error.message });
-      return;
-    }
-
-    res.json({
-      invitations: (data || []).map((inv: any) => ({
-        id: inv.id,
-        name: inv.name,
-        email: inv.email,
-        role: inv.role,
-        hourlyWage: inv.hourly_wage,
-        createdAt: inv.created_at,
-      })),
-    });
-  } catch (e: any) {
-    console.error('[stores GET /:storeId/invitations] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
-  }
-});
-
-// 招待キャンセル（削除）
-router.delete('/:storeId/invitations/:invitationId', requireAuth, async (req: Request, res: Response) => {
-  try {
-    const storeId = req.params.storeId as string;
-    const invitationId = req.params.invitationId as string;
-    const membership = await requireManagedStore(req, res, storeId);
-    if (!membership) return;
-
-    const { error } = await supabaseAdmin
-      .from('store_invitations')
-      .delete()
-      .eq('id', invitationId)
-      .eq('store_id', storeId);
-
-    if (error) {
-      res.status(500).json({ error: error.message });
-      return;
-    }
-
-    res.json({ ok: true, message: '招待をキャンセルしました' });
-  } catch (e: any) {
-    console.error('[stores DELETE /:storeId/invitations/:invitationId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
-  }
-});
-
 // 招待メール再送
 router.post('/:storeId/invitations/:invitationId/resend', requireAuth, async (req: Request, res: Response) => {
   try {
@@ -1444,15 +1398,17 @@ router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) =
       return;
     }
 
-    // auth.usersから最終ログイン時間を取得
+    // auth.usersから最終ログイン時間を取得（個別取得で全件スキャンを回避）
     const userIds = (data || []).map((staff: any) => staff.user?.id).filter(Boolean);
     const lastSignInMap = new Map<string, string | null>();
 
     if (userIds.length > 0) {
-      const { data: { users: allUsers } } = await supabaseAdmin.auth.admin.listUsers();
-      for (const user of allUsers as { id: string; last_sign_in_at?: string }[]) {
-        if (userIds.includes(user.id)) {
-          lastSignInMap.set(user.id, user.last_sign_in_at || null);
+      const userFetches = await Promise.all(
+        (userIds as string[]).map(uid => supabaseAdmin.auth.admin.getUserById(uid))
+      );
+      for (const { data: userData } of userFetches) {
+        if (userData?.user) {
+          lastSignInMap.set(userData.user.id, userData.user.last_sign_in_at || null);
         }
       }
     }
@@ -1510,33 +1466,36 @@ router.post('/:storeId/staff/rehire', requireAuth, async (req: Request, res: Res
       return;
     }
 
-    // auth.usersからユーザーを探す
-    const { data: { users: resetUsers }, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
+    // auth.usersからユーザーを探す（profilesテーブルで直接メール検索、全件スキャンを回避）
+    const { data: profileUser, error: listErr } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email')
+      .eq('email', email)
+      .maybeSingle();
     if (listErr) {
       res.status(500).json({ error: listErr.message });
       return;
     }
 
-    const authUser = (resetUsers as { id: string; email?: string; user_metadata?: Record<string, unknown> }[]).find(user => user.email === email);
+    const authUser = profileUser ?? null;
     if (!authUser) {
       res.status(404).json({ error: 'このメールアドレスのアカウントが見つかりません。新規招待してください。' });
       return;
     }
 
     // パスワードを店舗の初期パスワードにリセット
-    const { data: pwSetting } = await supabaseAdmin
-      .from('store_settings')
-      .select('value')
-      .eq('store_id', storeId)
-      .eq('key', 'initial_password')
-      .maybeSingle();
+    const initialPassword = await getOrCreateInitialPassword(storeId);
 
-    const initialPassword = pwSetting?.value || 'itamin1234';
-
+    // 既存の user_metadata を保持しつつ password_changed を更新
+    const { data: { user: authUserDetails }, error: fetchErr } = await supabaseAdmin.auth.admin.getUserById(authUser.id);
+    if (fetchErr || !authUserDetails) {
+      res.status(404).json({ error: 'auth アカウントが見つかりません' });
+      return;
+    }
     const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
       password: initialPassword,
       user_metadata: {
-        ...authUser.user_metadata,
+        ...(authUserDetails?.user_metadata || {}),
         password_changed: false,
       },
     });

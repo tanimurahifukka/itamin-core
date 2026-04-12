@@ -31,7 +31,7 @@ interface SubmissionState {
 }
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
 }
 
 function statusColor(state: SubmissionState | null): string {

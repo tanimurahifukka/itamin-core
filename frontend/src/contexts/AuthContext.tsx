@@ -140,13 +140,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (signInErr) return { error: signInErr.message };
     }
 
-    // トリガーでstore_staffに追加されるまで少し待つ
-    await new Promise(r => setTimeout(r, 500));
-
-    try {
-      await refreshStores();
-    } catch (e: unknown) {
-      return { error: e instanceof Error ? e.message : String(e) };
+    // トリガーでstore_staffに追加されるまでリトライ（最大3回、500ms間隔）
+    let found = false;
+    for (let i = 0; i < 3; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      try {
+        await refreshStores();
+        const data = await api.getStores();
+        if (data.stores && data.stores.length > 0) {
+          found = true;
+          break;
+        }
+      } catch {
+        // リトライ継続
+      }
+    }
+    if (!found) {
+      return { error: '店舗情報の取得に失敗しました。再読込してください。' };
     }
 
     return {};

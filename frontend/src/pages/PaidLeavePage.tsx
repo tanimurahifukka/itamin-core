@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
 import type { PaidLeaveSummary, LeaveRecord, StaffMember } from '../types/api';
+import { todayJST } from '../lib/dateUtils';
 
 export default function PaidLeavePage() {
   const { selectedStore } = useAuth();
@@ -17,7 +18,7 @@ export default function PaidLeavePage() {
 
   // 取得記録フォーム
   const [recordStaffId, setRecordStaffId] = useState('');
-  const [recordDate, setRecordDate] = useState(new Date().toISOString().split('T')[0]);
+  const [recordDate, setRecordDate] = useState(todayJST());
   const [recordType, setRecordType] = useState('全日');
   const [recordNote, setRecordNote] = useState('');
 

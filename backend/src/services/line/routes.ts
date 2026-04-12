@@ -263,7 +263,7 @@ router.post('/resolve', async (req: Request, res: Response) => {
       .update({ last_login_at: new Date().toISOString() })
       .eq('line_user_id', lineUserId);
 
-    res.json({ linked: true, userId: link.user_id, displayName: link.display_name });
+    res.json({ linked: true, displayName: link.display_name });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

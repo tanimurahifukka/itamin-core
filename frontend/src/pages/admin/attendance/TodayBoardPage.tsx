@@ -136,7 +136,7 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
                 <td>{s.shift ? `${s.shift.startTime}〜${s.shift.endTime}` : '—'}</td>
                 <td>{formatTime(s.clockInAt)}</td>
                 <td>{formatTime(s.clockOutAt)}</td>
-                <td>{s.breakMinutes}分</td>
+                <td>{s.breakMinutes ?? 0}分</td>
                 <td data-testid="checklist-status">
                   <ChecklistBadge
                     currentStatus={s.currentStatus}

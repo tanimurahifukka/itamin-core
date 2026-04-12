@@ -31,7 +31,7 @@ function formatTime(iso: string | null) {
 
 function calcHours(clockIn: string, clockOut: string | null, breakMin: number) {
   if (!clockOut) return '—';
-  const diff = (new Date(clockOut).getTime() - new Date(clockIn).getTime()) / 60000 - breakMin;
+  const diff = Math.max(0, (new Date(clockOut).getTime() - new Date(clockIn).getTime()) / 60000 - breakMin);
   return `${Math.floor(diff / 60)}h ${Math.round(diff % 60)}m`;
 }
 

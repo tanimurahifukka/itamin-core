@@ -30,7 +30,7 @@ export default function PublicTimeslotBookingPage() {
   const [store, setStore] = useState<PublicStoreInfo | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' }));
   const [slots, setSlots] = useState<PublicTimeslotAvailability[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsReason, setSlotsReason] = useState('');

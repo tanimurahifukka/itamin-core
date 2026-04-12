@@ -24,6 +24,15 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: '取消',
 };
 
+function formatSnapshot(snap: Record<string, unknown> | undefined): string {
+  if (!snap) return '—';
+  const parts: string[] = [];
+  if (snap.clockIn) parts.push(`出勤: ${new Date(snap.clockIn as string).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`);
+  if (snap.clockOut) parts.push(`退勤: ${new Date(snap.clockOut as string).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`);
+  if (snap.breakMinutes != null) parts.push(`休憩: ${snap.breakMinutes}分`);
+  return parts.length ? parts.join(' / ') : JSON.stringify(snap);
+}
+
 export default function CorrectionApprovalPage() {
   const { selectedStore } = useAuth();
   const [corrections, setCorrections] = useState<CorrectionItem[]>([]);
@@ -95,10 +104,10 @@ export default function CorrectionApprovalPage() {
                 <div><strong>種別:</strong> {c.request_type}</div>
                 <div><strong>理由:</strong> {c.reason}</div>
                 {c.before_snapshot && Object.keys(c.before_snapshot).length > 0 && (
-                  <div><strong>修正前:</strong> {JSON.stringify(c.before_snapshot)}</div>
+                  <div><strong>修正前:</strong> {formatSnapshot(c.before_snapshot)}</div>
                 )}
                 {c.after_snapshot && Object.keys(c.after_snapshot).length > 0 && (
-                  <div><strong>修正後:</strong> {JSON.stringify(c.after_snapshot)}</div>
+                  <div><strong>修正後:</strong> {formatSnapshot(c.after_snapshot)}</div>
                 )}
                 {c.review_comment && (
                   <div><strong>レビューコメント:</strong> {c.review_comment}</div>
@@ -139,7 +148,7 @@ export default function CorrectionApprovalPage() {
                   ) : (
                     <button
                       className="button button-primary"
-                      onClick={() => setActionId(c.id)}
+                      onClick={() => { setActionId(c.id); setComment(''); }}
                       data-testid="review-button"
                     >
                       レビューする

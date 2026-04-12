@@ -60,7 +60,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 // 予約一覧タブ
 // ============================================================
 function ReservationListTab({ storeId }: { storeId: string }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
   const [date, setDate] = useState(today);
   const [reservations, setReservations] = useState<ReservationRow[]>([]);
   const [loading, setLoading] = useState(false);

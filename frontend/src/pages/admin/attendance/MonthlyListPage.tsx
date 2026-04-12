@@ -91,6 +91,7 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
         <button
           className="button button-small"
           onClick={() => handleCsvDownload('detail')}
+          disabled={loading}
           data-testid="csv-download-detail-button"
         >
           CSVダウンロード（明細）
@@ -98,6 +99,7 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
         <button
           className="button button-small"
           onClick={() => handleCsvDownload('summary')}
+          disabled={loading}
           data-testid="csv-download-summary-button"
         >
           CSVダウンロード（月次サマリ）

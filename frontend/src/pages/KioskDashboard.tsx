@@ -158,6 +158,7 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
   };
 
   const handleDeleteShift = async (shiftId: string) => {
+    if (!confirm('このシフトを削除しますか？')) return;
     if (deleting) return;
     setDeleting(shiftId);
     try {

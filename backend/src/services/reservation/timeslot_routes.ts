@@ -172,16 +172,26 @@ timeslotAdminRouter.post(
     if (!membership) return;
 
     try {
+      // store_id を先に確認してから cancel する (cancel-after-check 脆弱性の修正)
+      const { data: existing, error: fetchError } = await supabaseAdmin
+        .from('reservations')
+        .select('store_id')
+        .eq('id', reservationId)
+        .single();
+      if (fetchError || !existing) {
+        res.status(404).json({ error: '予約が見つかりません' });
+        return;
+      }
+      if (existing.store_id !== storeId) {
+        res.status(403).json({ error: 'この予約は別店舗のものです' });
+        return;
+      }
       const reservation = await cancelReservation({
         reservationId,
         reason: (req.body as { reason?: string })?.reason,
         actorType: 'staff',
         actorId: req.user!.id,
       });
-      if (reservation.store_id !== storeId) {
-        res.status(403).json({ error: 'この予約は別店舗のものです' });
-        return;
-      }
       res.json({ reservation });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
