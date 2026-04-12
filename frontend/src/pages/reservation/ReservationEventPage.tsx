@@ -64,7 +64,7 @@ function isSameDay(a: Date, b: Date): boolean {
     a.getDate() === b.getDate();
 }
 
-function EventCalendarView({ events }: { events: ReservationEvent[] }) {
+function EventCalendarView({ events, onAddEvent }: { events: ReservationEvent[]; onAddEvent: (date: Date) => void }) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
@@ -162,13 +162,20 @@ function EventCalendarView({ events }: { events: ReservationEvent[] }) {
               return (
                 <div
                   key={di}
-                  onClick={() => hasEvents ? setSelectedDate(isSelected ? null : date) : undefined}
+                  onClick={() => {
+                    if (!inMonth) return;
+                    if (hasEvents) {
+                      setSelectedDate(isSelected ? null : date);
+                    } else {
+                      onAddEvent(date);
+                    }
+                  }}
                   style={{
                     minHeight: 80,
                     padding: '4px 6px',
                     background: isSelected ? '#eff6ff' : '#fff',
                     borderRight: di < 6 ? '1px solid #e2e8f0' : 'none',
-                    cursor: hasEvents ? 'pointer' : 'default',
+                    cursor: inMonth ? 'pointer' : 'default',
                     opacity: inMonth ? 1 : 0.35,
                     position: 'relative',
                   }}
@@ -227,8 +234,16 @@ function EventCalendarView({ events }: { events: ReservationEvent[] }) {
       {/* Selected date detail panel */}
       {selectedDate && selectedEvents.length > 0 && (
         <div style={{ marginTop: 16, border: '1px solid #e2e8f0', borderRadius: 12, padding: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: '#0f172a' }}>
-            {selectedDate.getFullYear()}年{selectedDate.getMonth() + 1}月{selectedDate.getDate()}日のイベント
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+              {selectedDate.getFullYear()}年{selectedDate.getMonth() + 1}月{selectedDate.getDate()}日のイベント
+            </div>
+            <button
+              onClick={() => onAddEvent(selectedDate)}
+              style={{ padding: '4px 12px', background: '#0ea5e9', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500 }}
+            >
+              + 追加
+            </button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {selectedEvents.map(ev => (
@@ -267,6 +282,7 @@ function EventsTab({ storeId }: { storeId: string }) {
   const [events, setEvents] = useState<ReservationEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [createDate, setCreateDate] = useState<Date | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
 
   const load = useCallback(async () => {
@@ -330,7 +346,7 @@ function EventsTab({ storeId }: { storeId: string }) {
           </button>
         </div>
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={() => { setCreateDate(null); setShowCreate(true); }}
           style={{ marginLeft: 'auto', padding: '8px 16px', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
         >
           + イベント追加
@@ -338,7 +354,7 @@ function EventsTab({ storeId }: { storeId: string }) {
       </div>
 
       {viewMode === 'calendar' && (
-        <EventCalendarView events={events} />
+        <EventCalendarView events={events} onAddEvent={(date) => { setCreateDate(date); setShowCreate(true); }} />
       )}
 
       {viewMode === 'list' && (
@@ -392,21 +408,30 @@ function EventsTab({ storeId }: { storeId: string }) {
       {showCreate && (
         <EventCreateModal
           storeId={storeId}
-          onClose={() => setShowCreate(false)}
-          onCreated={async () => { setShowCreate(false); await load(); }}
+          initialDate={createDate}
+          onClose={() => { setShowCreate(false); setCreateDate(null); }}
+          onCreated={async () => { setShowCreate(false); setCreateDate(null); await load(); }}
         />
       )}
     </div>
   );
 }
 
+function toLocalDatetimeValue(date: Date, hour: number): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const h = String(hour).padStart(2, '0');
+  return `${y}-${m}-${d}T${h}:00`;
+}
+
 function EventCreateModal({
-  storeId, onClose, onCreated,
-}: { storeId: string; onClose: () => void; onCreated: () => void }) {
+  storeId, initialDate, onClose, onCreated,
+}: { storeId: string; initialDate?: Date | null; onClose: () => void; onCreated: () => void }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [startsAt, setStartsAt] = useState('');
-  const [endsAt, setEndsAt] = useState('');
+  const [startsAt, setStartsAt] = useState(initialDate ? toLocalDatetimeValue(initialDate, 18) : '');
+  const [endsAt, setEndsAt] = useState(initialDate ? toLocalDatetimeValue(initialDate, 21) : '');
   const [capacity, setCapacity] = useState(20);
   const [price, setPrice] = useState('');
   const [saving, setSaving] = useState(false);
