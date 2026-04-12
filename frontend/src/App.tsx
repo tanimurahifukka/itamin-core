@@ -565,6 +565,11 @@ export default function App() {
         <div className="profile-dropdown">
           <div className="profile-dropdown-name">{displayName}</div>
           {user.email && <div className="profile-dropdown-email">{user.email}</div>}
+          {selectedStore && (
+            <button className="profile-dropdown-switch" onClick={() => { selectStore(null); setShowProfileMenu(false); }}>
+              事業所を切り替え
+            </button>
+          )}
           <button className="profile-dropdown-logout" onClick={signOut}>
             ログアウト
           </button>
@@ -603,8 +608,8 @@ export default function App() {
         <div className="header-user">
           <span
             className="store-name-link"
-            style={{ cursor: stores.length > 1 ? 'pointer' : 'default' }}
-            onClick={() => stores.length > 1 && selectStore(null)}
+            style={{ cursor: 'pointer' }}
+            onClick={() => selectStore(null)}
           >
             {selectedStore.name}
           </span>

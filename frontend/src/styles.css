@@ -215,6 +215,25 @@ body {
   word-break: break-all;
 }
 
+.profile-dropdown-switch {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #d4d9df;
+  background: white;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #374151;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s, border-color 0.2s;
+  margin-bottom: 6px;
+}
+
+.profile-dropdown-switch:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
 .profile-dropdown-logout {
   width: 100%;
   padding: 10px;
