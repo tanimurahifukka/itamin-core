@@ -529,6 +529,39 @@ body {
   background: #d13a54;
 }
 
+.create-store button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.store-action-btn {
+  width: 100%;
+  padding: 12px;
+  background: #e94560;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.store-action-btn:hover {
+  background: #d13a54;
+}
+
+.store-action-btn.secondary {
+  background: white;
+  color: #374151;
+  border: 2px solid #e0e0e0;
+}
+
+.store-action-btn.secondary:hover {
+  border-color: #e94560;
+  color: #e94560;
+}
+
 /* ===== Main Content ===== */
 .main-content {
   flex: 1;

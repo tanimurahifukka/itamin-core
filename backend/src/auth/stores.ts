@@ -432,6 +432,144 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
   }
 });
 
+// ============================================================
+// 認証済みユーザーが招待トークンで別店舗に参加
+// ============================================================
+router.post('/:storeId/join-member', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const inviteToken = typeof req.body?.inviteToken === 'string' ? req.body.inviteToken.trim() : '';
+    const userId = req.user!.id;
+
+    if (!inviteToken || !INVITE_TOKEN_PATTERN.test(inviteToken)) {
+      res.status(403).json({ error: '招待コードが必要です。オーナーから招待コードを受け取ってください。' });
+      return;
+    }
+
+    // 招待トークン検証
+    const { data: invitation } = await supabaseAdmin
+      .from('store_invitations')
+      .select('id, store_id, token, intended_email, intended_role, max_uses, used_count, expires_at, revoked_at')
+      .eq('store_id', storeId)
+      .eq('token', inviteToken)
+      .maybeSingle();
+
+    if (!invitation) {
+      res.status(403).json({ error: '招待コードが無効です' });
+      return;
+    }
+    if (!constantTimeEquals((invitation as any).token, inviteToken)) {
+      res.status(403).json({ error: '招待コードが無効です' });
+      return;
+    }
+    if ((invitation as any).revoked_at) {
+      res.status(403).json({ error: 'この招待は失効しています' });
+      return;
+    }
+    if (new Date((invitation as any).expires_at).getTime() < Date.now()) {
+      res.status(403).json({ error: 'この招待は期限切れです' });
+      return;
+    }
+    if ((invitation as any).used_count >= (invitation as any).max_uses) {
+      res.status(403).json({ error: 'この招待は使用上限に達しています' });
+      return;
+    }
+
+    // intended_email チェック（設定されている場合のみ）
+    if ((invitation as any).intended_email) {
+      const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(userId);
+      if (!authUser || authUser.email?.toLowerCase() !== (invitation as any).intended_email.toLowerCase()) {
+        res.status(403).json({ error: 'この招待は別のメールアドレス用です' });
+        return;
+      }
+    }
+
+    const intendedRole = (invitation as any).intended_role || 'part_time';
+    if (intendedRole === 'owner') {
+      res.status(403).json({ error: '招待経路で owner ロールは付与できません' });
+      return;
+    }
+
+    // 店舗の存在確認
+    const { data: store, error: storeErr } = await supabaseAdmin
+      .from('stores')
+      .select('id, name')
+      .eq('id', storeId)
+      .maybeSingle();
+
+    if (storeErr || !store) {
+      res.status(404).json({ error: '事業所が見つかりません' });
+      return;
+    }
+
+    // 重複チェック
+    const { data: existing } = await supabaseAdmin
+      .from('store_staff')
+      .select('id')
+      .eq('store_id', storeId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existing) {
+      res.status(409).json({ error: '既にこの事業所に所属しています' });
+      return;
+    }
+
+    // store_staff に追加
+    const { data: newMembership, error: staffErr } = await supabaseAdmin
+      .from('store_staff')
+      .insert({ store_id: storeId, user_id: userId, role: intendedRole })
+      .select('id')
+      .single();
+
+    if (staffErr) {
+      res.status(500).json({ error: staffErr.message });
+      return;
+    }
+
+    if (newMembership?.id) {
+      await ensureStaffPin(storeId, newMembership.id);
+    }
+
+    // 使用回数をアトミックに増やす (race condition 防止)
+    const { data: updated, error: updateErr } = await supabaseAdmin
+      .from('store_invitations')
+      .update({ used_count: ((invitation as any).used_count || 0) + 1 })
+      .eq('id', (invitation as any).id)
+      .lt('used_count', (invitation as any).max_uses)
+      .select('id')
+      .maybeSingle();
+
+    if (updateErr || !updated) {
+      // 同時リクエストで上限に達した場合
+      // ロールバック: 追加した store_staff を削除
+      if (newMembership?.id) {
+        await supabaseAdmin.from('store_staff').delete().eq('id', newMembership.id);
+      }
+      res.status(403).json({ error: 'この招待は使用上限に達しています' });
+      return;
+    }
+
+    await writeAuditLog({
+      storeId,
+      actorId: userId,
+      action: 'store_join_via_invitation',
+      targetType: 'store_staff',
+      targetId: newMembership?.id ?? undefined,
+      metadata: { invitationId: (invitation as any).id, intendedRole },
+    });
+
+    res.status(201).json({
+      ok: true,
+      message: `${store.name} に参加しました`,
+      storeName: store.name,
+    });
+  } catch (e: any) {
+    console.error('[stores POST /:storeId/join-member] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
 // 公開：店舗情報取得（名前のみ、認証不要）
 router.get('/:storeId/info', async (_req: Request, res: Response) => {
   try {

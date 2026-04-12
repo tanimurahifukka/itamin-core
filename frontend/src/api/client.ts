@@ -128,6 +128,13 @@ export const api = {
   getStores: () => request<{ stores: Store[] }>('/stores'),
   createStore: (name: string, address?: string) =>
     request<{ store: Store }>('/stores', { method: 'POST', body: JSON.stringify({ name, address }) }),
+  joinStoreByToken: (storeId: string, inviteToken: string) =>
+    request<{ ok: boolean; message: string; storeName: string }>(`/stores/${storeId}/join-member`, {
+      method: 'POST',
+      body: JSON.stringify({ inviteToken }),
+    }),
+  getStorePublicInfo: (storeId: string) =>
+    request<{ store: { id: string; name: string } }>(`/stores/${storeId}/info`),
   getStoreAccount: (storeId: string) => request<{ account: StoreAccount }>(`/stores/${storeId}/account`),
   updateStoreAccount: (
     storeId: string,
