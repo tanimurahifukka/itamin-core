@@ -142,7 +142,7 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
 
   const completedCount = items.filter(item => isItemComplete(item, values[item.id] ?? emptyValues())).length;
   const title    = timing === 'clock_in' ? '出勤前チェック' : '退勤前チェック';
-  const subtitle = timing === 'clock_in' ? 'HACCP準拠 — 全項目を確認してください' : 'HACCP準拠 — 退勤前の確認事項';
+  const subtitle = timing === 'clock_in' ? '全項目を確認してください' : '退勤前の確認事項';
 
   if (loading) {
     return (

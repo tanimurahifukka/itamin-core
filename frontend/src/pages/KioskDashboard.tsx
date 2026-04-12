@@ -181,7 +181,7 @@ export default function KioskDashboard({ storeId, storeName, onLogout }: Props) 
           <button style={{ ...s.tab, ...(tab === 'punch' ? s.tabActive : {}) }} onClick={() => setTab('punch')}>打刻</button>
           <button style={{ ...s.tab, ...(tab === 'shift' ? s.tabActive : {}) }} onClick={() => setTab('shift')}>シフト管理</button>
           {enabledPlugins.includes('haccp') && (
-            <button style={{ ...s.tab, ...(tab === 'haccp' ? s.tabActive : {}) }} onClick={() => setTab('haccp')}>HACCP</button>
+            <button style={{ ...s.tab, ...(tab === 'haccp' ? s.tabActive : {}) }} onClick={() => setTab('haccp')}>チェックリスト</button>
           )}
           {enabledPlugins.includes('switchbot') && (
             <button style={{ ...s.tab, ...(tab === 'switchbot' ? s.tabActive : {}) }} onClick={() => setTab('switchbot')}>温度ログ</button>
