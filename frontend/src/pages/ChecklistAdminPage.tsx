@@ -125,6 +125,7 @@ function TemplatesTab({ storeId }: { storeId: string }) {
   const [systemTemplates, setSystemTemplates] = useState<SystemTemplate[]>([]);
   const [fromSystemLoading, setFromSystemLoading] = useState(false);
   const [switchbotDevices, setSwitchbotDevices] = useState<SwitchBotDevice[]>([]);
+  const [showCreateFlow, setShowCreateFlow] = useState<'closed' | 'step1' | 'step2'>('closed');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -169,6 +170,7 @@ function TemplatesTab({ storeId }: { storeId: string }) {
         setMessage('テンプレートを作成しました');
       }
       setForm(emptyTemplateForm());
+      setShowCreateFlow('closed');
       await load();
     } catch (e: unknown) {
       setMessage(`エラー: ${e instanceof Error ? e.message : String(e)}`);
@@ -182,6 +184,7 @@ function TemplatesTab({ storeId }: { storeId: string }) {
     try {
       await checkApi.fromSystemTemplate(storeId, sysId);
       setMessage('システムテンプレートからコピーしました');
+      setShowCreateFlow('closed');
       await load();
     } catch (e: unknown) {
       setMessage(`エラー: ${e instanceof Error ? e.message : String(e)}`);
@@ -189,6 +192,44 @@ function TemplatesTab({ storeId }: { storeId: string }) {
       setFromSystemLoading(false);
     }
   };
+
+  const closeCreateFlow = () => {
+    setForm(emptyTemplateForm());
+    setShowCreateFlow('closed');
+  };
+
+  const templateFormFields = (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+        <input
+          type="text" value={form.name} placeholder="テンプレート名"
+          onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+          style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db' }}
+        />
+        <select value={form.timing} onChange={e => setForm(p => ({ ...p, timing: e.target.value as CheckTiming }))}
+          style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}>
+          {(Object.keys(TIMING_LABEL) as CheckTiming[]).map(t => (
+            <option key={t} value={t}>{TIMING_LABEL[t]}</option>
+          ))}
+        </select>
+        <select value={form.scope} onChange={e => setForm(p => ({ ...p, scope: e.target.value as CheckScope }))}
+          style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}>
+          <option value="personal">個人</option>
+          <option value="store">店舗</option>
+        </select>
+        <select value={form.layer} onChange={e => setForm(p => ({ ...p, layer: e.target.value as CheckLayer }))}
+          style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}>
+          <option value="base">基本</option>
+          <option value="shift">シフト別</option>
+        </select>
+      </div>
+      <input
+        type="text" value={form.description} placeholder="説明（任意）"
+        onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+        style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', marginBottom: 8, boxSizing: 'border-box' }}
+      />
+    </>
+  );
 
   const handleDelete = async (tplId: string) => {
     if (!window.confirm('このテンプレートを削除しますか？')) return;
@@ -312,49 +353,120 @@ function TemplatesTab({ storeId }: { storeId: string }) {
         </div>
       )}
 
-      {/* カスタムテンプレート作成フォーム */}
-      <div style={{ marginBottom: 20, padding: 14, borderRadius: 10, border: '1px solid #e5e7eb', background: '#fafafa' }}>
-        <div style={{ fontWeight: 600, marginBottom: 10 }}>{form.id ? 'テンプレート編集' : '新規テンプレート作成'}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
-          <input
-            type="text" value={form.name} placeholder="テンプレート名"
-            onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-            style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db' }}
-          />
-          <select value={form.timing} onChange={e => setForm(p => ({ ...p, timing: e.target.value as CheckTiming }))}
-            style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}>
-            {(Object.keys(TIMING_LABEL) as CheckTiming[]).map(t => (
-              <option key={t} value={t}>{TIMING_LABEL[t]}</option>
-            ))}
-          </select>
-          <select value={form.scope} onChange={e => setForm(p => ({ ...p, scope: e.target.value as CheckScope }))}
-            style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}>
-            <option value="personal">個人</option>
-            <option value="store">店舗</option>
-          </select>
-          <select value={form.layer} onChange={e => setForm(p => ({ ...p, layer: e.target.value as CheckLayer }))}
-            style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}>
-            <option value="base">基本</option>
-            <option value="shift">シフト別</option>
-          </select>
-        </div>
-        <input
-          type="text" value={form.description} placeholder="説明（任意）"
-          onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-          style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', marginBottom: 8, boxSizing: 'border-box' }}
-        />
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          {form.id && (
-            <button onClick={() => setForm(emptyTemplateForm())} style={miniBtn()}>キャンセル</button>
-          )}
-          <button
-            onClick={handleCreate} disabled={saving}
-            style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#0f3460', color: '#fff', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
-          >
-            {saving ? '保存中...' : form.id ? '更新する' : '作成する'}
-          </button>
-        </div>
-      </div>
+      {(() => {
+        if (form.id) {
+          return (
+            <div style={{ marginBottom: 20, padding: 14, borderRadius: 10, border: '1px solid #e5e7eb', background: '#fafafa' }}>
+              <div style={{ fontWeight: 600, marginBottom: 10 }}>テンプレート編集</div>
+              {templateFormFields}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => setForm(emptyTemplateForm())} style={miniBtn()}>キャンセル</button>
+                <button
+                  onClick={handleCreate} disabled={saving}
+                  style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#0f3460', color: '#fff', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
+                >
+                  {saving ? '保存中...' : '更新する'}
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        if (showCreateFlow === 'closed') {
+          return (
+            <div style={{ marginBottom: 20 }}>
+              <button
+                onClick={() => setShowCreateFlow('step1')}
+                style={{ padding: '10px 18px', borderRadius: 8, border: '2px dashed #94a3b8', background: '#f8fafc', color: '#0f3460', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem', width: '100%' }}
+              >
+                ＋ 新規追加
+              </button>
+            </div>
+          );
+        }
+
+        if (showCreateFlow === 'step1') {
+          return (
+            <div style={{ marginBottom: 20, padding: 16, borderRadius: 10, border: '2px solid #0f3460', background: '#f8fafc' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: '1rem', color: '#0f3460' }}>
+                  ステップ1: 業種テンプレートを選択
+                </div>
+                <button
+                  onClick={closeCreateFlow}
+                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1, padding: '2px 6px' }}
+                >&times;</button>
+              </div>
+              <div style={{ fontSize: '0.85rem', color: '#475569', marginBottom: 12 }}>
+                まず業種テンプレートを確認してください。該当するものがあれば「コピーして作成」で効率的に作成できます。
+              </div>
+              {filteredSysTemplates.length === 0 ? (
+                <div style={{ padding: '10px 12px', background: '#fff', borderRadius: 8, border: '1px dashed #cbd5e1', color: '#64748b', fontSize: '0.88rem', marginBottom: 12 }}>
+                  この{SCOPE_LABEL[scopeTab]}チェック用の業種テンプレートはありません。
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                  {filteredSysTemplates.map(sys => (
+                    <div key={sys.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '8px 12px', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                      <div>
+                        <span style={{ fontWeight: 500 }}>{sys.name}</span>
+                        <span style={{ marginLeft: 8, fontSize: '0.78rem', color: '#64748b' }}>
+                          {TIMING_LABEL[sys.timing]} / {LAYER_LABEL[sys.layer]} / {sys.items.length}項目
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleFromSystem(sys.id)}
+                        disabled={fromSystemLoading}
+                        style={{ ...miniBtn(fromSystemLoading), background: '#0f3460', color: '#fff', border: 'none' }}
+                      >
+                        コピーして作成
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 12, textAlign: 'center' }}>
+                <button
+                  onClick={() => setShowCreateFlow('step2')}
+                  style={{ background: 'none', border: 'none', color: '#0f3460', cursor: 'pointer', fontSize: '0.88rem', textDecoration: 'underline' }}
+                >
+                  該当テンプレートがない場合 → カスタムで作成
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div style={{ marginBottom: 20, padding: 14, borderRadius: 10, border: '2px solid #0f3460', background: '#fafafa' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ fontWeight: 600 }}>ステップ2: カスタムテンプレートを作成</div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button
+                  onClick={() => setShowCreateFlow('step1')}
+                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '0.82rem', textDecoration: 'underline' }}
+                >
+                  ← 業種テンプレートに戻る
+                </button>
+                <button
+                  onClick={closeCreateFlow}
+                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1, padding: '2px 6px' }}
+                >&times;</button>
+              </div>
+            </div>
+            {templateFormFields}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={closeCreateFlow} style={miniBtn()}>キャンセル</button>
+              <button
+                onClick={handleCreate} disabled={saving}
+                style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#0f3460', color: '#fff', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
+              >
+                {saving ? '保存中...' : '作成する'}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* テンプレート一覧 */}
       {loading ? <div className="loading">読み込み中...</div> : templates.length === 0 ? (
