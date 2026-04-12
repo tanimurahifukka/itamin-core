@@ -3,6 +3,7 @@ import { requireAuth } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
 import { pluginRegistry } from './registry';
 import { requireManagedStore, requireStoreMembership, VALID_STAFF_ROLES } from '../auth/authorization';
+import { provisionSystemTemplates } from '../services/haccp/templates';
 import type { StaffRole } from '../types';
 
 const router = Router();
@@ -126,6 +127,19 @@ router.post('/:storeId/:pluginName', requireAuth, async (req: Request, res: Resp
     if (error) {
       res.status(500).json({ error: error.message });
       return;
+    }
+
+    // Auto-provision HACCP system templates when the plugin is enabled
+    if (pluginName === 'haccp' && (enabled ?? true) === true) {
+      try {
+        const count = await provisionSystemTemplates(storeId, 'cafe', req.user!.id);
+        if (count > 0) {
+          console.log(`[settings] Auto-provisioned ${count} HACCP templates for store ${storeId}`);
+        }
+      } catch (provErr: any) {
+        // Provisioning failure must not prevent the plugin from being enabled
+        console.warn(`[settings] HACCP template provisioning warning for store ${storeId}:`, provErr.message);
+      }
     }
 
     res.json({ ok: true, pluginName, enabled });

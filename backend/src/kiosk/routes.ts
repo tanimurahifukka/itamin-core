@@ -11,6 +11,7 @@ import {
   listKioskSubmissionsForDate,
   createSubmission,
 } from '../services/haccp';
+import { provisionSystemTemplates } from '../services/haccp/templates';
 import {
   fetchStoreMeters,
   fetchDeviceStatus,
@@ -529,7 +530,22 @@ router.get('/:storeId/haccp/templates', requireKiosk, async (req: Request, res: 
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
     const timing = typeof req.query.timing === 'string' ? req.query.timing : null;
-    const templates = await listKioskActiveTemplates(storeId, timing);
+    let templates = await listKioskActiveTemplates(storeId, timing);
+
+    // Fallback: if no templates found, auto-provision from system templates
+    if (templates.length === 0) {
+      try {
+        const count = await provisionSystemTemplates(storeId, 'cafe');
+        if (count > 0) {
+          console.log(`[kiosk] Auto-provisioned ${count} HACCP templates for store ${storeId}`);
+          templates = await listKioskActiveTemplates(storeId, timing);
+        }
+      } catch (provErr: any) {
+        // Do not fail the request if provisioning errors — return empty list
+        console.warn(`[kiosk] HACCP template auto-provision warning for store ${storeId}:`, provErr.message);
+      }
+    }
+
     res.json({ templates });
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Internal Server Error' });

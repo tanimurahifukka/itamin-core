@@ -21,6 +21,141 @@ import {
 
 export const templatesRouter = Router();
 
+// ── プロビジョニング ───────────────────────────────────────────────────────────
+
+/**
+ * Provision system templates for a store.
+ *
+ * Copies all active system templates matching `category` (= business_type) into
+ * the store's `checklist_templates` / `checklist_template_items`.  Already-imported
+ * templates (identified by `system_template_id`) are skipped, so calling this
+ * function multiple times is idempotent.
+ *
+ * @param storeId  Target store UUID
+ * @param category Business type to filter system templates (e.g. 'cafe')
+ * @param userId   Optional user UUID for `created_by` / `updated_by`. Pass undefined for kiosk-triggered calls.
+ * @returns Number of newly created templates
+ */
+export async function provisionSystemTemplates(
+  storeId: string,
+  category: string,
+  userId?: string,
+): Promise<number> {
+  // 1. Fetch all active system templates for the given category
+  const { data: systemTemplates, error: sysErr } = await supabaseAdmin
+    .from('checklist_system_templates')
+    .select('*')
+    .eq('business_type', category)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+
+  if (sysErr) {
+    throw new Error(`Failed to fetch system templates: ${sysErr.message}`);
+  }
+  if (!systemTemplates || systemTemplates.length === 0) {
+    return 0;
+  }
+
+  // 2. Fetch system template items in one batch
+  const sysTemplateIds = systemTemplates.map((t: any) => t.id);
+  const { data: systemItems, error: siErr } = await supabaseAdmin
+    .from('checklist_system_template_items')
+    .select('*')
+    .in('system_template_id', sysTemplateIds)
+    .order('sort_order', { ascending: true });
+
+  if (siErr) {
+    throw new Error(`Failed to fetch system template items: ${siErr.message}`);
+  }
+
+  const itemsBySystemTemplate = ((systemItems || []) as any[]).reduce(
+    (acc: Record<string, any[]>, item: any) => {
+      if (!acc[item.system_template_id]) acc[item.system_template_id] = [];
+      acc[item.system_template_id].push(item);
+      return acc;
+    },
+    {},
+  );
+
+  // 3. Fetch already-provisioned system_template_ids for this store
+  const { data: existing, error: exErr } = await supabaseAdmin
+    .from('checklist_templates')
+    .select('system_template_id')
+    .eq('store_id', storeId)
+    .in('system_template_id', sysTemplateIds);
+
+  if (exErr) {
+    throw new Error(`Failed to fetch existing templates: ${exErr.message}`);
+  }
+
+  const alreadyProvisioned = new Set(
+    ((existing || []) as any[])
+      .map((t: any) => t.system_template_id)
+      .filter(Boolean),
+  );
+
+  // 4. Insert missing templates and their items
+  let created = 0;
+  for (const sys of systemTemplates as any[]) {
+    if (alreadyProvisioned.has(sys.id)) continue;
+
+    const { data: tpl, error: tplErr } = await supabaseAdmin
+      .from('checklist_templates')
+      .insert({
+        store_id: storeId,
+        system_template_id: sys.id,
+        name: sys.name,
+        timing: sys.timing,
+        scope: sys.scope,
+        layer: sys.layer,
+        description: sys.description,
+        version: 1,
+        created_by: userId ?? null,
+        updated_by: userId ?? null,
+      })
+      .select('*')
+      .single();
+
+    if (tplErr || !tpl) {
+      throw new Error(`Failed to create template for system_template_id ${sys.id}: ${tplErr?.message}`);
+    }
+
+    const sysItems: any[] = itemsBySystemTemplate[sys.id] || [];
+    if (sysItems.length > 0) {
+      const itemsToInsert = sysItems.map((si: any) => ({
+        store_id: storeId,
+        template_id: (tpl as any).id,
+        item_key: si.item_key,
+        label: si.label,
+        item_type: si.item_type,
+        required: si.required,
+        min_value: si.min_value,
+        max_value: si.max_value,
+        unit: si.unit,
+        options: si.options,
+        is_ccp: si.is_ccp,
+        tracking_mode: si.tracking_mode,
+        frequency_per_day: si.frequency_per_day,
+        frequency_interval_minutes: si.frequency_interval_minutes,
+        deviation_action: si.deviation_action,
+        sort_order: si.sort_order,
+      }));
+
+      const { error: itemErr } = await supabaseAdmin
+        .from('checklist_template_items')
+        .insert(itemsToInsert);
+
+      if (itemErr) {
+        throw new Error(`Failed to insert items for template ${(tpl as any).id}: ${itemErr.message}`);
+      }
+    }
+
+    created++;
+  }
+
+  return created;
+}
+
 // ── システムテンプレート ──────────────────────────────────────────────────────
 
 // GET /api/haccp/system-templates?business_type=cafe
@@ -111,6 +246,23 @@ templatesRouter.get('/:storeId/templates', requireAuth, async (req: Request, res
     res.json({ templates: data || [] });
   } catch (e: any) {
     console.error('[haccp GET /:storeId/templates] error:', e);
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// POST /api/haccp/:storeId/templates/provision-all
+// Provisions all system templates for the store (owner/manager only).
+// Idempotent: already-imported templates are skipped.
+templatesRouter.post('/:storeId/templates/provision-all', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const storeId = String(req.params.storeId);
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const provisioned = await provisionSystemTemplates(storeId, 'cafe', req.user!.id);
+    res.json({ ok: true, provisioned });
+  } catch (e: any) {
+    console.error('[haccp POST /:storeId/templates/provision-all] error:', e);
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
