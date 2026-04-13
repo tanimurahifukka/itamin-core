@@ -1,11 +1,10 @@
 /**
- * Kiosk reservation page — calendar view with monthly overview,
- * day-level reservation list with status actions, and event management.
+ * Kiosk reservation page — single-page layout with calendar, event management,
+ * and participant tracking all on one screen.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { kioskApi } from '../api/kioskClient';
 import type { EventFormField } from '../api/kioskClient';
-import KioskEventBooking from './KioskEventBooking';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,17 +51,6 @@ interface DayData {
   count: number;
   types: string[];
   items: DayItem[];
-}
-
-interface EventFormState {
-  title: string;
-  description: string;
-  starts_at: string;
-  ends_at: string;
-  capacity: string;
-  price: string;
-  status: string;
-  form_schema: EventFormField[];
 }
 
 interface Props {
@@ -128,82 +116,21 @@ function formatDateLabel(dateStr: string): string {
   return d.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' });
 }
 
-function formatDateTimeLocal(iso: string): string {
-  const d = new Date(iso);
-  const y = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, '0');
-  const da = String(d.getDate()).padStart(2, '0');
-  const h = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `${y}-${mo}-${da}T${h}:${mi}`;
-}
-
-function formatEventDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('ja-JP', {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
-}
-
 function getDominantType(types: string[]): string {
   return types[0] || 'table';
 }
 
-const EMPTY_FORM: EventFormState = {
-  title: '',
-  description: '',
-  starts_at: '',
-  ends_at: '',
-  capacity: '',
-  price: '',
-  status: 'draft',
-  form_schema: [],
-};
+function eventMatchesDate(ev: KioskEvent, dateStr: string): boolean {
+  const d = new Date(ev.starts_at);
+  const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  const evDate = jst.toISOString().split('T')[0];
+  return evDate === dateStr;
+}
 
-const FIELD_TYPE_LABELS: Record<string, string> = {
-  text: 'テキスト',
-  number: '数値',
-  select: '選択肢',
-  textarea: 'テキストエリア',
-  checkbox: 'チェックボックス',
-};
-
-function normalizeEventFormSchemaForSave(schema: EventFormField[]): { schema: EventFormField[]; error?: string } {
-  const normalized: EventFormField[] = [];
-
-  for (const [index, field] of schema.entries()) {
-    const key = field.key.trim();
-    const label = field.label.trim();
-
-    if (!key) {
-      return { schema: [], error: `予約フォームの ${index + 1} 行目に key がありません` };
-    }
-    if (!label) {
-      return { schema: [], error: `予約フォームの ${index + 1} 行目のラベルを入力してください` };
-    }
-
-    const nextField: EventFormField = {
-      key,
-      label,
-      type: field.type,
-      required: field.required,
-    };
-
-    if (field.type === 'select') {
-      const options = (field.options || []).map(option => option.trim()).filter(Boolean);
-      if (options.length === 0) {
-        return { schema: [], error: `予約フォームの ${index + 1} 行目の選択肢を 1 つ以上入力してください` };
-      }
-      nextField.options = options;
-    }
-
-    if (field.placeholder?.trim()) {
-      nextField.placeholder = field.placeholder.trim();
-    }
-
-    normalized.push(nextField);
-  }
-
-  return { schema: normalized };
+function formatJstTime(iso: string): string {
+  const d = new Date(iso);
+  const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  return `${String(jst.getUTCHours()).padStart(2, '0')}:${String(jst.getUTCMinutes()).padStart(2, '0')}`;
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -492,230 +419,201 @@ function CalendarGrid({
   );
 }
 
-// ─── Event Form Modal ─────────────────────────────────────────────────────────
+// ─── Inline Event Form ────────────────────────────────────────────────────────
 
-function FormSchemaBuilder({
-  schema,
-  onChange,
-}: {
-  schema: EventFormField[];
-  onChange: (schema: EventFormField[]) => void;
-}) {
-  const addField = () => {
-    const key = `field_${Date.now()}`;
-    onChange([...schema, { key, label: '', type: 'text', required: false }]);
+interface InlineEventFormProps {
+  selectedDay: string;
+  initial?: {
+    title: string;
+    startTime: string;
+    endTime: string;
+    capacity: string;
+    price: string;
+    status: string;
   };
-
-  const updateField = (idx: number, patch: Partial<EventFormField>) => {
-    const next = schema.map((f, i) => (i === idx ? { ...f, ...patch } : f));
-    onChange(next);
-  };
-
-  const removeField = (idx: number) => {
-    onChange(schema.filter((_, i) => i !== idx));
-  };
-
-  return (
-    <div style={{ marginTop: 8 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#333', marginBottom: 10, borderTop: '1px solid #e8ecf4', paddingTop: 14 }}>
-        予約フォーム設定
-      </div>
-      {schema.length === 0 && (
-        <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 8 }}>
-          フィールドがありません。追加ボタンで項目を追加してください。
-        </div>
-      )}
-      {schema.map((field, idx) => (
-        <div key={field.key} style={s.schemaFieldCard}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <div style={{ flex: 2, minWidth: 120 }}>
-              <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>ラベル</div>
-              <input
-                style={s.input}
-                value={field.label}
-                onChange={e => updateField(idx, { label: e.target.value })}
-                placeholder="例: お名前"
-              />
-            </div>
-            <div style={{ flex: 1, minWidth: 100 }}>
-              <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>タイプ</div>
-              <select
-                style={s.input}
-                value={field.type}
-                onChange={e => {
-                  const type = e.target.value as EventFormField['type'];
-                  const patch: Partial<EventFormField> = { type };
-                  if (type === 'select' && !field.options) patch.options = [];
-                  updateField(idx, patch);
-                }}
-              >
-                {Object.entries(FIELD_TYPE_LABELS).map(([val, lbl]) => (
-                  <option key={val} value={val}>{lbl}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 18 }}>
-              <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                <input
-                  type="checkbox"
-                  checked={field.required}
-                  onChange={e => updateField(idx, { required: e.target.checked })}
-                />
-                必須
-              </label>
-              <button
-                type="button"
-                style={s.schemaRemoveBtn}
-                onClick={() => removeField(idx)}
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-          {field.type === 'select' && (
-            <div style={{ marginTop: 6 }}>
-              <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>選択肢（カンマ区切り）</div>
-              <input
-                style={s.input}
-                value={(field.options || []).join(', ')}
-                onChange={e => {
-                  const opts = e.target.value.split(',').map(o => o.trim()).filter(Boolean);
-                  updateField(idx, { options: opts });
-                }}
-                placeholder="例: A, B, C"
-              />
-            </div>
-          )}
-        </div>
-      ))}
-      <button
-        type="button"
-        style={s.schemaAddBtn}
-        onClick={addField}
-      >
-        + フィールド追加
-      </button>
-    </div>
-  );
+  saving: boolean;
+  onSave: (data: { title: string; startTime: string; endTime: string; capacity: string; price: string; status: string }) => void;
+  onCancel: () => void;
 }
 
-function EventFormModal({
-  initial,
-  onSave,
-  onClose,
-  saving,
-}: {
-  initial: EventFormState;
-  onSave: (form: EventFormState) => void;
-  onClose: () => void;
-  saving: boolean;
-}) {
-  const [form, setForm] = useState<EventFormState>(initial);
-
-  const set = (field: keyof EventFormState, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-  };
+function InlineEventForm({ selectedDay, initial, saving, onSave, onCancel }: InlineEventFormProps) {
+  const [title, setTitle] = useState(initial?.title ?? '');
+  const [startTime, setStartTime] = useState(initial?.startTime ?? '');
+  const [endTime, setEndTime] = useState(initial?.endTime ?? '');
+  const [capacity, setCapacity] = useState(initial?.capacity ?? '');
+  const [price, setPrice] = useState(initial?.price ?? '');
+  const [status, setStatus] = useState(initial?.status ?? 'draft');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(form);
+    onSave({ title, startTime, endTime, capacity, price, status });
   };
 
   return (
-    <div style={s.modalOverlay}>
-      <div style={s.modalBox}>
-        <div style={s.modalHeader}>
-          <span style={s.modalTitle}>{initial.title?.endsWith('（コピー）') ? 'イベント複製' : initial.title ? 'イベント編集' : 'イベント作成'}</span>
-          <button style={s.iconBtn} onClick={onClose}>✕</button>
-        </div>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={s.formRow}>
-            <label style={s.label}>タイトル <span style={s.required}>*</span></label>
-            <input
-              style={s.input}
-              value={form.title}
-              onChange={e => set('title', e.target.value)}
-              required
-              placeholder="イベントタイトル"
-            />
-          </div>
-          <div style={s.formRow}>
-            <label style={s.label}>説明</label>
-            <textarea
-              style={{ ...s.input, minHeight: 72, resize: 'vertical' }}
-              value={form.description}
-              onChange={e => set('description', e.target.value)}
-              placeholder="説明文（任意）"
-            />
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <div style={{ ...s.formRow, flex: 1 }}>
-              <label style={s.label}>開始日時 <span style={s.required}>*</span></label>
-              <input
-                style={s.input}
-                type="datetime-local"
-                value={form.starts_at}
-                onChange={e => set('starts_at', e.target.value)}
-                required
-              />
-            </div>
-            <div style={{ ...s.formRow, flex: 1 }}>
-              <label style={s.label}>終了日時 <span style={s.required}>*</span></label>
-              <input
-                style={s.input}
-                type="datetime-local"
-                value={form.ends_at}
-                onChange={e => set('ends_at', e.target.value)}
-                required
-              />
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <div style={{ ...s.formRow, flex: 1 }}>
-              <label style={s.label}>定員 <span style={s.required}>*</span></label>
-              <input
-                style={s.input}
-                type="number"
-                min={1}
-                value={form.capacity}
-                onChange={e => set('capacity', e.target.value)}
-                required
-                placeholder="例: 20"
-              />
-            </div>
-            <div style={{ ...s.formRow, flex: 1 }}>
-              <label style={s.label}>参加費（円）</label>
-              <input
-                style={s.input}
-                type="number"
-                min={0}
-                value={form.price}
-                onChange={e => set('price', e.target.value)}
-                placeholder="0"
-              />
-            </div>
-          </div>
-          <div style={s.formRow}>
-            <label style={s.label}>ステータス</label>
-            <select style={s.input} value={form.status} onChange={e => set('status', e.target.value)}>
-              <option value="draft">下書き</option>
-              <option value="published">公開中</option>
-            </select>
-          </div>
-
-          {/* Form schema builder */}
-          <FormSchemaBuilder
-            schema={form.form_schema}
-            onChange={(schema) => setForm(prev => ({ ...prev, form_schema: schema }))}
+    <form onSubmit={handleSubmit} style={s.inlineForm}>
+      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8, fontWeight: 600 }}>
+        {selectedDay} のイベントを{initial ? '編集' : '作成'}
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div style={{ flex: '2 1 160px' }}>
+          <div style={s.fieldLabel}>イベント名 <span style={s.required}>*</span></div>
+          <input
+            style={s.input}
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="例: キッズ体験"
+            required
           />
+        </div>
+        <div style={{ flex: '1 1 100px' }}>
+          <div style={s.fieldLabel}>開始時間 <span style={s.required}>*</span></div>
+          <input
+            style={s.input}
+            type="time"
+            value={startTime}
+            onChange={e => setStartTime(e.target.value)}
+            required
+          />
+        </div>
+        <div style={{ flex: '1 1 100px' }}>
+          <div style={s.fieldLabel}>終了時間 <span style={s.required}>*</span></div>
+          <input
+            style={s.input}
+            type="time"
+            value={endTime}
+            onChange={e => setEndTime(e.target.value)}
+            required
+          />
+        </div>
+        <div style={{ flex: '1 1 80px' }}>
+          <div style={s.fieldLabel}>定員 <span style={s.required}>*</span></div>
+          <input
+            style={s.input}
+            type="number"
+            min={1}
+            value={capacity}
+            onChange={e => setCapacity(e.target.value)}
+            placeholder="例: 20"
+            required
+          />
+        </div>
+        <div style={{ flex: '1 1 90px' }}>
+          <div style={s.fieldLabel}>参加費（円）</div>
+          <input
+            style={s.input}
+            type="number"
+            min={0}
+            value={price}
+            onChange={e => setPrice(e.target.value)}
+            placeholder="0"
+          />
+        </div>
+        <div style={{ flex: '1 1 90px' }}>
+          <div style={s.fieldLabel}>ステータス</div>
+          <select style={s.input} value={status} onChange={e => setStatus(e.target.value)}>
+            <option value="draft">下書き</option>
+            <option value="published">公開中</option>
+          </select>
+        </div>
+        <div style={{ display: 'flex', gap: 6, paddingBottom: 1 }}>
+          <button type="submit" style={s.primaryBtn} disabled={saving}>
+            {saving ? '保存中...' : '保存'}
+          </button>
+          <button type="button" style={s.cancelBtn} onClick={onCancel} disabled={saving}>
+            キャンセル
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}
 
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
-            <button type="button" style={s.cancelBtn} onClick={onClose} disabled={saving}>キャンセル</button>
-            <button type="submit" style={s.primaryBtn} disabled={saving}>
-              {saving ? '保存中...' : '保存する'}
-            </button>
+// ─── Inline Participant Form ──────────────────────────────────────────────────
+
+interface InlineParticipantFormProps {
+  event: KioskEvent;
+  responses: Record<string, unknown>;
+  booking: boolean;
+  onChangeResponse: (key: string, value: unknown) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+}
+
+function InlineParticipantForm({
+  event,
+  responses,
+  booking,
+  onChangeResponse,
+  onSubmit,
+  onCancel,
+}: InlineParticipantFormProps) {
+  const schema = event.form_schema && event.form_schema.length > 0
+    ? event.form_schema
+    : [
+        { key: 'name', label: '名前', type: 'text' as const, required: true },
+        { key: 'party_size', label: '人数', type: 'number' as const, required: true },
+      ];
+
+  return (
+    <div style={s.participantForm}>
+      <div style={{ fontSize: 12, color: '#475569', fontWeight: 600, marginBottom: 8 }}>参加者追加</div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        {schema.map(field => (
+          <div key={field.key} style={{ flex: '1 1 120px' }}>
+            <div style={s.fieldLabel}>
+              {field.label}
+              {field.required && <span style={s.required}> *</span>}
+            </div>
+            {field.type === 'select' ? (
+              <select
+                style={s.input}
+                value={String(responses[field.key] ?? '')}
+                onChange={e => onChangeResponse(field.key, e.target.value)}
+              >
+                <option value="">選択...</option>
+                {(field.options || []).map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            ) : field.type === 'textarea' ? (
+              <textarea
+                style={{ ...s.input, minHeight: 60, resize: 'vertical' }}
+                value={String(responses[field.key] ?? '')}
+                onChange={e => onChangeResponse(field.key, e.target.value)}
+                placeholder={field.placeholder}
+              />
+            ) : field.type === 'checkbox' ? (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(responses[field.key])}
+                  onChange={e => onChangeResponse(field.key, e.target.checked)}
+                />
+                {field.label}
+              </label>
+            ) : (
+              <input
+                style={s.input}
+                type={field.type === 'number' ? 'number' : 'text'}
+                value={String(responses[field.key] ?? '')}
+                onChange={e => onChangeResponse(field.key, field.type === 'number' ? Number(e.target.value) : e.target.value)}
+                placeholder={field.placeholder}
+              />
+            )}
           </div>
-        </form>
+        ))}
+        <div style={{ display: 'flex', gap: 6, paddingBottom: 1 }}>
+          <button
+            style={s.primaryBtn}
+            onClick={onSubmit}
+            disabled={booking}
+          >
+            {booking ? '追加中...' : '追加'}
+          </button>
+          <button style={s.cancelBtn} onClick={onCancel} disabled={booking}>
+            キャンセル
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -732,9 +630,6 @@ export default function KioskReservations({ storeId }: Props) {
     const id = setInterval(() => setNowDate(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
-
-  // Tab state
-  const [tab, setTab] = useState<'calendar' | 'events' | 'event-booking'>('calendar');
 
   // Calendar state
   const [calYear, setCalYear] = useState(nowDate.getFullYear());
@@ -754,10 +649,17 @@ export default function KioskReservations({ storeId }: Props) {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsError, setEventsError] = useState<string | null>(null);
 
-  // Event modal state
-  const [showEventModal, setShowEventModal] = useState(false);
+  // Inline event form state
+  const [creatingEvent, setCreatingEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState<KioskEvent | null>(null);
   const [eventFormSaving, setEventFormSaving] = useState(false);
+
+  // Inline participant form state
+  const [addingParticipantEventId, setAddingParticipantEventId] = useState<string | null>(null);
+  const [participantResponses, setParticipantResponses] = useState<Record<string, unknown>>({});
+  const [bookingEvent, setBookingEvent] = useState(false);
+
+  // Delete confirmation state
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -781,15 +683,6 @@ export default function KioskReservations({ storeId }: Props) {
       setMonthlyLoading(false);
     }
   }, [storeId]);
-
-  const handleCalendarEventClick = (ev: KioskEvent) => {
-    setEditingEvent(ev);
-    setShowEventModal(true);
-  };
-
-  const handleCalendarReservationClick = (dateStr: string) => {
-    setSelectedDay(dateStr);
-  };
 
   const loadDayReservations = useCallback(async (dateStr: string) => {
     setResLoading(true);
@@ -825,14 +718,6 @@ export default function KioskReservations({ storeId }: Props) {
     loadMonthly(calYear, calMonth);
   }, [calYear, calMonth, loadMonthly]);
 
-  // Reload calendar + day reservations when switching back to calendar tab
-  useEffect(() => {
-    if (tab === 'calendar') {
-      loadMonthly(calYear, calMonth);
-      if (selectedDay) loadDayReservations(selectedDay);
-    }
-  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
-
   useEffect(() => {
     if (selectedDay) loadDayReservations(selectedDay);
   }, [selectedDay, loadDayReservations]);
@@ -841,15 +726,15 @@ export default function KioskReservations({ storeId }: Props) {
     loadEvents();
   }, [loadEvents]);
 
-  useEffect(() => {
-    if (tab === 'events') loadEvents();
-    setDeleteConfirmId(null);
-  }, [tab, loadEvents]);
-
   // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handleSelectDay = (dateStr: string) => {
     setSelectedDay(dateStr);
+    setCreatingEvent(false);
+    setEditingEvent(null);
+    setAddingParticipantEventId(null);
+    setParticipantResponses({});
+    setDeleteConfirmId(null);
   };
 
   const handlePrevMonth = () => {
@@ -885,86 +770,79 @@ export default function KioskReservations({ storeId }: Props) {
     }
   };
 
-  const [duplicatingEvent, setDuplicatingEvent] = useState<KioskEvent | null>(null);
-
-  const handleOpenCreateEvent = () => {
-    setEditingEvent(null);
-    setDuplicatingEvent(null);
-    setShowEventModal(true);
+  const handleCalendarEventClick = (ev: KioskEvent) => {
+    // Clicking an event in the calendar → scroll to the day section (just select the day)
+    const d = new Date(ev.starts_at);
+    const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+    const evDate = jst.toISOString().split('T')[0];
+    setSelectedDay(evDate);
   };
 
-  const handleOpenEditEvent = (ev: KioskEvent) => {
-    setEditingEvent(ev);
-    setDuplicatingEvent(null);
-    setShowEventModal(true);
+  const handleCalendarReservationClick = (dateStr: string) => {
+    setSelectedDay(dateStr);
   };
 
-  const handleDuplicateEvent = (ev: KioskEvent) => {
-    setEditingEvent(null);
-    setDuplicatingEvent(ev);
-    setShowEventModal(true);
-  };
+  const handleSaveEvent = async (data: {
+    title: string; startTime: string; endTime: string;
+    capacity: string; price: string; status: string;
+  }) => {
+    if (!selectedDay) return;
+    const title = data.title.trim();
+    if (!title) { showMsg('タイトルを入力してください', 'error'); return; }
+    if (!data.startTime || !data.endTime) { showMsg('開始時間・終了時間を入力してください', 'error'); return; }
 
-  const handleSaveEvent = async (form: EventFormState) => {
+    const starts_at = `${selectedDay}T${data.startTime}:00+09:00`;
+    const ends_at = `${selectedDay}T${data.endTime}:00+09:00`;
+
+    if (new Date(ends_at) <= new Date(starts_at)) {
+      showMsg('終了時間は開始時間より後にしてください', 'error');
+      return;
+    }
+
+    const cap = parseInt(data.capacity, 10);
+    if (isNaN(cap) || cap < 1) { showMsg('定員は1以上を入力してください', 'error'); return; }
+
+    const parsedPrice = data.price === '' ? null : Number(data.price);
+    if (parsedPrice != null && (!Number.isFinite(parsedPrice) || parsedPrice < 0 || !Number.isInteger(parsedPrice))) {
+      showMsg('参加費は0以上の整数で入力してください', 'error');
+      return;
+    }
+
+    // Default form schema: name + party_size
+    const defaultSchema: EventFormField[] = [
+      { key: 'name', label: '名前', type: 'text', required: true },
+      { key: 'party_size', label: '人数', type: 'number', required: true },
+    ];
+
     setEventFormSaving(true);
     try {
-      const title = form.title.trim();
-      if (!title) {
-        showMsg('タイトルを入力してください', 'error');
-        setEventFormSaving(false);
-        return;
-      }
-      const startsDate = new Date(form.starts_at);
-      const endsDate = new Date(form.ends_at);
-      if (isNaN(startsDate.getTime()) || isNaN(endsDate.getTime())) {
-        showMsg('開始日時・終了日時を正しく入力してください', 'error');
-        setEventFormSaving(false);
-        return;
-      }
-      if (endsDate <= startsDate) {
-        showMsg('終了日時は開始日時より後にしてください', 'error');
-        setEventFormSaving(false);
-        return;
-      }
-      const cap = parseInt(form.capacity, 10);
-      if (isNaN(cap) || cap < 1) {
-        showMsg('定員は1以上を入力してください', 'error');
-        setEventFormSaving(false);
-        return;
-      }
-      const parsedPrice = form.price === '' ? null : Number(form.price);
-      if (parsedPrice != null && (!Number.isFinite(parsedPrice) || parsedPrice < 0 || !Number.isInteger(parsedPrice))) {
-        showMsg('参加費は0以上の整数で入力してください', 'error');
-        setEventFormSaving(false);
-        return;
-      }
-      const normalizedSchema = normalizeEventFormSchemaForSave(form.form_schema);
-      if (normalizedSchema.error) {
-        showMsg(normalizedSchema.error, 'error');
-        setEventFormSaving(false);
-        return;
-      }
       const payload = {
         title,
-        description: form.description || null,
-        starts_at: startsDate.toISOString(),
-        ends_at: endsDate.toISOString(),
+        description: null,
+        starts_at,
+        ends_at,
         capacity: cap,
         price: parsedPrice,
-        status: form.status,
-        form_schema: normalizedSchema.schema,
+        status: data.status,
+        form_schema: editingEvent?.form_schema && editingEvent.form_schema.length > 0
+          ? editingEvent.form_schema
+          : defaultSchema,
       };
+
       if (editingEvent) {
         await kioskApi.updateEvent(storeId, editingEvent.id, payload);
+        showMsg('イベントを更新しました', 'success');
       } else {
         await kioskApi.createEvent(storeId, payload);
+        showMsg('イベントを作成しました', 'success');
       }
-      setShowEventModal(false);
+
+      setCreatingEvent(false);
       setEditingEvent(null);
-      setDuplicatingEvent(null);
-      loadEvents();
-      loadMonthly(calYear, calMonth);
-      showMsg(editingEvent ? 'イベントを更新しました' : duplicatingEvent ? 'イベントを複製しました' : 'イベントを作成しました', 'success');
+      await Promise.all([
+        loadEvents(),
+        loadMonthly(calYear, calMonth),
+      ]);
     } catch (e) {
       showMsg(e instanceof Error ? e.message : 'イベントの保存に失敗しました', 'error');
     } finally {
@@ -990,6 +868,7 @@ export default function KioskReservations({ storeId }: Props) {
       setEvents(prev => prev.filter(e => e.id !== eventId));
       setDeleteConfirmId(null);
       showMsg('イベントを削除しました', 'success');
+      loadMonthly(calYear, calMonth);
     } catch {
       showMsg('イベントの削除に失敗しました', 'error');
       setDeleteConfirmId(null);
@@ -998,21 +877,33 @@ export default function KioskReservations({ storeId }: Props) {
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
-  const sourceEvent = editingEvent || duplicatingEvent;
-  const initialFormForEdit = sourceEvent
-    ? {
-        title: duplicatingEvent ? `${sourceEvent.title}（コピー）` : sourceEvent.title,
-        description: sourceEvent.description || '',
-        starts_at: formatDateTimeLocal(sourceEvent.starts_at),
-        ends_at: formatDateTimeLocal(sourceEvent.ends_at),
-        capacity: String(sourceEvent.capacity),
-        price: sourceEvent.price != null ? String(sourceEvent.price) : '',
-        status: duplicatingEvent ? 'draft' : sourceEvent.status,
-        form_schema: sourceEvent.form_schema || [],
+  const handleBookParticipant = async (eventId: string) => {
+    setBookingEvent(true);
+    try {
+      await kioskApi.bookEvent(storeId, eventId, { responses: participantResponses });
+      setAddingParticipantEventId(null);
+      setParticipantResponses({});
+      showMsg('参加者を追加しました', 'success');
+      if (selectedDay) {
+        await loadDayReservations(selectedDay);
+        await loadMonthly(calYear, calMonth);
       }
-    : EMPTY_FORM;
+    } catch (e) {
+      showMsg(e instanceof Error ? e.message : '参加者の追加に失敗しました', 'error');
+    } finally {
+      setBookingEvent(false);
+    }
+  };
+
+  // ── Computed ──────────────────────────────────────────────────────────────
+
+  const dayEvents = selectedDay
+    ? events.filter(ev => eventMatchesDate(ev, selectedDay))
+    : [];
+
+  const nonEventReservations = reservations.filter(r => r.reservation_type !== 'event');
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div style={{ fontFamily: 'sans-serif', position: 'relative' }}>
@@ -1027,174 +918,104 @@ export default function KioskReservations({ storeId }: Props) {
           {msg.text}
         </div>
       )}
-      {/* Tab bar */}
-      <div style={s.tabBar}>
-        <button
-          style={{ ...s.tabBtn, ...(tab === 'calendar' ? s.tabBtnActive : {}) }}
-          onClick={() => setTab('calendar')}
-        >
-          カレンダー
-        </button>
-        <button
-          style={{ ...s.tabBtn, ...(tab === 'event-booking' ? s.tabBtnActive : {}) }}
-          onClick={() => setTab('event-booking')}
-        >
-          イベント予約
-        </button>
-        <button
-          style={{ ...s.tabBtn, ...(tab === 'events' ? s.tabBtnActive : {}) }}
-          onClick={() => setTab('events')}
-        >
-          イベント管理
-        </button>
-      </div>
 
-      {/* ── Calendar Tab ─────────────────────────────────────────────────── */}
-      {tab === 'calendar' && (
-        <div>
-          <CalendarGrid
-            year={calYear}
-            month={calMonth}
-            today={todayStr}
-            selectedDay={selectedDay}
-            dayData={monthlyData}
-            events={events}
-            onSelectDay={handleSelectDay}
-            onPrevMonth={handlePrevMonth}
-            onNextMonth={handleNextMonth}
-            onToday={handleToday}
-            onEventClick={handleCalendarEventClick}
-            onReservationClick={handleCalendarReservationClick}
-          />
-          {monthlyLoading && (
-            <div style={{ textAlign: 'center', color: '#999', fontSize: 12, marginBottom: 8 }}>カレンダー更新中...</div>
-          )}
-
-          {/* Day reservation list */}
-          {selectedDay && (
-            <div style={{ marginTop: 20 }}>
-              <div style={s.dayHeader}>
-                <span style={s.dayHeaderTitle}>{formatDateLabel(selectedDay)}</span>
-                {selectedDay === todayStr && <span style={s.todayBadge}>今日</span>}
-                {!resLoading && (
-                  <span style={s.countBadge}>{reservations.length}件</span>
-                )}
-              </div>
-
-              {resLoading && (
-                <div style={{ textAlign: 'center', color: '#999', padding: 32, fontSize: 14 }}>読み込み中...</div>
-              )}
-              {!resLoading && resError && (
-                <div style={{ textAlign: 'center', color: '#dc2626', padding: 20, fontSize: 13 }}>{resError}</div>
-              )}
-              {!resLoading && !resError && reservations.length === 0 && (
-                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '32px 0', fontSize: 14 }}>
-                  この日の予約はありません
-                </div>
-              )}
-              {!resLoading && !resError && reservations.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {reservations.map(r => {
-                    const isPast = new Date(r.ends_at) < nowDate;
-                    const isUpdating = updatingId === r.id;
-                    return (
-                      <div
-                        key={r.id}
-                        style={{
-                          background: isPast ? '#f8fafc' : '#fff',
-                          borderRadius: 10,
-                          padding: '14px 16px',
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-                          borderLeft: `4px solid ${STATUS_COLOR[r.status] || '#94a3b8'}`,
-                          opacity: isPast ? 0.65 : isUpdating ? 0.7 : 1,
-                          transition: 'opacity 0.15s',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                          {/* Time */}
-                          <div style={{ minWidth: 68, textAlign: 'center', paddingTop: 2 }}>
-                            <div style={{ fontSize: 18, fontWeight: 700, color: '#222' }}>
-                              {formatTime(r.starts_at)}
-                            </div>
-                            <div style={{ fontSize: 11, color: '#94a3b8' }}>
-                              〜{formatTime(r.ends_at)}
-                            </div>
-                          </div>
-
-                          {/* Info */}
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                              <span style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>
-                                {r.customer_name}
-                              </span>
-                              <span style={{ fontSize: 13, color: '#475569' }}>{r.party_size}名</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
-                              <StatusBadge status={r.status} />
-                              <span style={{ fontSize: 11, color: '#94a3b8' }}>
-                                {TYPE_LABEL[r.reservation_type] || r.reservation_type}
-                              </span>
-                              <span style={{ fontSize: 11, color: '#cbd5e1' }}>
-                                {r.confirmation_code}
-                              </span>
-                            </div>
-                            {r.notes && (
-                              <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {r.notes}
-                              </div>
-                            )}
-                            {r.customer_phone && (
-                              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                                {r.customer_phone}
-                              </div>
-                            )}
-                            <StatusActionButtons reservation={r} onUpdate={handleUpdateStatus} />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+      {/* ── Calendar ─────────────────────────────────────────────────────── */}
+      <CalendarGrid
+        year={calYear}
+        month={calMonth}
+        today={todayStr}
+        selectedDay={selectedDay}
+        dayData={monthlyData}
+        events={events}
+        onSelectDay={handleSelectDay}
+        onPrevMonth={handlePrevMonth}
+        onNextMonth={handleNextMonth}
+        onToday={handleToday}
+        onEventClick={handleCalendarEventClick}
+        onReservationClick={handleCalendarReservationClick}
+      />
+      {monthlyLoading && (
+        <div style={{ textAlign: 'center', color: '#999', fontSize: 12, marginBottom: 8 }}>
+          カレンダー更新中...
         </div>
       )}
 
-      {/* ── Event Booking Tab ────────────────────────────────────────────── */}
-      {tab === 'event-booking' && (
-        <KioskEventBooking storeId={storeId} />
-      )}
-
-      {/* ── Events Tab ───────────────────────────────────────────────────── */}
-      {tab === 'events' && (
-        <div>
-          <div style={s.eventListHeader}>
-            <span style={s.sectionTitle}>イベント一覧</span>
-            <button style={s.primaryBtn} onClick={handleOpenCreateEvent}>＋ 新規作成</button>
+      {/* ── Selected Day Section ─────────────────────────────────────────── */}
+      {selectedDay && (
+        <div style={{ marginTop: 20 }}>
+          {/* Day header */}
+          <div style={s.dayHeader}>
+            <span style={s.dayHeaderTitle}>{formatDateLabel(selectedDay)}</span>
+            {selectedDay === todayStr && <span style={s.todayBadge}>今日</span>}
+            <div style={{ flex: 1 }} />
+            <button
+              style={s.primaryBtn}
+              onClick={() => {
+                setCreatingEvent(true);
+                setEditingEvent(null);
+              }}
+              disabled={creatingEvent && !editingEvent}
+            >
+              ＋ イベント作成
+            </button>
           </div>
 
+          {/* Inline event create form */}
+          {creatingEvent && !editingEvent && (
+            <InlineEventForm
+              selectedDay={selectedDay}
+              saving={eventFormSaving}
+              onSave={handleSaveEvent}
+              onCancel={() => setCreatingEvent(false)}
+            />
+          )}
+
+          {/* Event cards for selected day */}
           {eventsLoading && (
-            <div style={{ textAlign: 'center', color: '#999', padding: 40, fontSize: 14 }}>読み込み中...</div>
-          )}
-          {!eventsLoading && eventsError && (
-            <div style={{ textAlign: 'center', color: '#dc2626', padding: 20, fontSize: 13 }}>{eventsError}</div>
-          )}
-          {!eventsLoading && !eventsError && events.length === 0 && (
-            <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px 0', fontSize: 14 }}>
-              イベントがありません。「新規作成」から追加してください。
+            <div style={{ textAlign: 'center', color: '#999', padding: 20, fontSize: 13 }}>
+              イベント読み込み中...
             </div>
           )}
-          {!eventsLoading && !eventsError && events.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {events.map(ev => (
-                <div
-                  key={ev.id}
-                  style={s.eventCard}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>{ev.title}</span>
+          {!eventsLoading && eventsError && (
+            <div style={{ textAlign: 'center', color: '#dc2626', padding: 12, fontSize: 13 }}>
+              {eventsError}
+            </div>
+          )}
+
+          {dayEvents.map(ev => {
+            const participants = reservations.filter(r => r.resource_ref === ev.id);
+            const isEditingThis = editingEvent?.id === ev.id;
+
+            return (
+              <div key={ev.id} style={s.eventCard}>
+                {/* Event edit form (inline) */}
+                {isEditingThis ? (
+                  <InlineEventForm
+                    selectedDay={selectedDay}
+                    initial={{
+                      title: ev.title,
+                      startTime: formatJstTime(ev.starts_at),
+                      endTime: formatJstTime(ev.ends_at),
+                      capacity: String(ev.capacity),
+                      price: ev.price != null ? String(ev.price) : '',
+                      status: ev.status,
+                    }}
+                    saving={eventFormSaving}
+                    onSave={handleSaveEvent}
+                    onCancel={() => { setEditingEvent(null); setCreatingEvent(false); }}
+                  />
+                ) : (
+                  <>
+                    {/* Event header row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{ev.title}</span>
+                      <span style={{ fontSize: 12, color: '#64748b' }}>
+                        {formatJstTime(ev.starts_at)}〜{formatJstTime(ev.ends_at)}
+                      </span>
+                      <span style={{ fontSize: 12, color: '#64748b' }}>定員{ev.capacity}名</span>
+                      {ev.price != null && (
+                        <span style={{ fontSize: 12, color: '#64748b' }}>{ev.price.toLocaleString()}円</span>
+                      )}
                       <span style={{
                         fontSize: 11, fontWeight: 600,
                         padding: '1px 7px', borderRadius: 4,
@@ -1204,83 +1025,211 @@ export default function KioskReservations({ storeId }: Props) {
                         {EVENT_STATUS_LABEL[ev.status] || ev.status}
                       </span>
                     </div>
-                    <div style={{ fontSize: 12, color: '#475569', marginBottom: 2 }}>
-                      {formatEventDateTime(ev.starts_at)} 〜 {formatEventDateTime(ev.ends_at)}
+
+                    {/* Event action buttons */}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                      <button
+                        style={s.editBtn}
+                        onClick={() => {
+                          setEditingEvent(ev);
+                          setCreatingEvent(false);
+                        }}
+                      >
+                        編集
+                      </button>
+                      <button
+                        style={{
+                          ...s.editBtn,
+                          background: ev.status === 'published' ? '#fef9c3' : '#dbeafe',
+                          color: ev.status === 'published' ? '#a16207' : '#2563eb',
+                          border: `1px solid ${ev.status === 'published' ? '#fde047' : '#93c5fd'}`,
+                        }}
+                        onClick={() => handleToggleEventStatus(ev)}
+                      >
+                        {ev.status === 'published' ? '下書きに戻す' : '公開する'}
+                      </button>
+                      {deleteConfirmId === ev.id ? (
+                        <>
+                          <button
+                            style={{ ...s.dangerBtn, fontSize: 11, padding: '5px 12px' }}
+                            onClick={() => handleDeleteEvent(ev.id)}
+                            disabled={deletingId === ev.id}
+                          >
+                            {deletingId === ev.id ? '削除中' : '削除確認'}
+                          </button>
+                          <button
+                            style={{ ...s.cancelBtn, fontSize: 11, padding: '5px 10px' }}
+                            onClick={() => setDeleteConfirmId(null)}
+                          >
+                            戻る
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          style={s.dangerBtnOutline}
+                          onClick={() => setDeleteConfirmId(ev.id)}
+                        >
+                          削除
+                        </button>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#64748b' }}>
-                      <span>定員: {ev.capacity}名</span>
-                      {ev.price != null && <span>参加費: {ev.price.toLocaleString()}円</span>}
-                    </div>
-                    {ev.description && (
-                      <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {ev.description}
+
+                    {/* Participants */}
+                    {participants.length > 0 && (
+                      <div style={{ marginBottom: 8 }}>
+                        {participants.map(r => {
+                          const isPast = new Date(r.ends_at) < nowDate;
+                          const isUpdating = updatingId === r.id;
+                          return (
+                            <div
+                              key={r.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: 10,
+                                padding: '10px 12px',
+                                marginBottom: 6,
+                                background: isPast ? '#f8fafc' : '#f0f4ff',
+                                borderRadius: 8,
+                                borderLeft: `3px solid ${STATUS_COLOR[r.status] || '#94a3b8'}`,
+                                opacity: isPast ? 0.65 : isUpdating ? 0.7 : 1,
+                              }}
+                            >
+                              <span style={{ fontSize: 13 }}>└</span>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+                                    {r.customer_name}
+                                  </span>
+                                  <span style={{ fontSize: 12, color: '#64748b' }}>{r.party_size}名</span>
+                                  <StatusBadge status={r.status} />
+                                </div>
+                                {r.notes && (
+                                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{r.notes}</div>
+                                )}
+                                <StatusActionButtons reservation={r} onUpdate={handleUpdateStatus} />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', marginLeft: 12 }}>
-                    <button
-                      style={s.editBtn}
-                      onClick={() => handleOpenEditEvent(ev)}
-                    >
-                      編集
-                    </button>
-                    <button
-                      style={{
-                        ...s.editBtn,
-                        background: ev.status === 'published' ? '#fef9c3' : '#dbeafe',
-                        color: ev.status === 'published' ? '#a16207' : '#2563eb',
-                        border: `1px solid ${ev.status === 'published' ? '#fde047' : '#93c5fd'}`,
-                      }}
-                      onClick={() => handleToggleEventStatus(ev)}
-                    >
-                      {ev.status === 'published' ? '下書きに戻す' : '公開する'}
-                    </button>
-                    <button
-                      style={{ ...s.editBtn, background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}
-                      onClick={() => handleDuplicateEvent(ev)}
-                    >
-                      複製
-                    </button>
-                    {deleteConfirmId === ev.id ? (
-                      <div style={{ display: 'flex', gap: 5 }}>
-                        <button
-                          style={{ ...s.dangerBtn, fontSize: 11 }}
-                          onClick={() => handleDeleteEvent(ev.id)}
-                          disabled={deletingId === ev.id}
-                        >
-                          {deletingId === ev.id ? '削除中' : '削除確認'}
-                        </button>
-                        <button
-                          style={{ ...s.cancelBtn, fontSize: 11, padding: '4px 8px' }}
-                          onClick={() => setDeleteConfirmId(null)}
-                        >
-                          戻る
-                        </button>
-                      </div>
+
+                    {/* Add participant */}
+                    {addingParticipantEventId === ev.id ? (
+                      <InlineParticipantForm
+                        event={ev}
+                        responses={participantResponses}
+                        booking={bookingEvent}
+                        onChangeResponse={(key, value) =>
+                          setParticipantResponses(prev => ({ ...prev, [key]: value }))
+                        }
+                        onSubmit={() => handleBookParticipant(ev.id)}
+                        onCancel={() => {
+                          setAddingParticipantEventId(null);
+                          setParticipantResponses({});
+                        }}
+                      />
                     ) : (
                       <button
-                        style={{ ...s.dangerBtnOutline }}
-                        onClick={() => setDeleteConfirmId(ev.id)}
+                        style={s.addParticipantBtn}
+                        onClick={() => {
+                          setAddingParticipantEventId(ev.id);
+                          setParticipantResponses({});
+                        }}
                       >
-                        削除
+                        ＋ 参加者追加
                       </button>
                     )}
-                  </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Non-event reservations */}
+          {(resLoading || resError || nonEventReservations.length > 0) && (
+            <div style={{ marginTop: dayEvents.length > 0 ? 16 : 0 }}>
+              {nonEventReservations.length > 0 && (
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#475569', marginBottom: 8 }}>
+                  その他の予約
                 </div>
-              ))}
+              )}
+              {resLoading && (
+                <div style={{ textAlign: 'center', color: '#999', padding: 24, fontSize: 14 }}>読み込み中...</div>
+              )}
+              {!resLoading && resError && (
+                <div style={{ textAlign: 'center', color: '#dc2626', padding: 16, fontSize: 13 }}>{resError}</div>
+              )}
+              {!resLoading && !resError && nonEventReservations.length === 0 && dayEvents.length === 0 && (
+                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '24px 0', fontSize: 14 }}>
+                  この日の予約はありません
+                </div>
+              )}
+              {!resLoading && !resError && nonEventReservations.map(r => {
+                const isPast = new Date(r.ends_at) < nowDate;
+                const isUpdating = updatingId === r.id;
+                return (
+                  <div
+                    key={r.id}
+                    style={{
+                      background: isPast ? '#f8fafc' : '#fff',
+                      borderRadius: 10,
+                      padding: '14px 16px',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                      borderLeft: `4px solid ${STATUS_COLOR[r.status] || '#94a3b8'}`,
+                      opacity: isPast ? 0.65 : isUpdating ? 0.7 : 1,
+                      transition: 'opacity 0.15s',
+                      marginBottom: 8,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      {/* Time */}
+                      <div style={{ minWidth: 68, textAlign: 'center', paddingTop: 2 }}>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: '#222' }}>
+                          {formatTime(r.starts_at)}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                          〜{formatTime(r.ends_at)}
+                        </div>
+                      </div>
+
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                          <span style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>
+                            {r.customer_name}
+                          </span>
+                          <span style={{ fontSize: 13, color: '#475569' }}>{r.party_size}名</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+                          <StatusBadge status={r.status} />
+                          <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                            {TYPE_LABEL[r.reservation_type] || r.reservation_type}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#cbd5e1' }}>
+                            {r.confirmation_code}
+                          </span>
+                        </div>
+                        {r.notes && (
+                          <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {r.notes}
+                          </div>
+                        )}
+                        {r.customer_phone && (
+                          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                            {r.customer_phone}
+                          </div>
+                        )}
+                        <StatusActionButtons reservation={r} onUpdate={handleUpdateStatus} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
-      )}
-
-      {/* ── Event Form Modal ─────────────────────────────────────────────── */}
-      {showEventModal && (
-        <EventFormModal
-          initial={initialFormForEdit}
-          onSave={handleSaveEvent}
-          onClose={() => { setShowEventModal(false); setEditingEvent(null); setDuplicatingEvent(null); }}
-          saving={eventFormSaving}
-        />
       )}
     </div>
   );
@@ -1289,30 +1238,6 @@ export default function KioskReservations({ storeId }: Props) {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s: Record<string, React.CSSProperties> = {
-  // Tabs
-  tabBar: {
-    display: 'flex',
-    gap: 0,
-    marginBottom: 20,
-    borderBottom: '2px solid #e8ecf4',
-  },
-  tabBtn: {
-    padding: '10px 20px',
-    fontSize: 14,
-    fontWeight: 600,
-    color: '#888',
-    background: 'none',
-    border: 'none',
-    borderBottom: '2px solid transparent',
-    cursor: 'pointer',
-    marginBottom: -2,
-    fontFamily: 'sans-serif',
-  },
-  tabBtnActive: {
-    color: '#4f8ef7',
-    borderBottom: '2px solid #4f8ef7',
-  },
-
   // Calendar
   calendarWrap: {
     background: '#fff',
@@ -1407,32 +1332,54 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 11,
     fontWeight: 600,
   },
-  countBadge: {
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: 600,
-  },
 
-  // Events tab
-  eventListHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: 700,
-    color: '#333',
-  },
+  // Event card
   eventCard: {
-    display: 'flex',
-    alignItems: 'flex-start',
     background: '#fff',
     borderRadius: 10,
     padding: '14px 16px',
     boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
     border: '1px solid #e8ecf4',
+    marginBottom: 10,
+  },
+
+  // Inline forms
+  inlineForm: {
+    background: '#f8fafc',
+    border: '1px solid #e8ecf4',
+    borderRadius: 10,
+    padding: '14px 16px',
+    marginBottom: 12,
+  },
+  participantForm: {
+    background: '#f0f4ff',
+    border: '1px dashed #c7d4f0',
+    borderRadius: 8,
+    padding: '12px 14px',
+    marginTop: 6,
+  },
+
+  // Form fields
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: '#555',
+    marginBottom: 3,
+  },
+  required: {
+    color: '#dc2626',
+  },
+  input: {
+    fontSize: 14,
+    padding: '8px 10px',
+    border: '1px solid #d0d7e2',
+    borderRadius: 7,
+    color: '#222',
+    background: '#fafbfc',
+    outline: 'none',
+    fontFamily: 'sans-serif',
+    width: '100%',
+    boxSizing: 'border-box',
   },
 
   // Buttons
@@ -1491,103 +1438,15 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontFamily: 'sans-serif',
   },
-  iconBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#888',
-    cursor: 'pointer',
-    fontSize: 18,
-    padding: '0 4px',
-    fontFamily: 'sans-serif',
-  },
-
-  // Modal
-  modalOverlay: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.4)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-  },
-  modalBox: {
-    background: '#fff',
-    borderRadius: 14,
-    padding: '24px',
-    width: '100%',
-    maxWidth: 480,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-    maxHeight: '90vh',
-    overflowY: 'auto',
-  },
-  modalHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 18,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: 700,
-    color: '#222',
-  },
-
-  // Form
-  formRow: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-  },
-  label: {
+  addParticipantBtn: {
+    background: '#f0fdf4',
+    color: '#16a34a',
+    border: '1px dashed #86efac',
+    borderRadius: 6,
+    padding: '6px 14px',
     fontSize: 12,
     fontWeight: 600,
-    color: '#555',
-  },
-  required: {
-    color: '#dc2626',
-  },
-  input: {
-    fontSize: 14,
-    padding: '8px 10px',
-    border: '1px solid #d0d7e2',
-    borderRadius: 7,
-    color: '#222',
-    background: '#fafbfc',
-    outline: 'none',
-    fontFamily: 'sans-serif',
-    width: '100%',
-    boxSizing: 'border-box',
-  },
-
-  // Form schema builder
-  schemaFieldCard: {
-    background: '#f8fafc',
-    border: '1px solid #e8ecf4',
-    borderRadius: 8,
-    padding: '10px 12px',
-    marginBottom: 8,
-  },
-  schemaRemoveBtn: {
-    background: 'none',
-    border: '1px solid #e0b0b0',
-    color: '#c0392b',
-    borderRadius: 5,
-    padding: '4px 8px',
     cursor: 'pointer',
-    fontSize: 12,
-    fontFamily: 'sans-serif',
-  },
-  schemaAddBtn: {
-    background: '#f0f4ff',
-    color: '#4f8ef7',
-    border: '1px dashed #c7d4f0',
-    borderRadius: 8,
-    padding: '8px 0',
-    width: '100%',
-    cursor: 'pointer',
-    fontSize: 13,
-    fontWeight: 600,
     fontFamily: 'sans-serif',
   },
 };
