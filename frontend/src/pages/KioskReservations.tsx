@@ -470,6 +470,7 @@ function InlineEventForm({ selectedDay, initial, saving, onSave, onCancel }: Inl
           <input
             style={s.input}
             type="time"
+            step="900"
             value={startTime}
             onChange={e => setStartTime(e.target.value)}
             required
@@ -480,6 +481,7 @@ function InlineEventForm({ selectedDay, initial, saving, onSave, onCancel }: Inl
           <input
             style={s.input}
             type="time"
+            step="900"
             value={endTime}
             onChange={e => setEndTime(e.target.value)}
             required
