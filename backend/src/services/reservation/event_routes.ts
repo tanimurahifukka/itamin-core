@@ -133,7 +133,117 @@ eventAdminRouter.delete(
   },
 );
 
-// 予約一覧
+// イベント単位の予約一覧
+eventAdminRouter.get(
+  '/:storeId/events/:eventId/reservations',
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const storeId = String(req.params.storeId);
+    const eventId = String(req.params.eventId);
+    const membership = await requireStoreMembership(req, res, storeId);
+    if (!membership) return;
+
+    const { data, error } = await supabaseAdmin
+      .from('reservations')
+      .select('*')
+      .eq('store_id', storeId)
+      .eq('reservation_type', 'event')
+      .eq('resource_ref', eventId)
+      .order('created_at', { ascending: true });
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.json({ reservations: data });
+  },
+);
+
+// 管理者によるイベント予約作成
+eventAdminRouter.post(
+  '/:storeId/events/:eventId/reservations',
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const storeId = String(req.params.storeId);
+    const eventId = String(req.params.eventId);
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const body = req.body as {
+      party_size?: number;
+      customer_name?: string;
+      customer_phone?: string;
+      customer_email?: string;
+      notes?: string;
+    };
+    if (!body.party_size || !body.customer_name) {
+      res.status(400).json({ error: 'party_size / customer_name は必須です' });
+      return;
+    }
+
+    const { data: event } = await supabaseAdmin
+      .from('reservation_events')
+      .select('*')
+      .eq('id', eventId)
+      .eq('store_id', storeId)
+      .maybeSingle();
+    if (!event) { res.status(404).json({ error: 'イベントが見つかりません' }); return; }
+    const ev = event as EventRow;
+
+    try {
+      const reservation = await createCapacityReservation({
+        storeId,
+        type: 'event',
+        source: 'admin',
+        resourceRef: ev.id,
+        capacity: ev.capacity,
+        startsAt: new Date(ev.starts_at),
+        endsAt: new Date(ev.ends_at),
+        partySize: body.party_size,
+        customerName: body.customer_name,
+        customerPhone: body.customer_phone || null,
+        customerEmail: body.customer_email || null,
+        notes: body.notes || null,
+        metadata: { event_id: ev.id, event_title: ev.title },
+        createdBy: req.user!.id,
+      });
+      res.status(201).json({ reservation });
+    } catch (err) {
+      const e = err as Error & { statusCode?: number };
+      res.status(e.statusCode || 500).json({ error: e.message });
+    }
+  },
+);
+
+// 予約ステータス更新
+eventAdminRouter.patch(
+  '/:storeId/reservations/:reservationId',
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const storeId = String(req.params.storeId);
+    const reservationId = String(req.params.reservationId);
+    const membership = await requireManagedStore(req, res, storeId);
+    if (!membership) return;
+
+    const body = req.body as Record<string, unknown>;
+    const patch: Record<string, unknown> = {};
+    for (const key of [
+      'status', 'party_size', 'customer_name', 'customer_phone',
+      'customer_email', 'notes', 'internal_notes',
+    ] as const) {
+      if (key in body) patch[key] = body[key];
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('reservations')
+      .update(patch)
+      .eq('id', reservationId)
+      .eq('store_id', storeId)
+      .eq('reservation_type', 'event')
+      .select('*')
+      .single();
+    if (error) { res.status(400).json({ error: error.message }); return; }
+    res.json({ reservation: data });
+  },
+);
+
+// 予約一覧 (全イベント)
 eventAdminRouter.get(
   '/:storeId/reservations',
   requireAuth,
