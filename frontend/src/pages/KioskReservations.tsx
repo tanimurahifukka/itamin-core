@@ -772,6 +772,14 @@ export default function KioskReservations({ storeId }: Props) {
     loadMonthly(calYear, calMonth);
   }, [calYear, calMonth, loadMonthly]);
 
+  // Reload calendar + day reservations when switching back to calendar tab
+  useEffect(() => {
+    if (tab === 'calendar') {
+      loadMonthly(calYear, calMonth);
+      if (selectedDay) loadDayReservations(selectedDay);
+    }
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (selectedDay) loadDayReservations(selectedDay);
   }, [selectedDay, loadDayReservations]);

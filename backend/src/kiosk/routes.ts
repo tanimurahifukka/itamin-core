@@ -769,8 +769,8 @@ router.get('/:storeId/reservations', requireKiosk, async (req: Request, res: Res
 
     // date パラメータ（省略時は今日）
     const dateParam = typeof req.query.date === 'string' ? req.query.date : new Date().toISOString().split('T')[0];
-    const dayStart = `${dateParam}T00:00:00`;
-    const dayEnd = `${dateParam}T23:59:59`;
+    const dayStart = `${dateParam}T00:00:00+09:00`;
+    const dayEnd = `${dateParam}T23:59:59+09:00`;
 
     const { data, error } = await supabaseAdmin
       .from('reservations')
@@ -808,9 +808,10 @@ router.get('/:storeId/reservations/monthly', requireKiosk, async (req: Request, 
       res.status(400).json({ error: 'year と month は必須です（整数）' }); return;
     }
 
-    const monthStart = `${yearParam}-${String(monthParam).padStart(2, '0')}-01T00:00:00`;
+    // JST (UTC+9): convert JST month boundaries to UTC for DB query
+    const monthStart = `${yearParam}-${String(monthParam).padStart(2, '0')}-01T00:00:00+09:00`;
     const lastDay = new Date(yearParam, monthParam, 0).getDate();
-    const monthEnd = `${yearParam}-${String(monthParam).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59`;
+    const monthEnd = `${yearParam}-${String(monthParam).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}T23:59:59+09:00`;
 
     const { data, error } = await supabaseAdmin
       .from('reservations')
@@ -832,9 +833,19 @@ router.get('/:storeId/reservations/monthly', requireKiosk, async (req: Request, 
 
     if (eventError) { res.status(500).json({ error: eventError.message }); return; }
 
+    // Helper: convert UTC timestamp to JST date key (YYYY-MM-DD) and time string (HH:mm)
+    const toJstDateAndTime = (isoStr: string): { dateKey: string; timeStr: string } => {
+      const d = new Date(isoStr);
+      // JST = UTC+9
+      const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+      const dateKey = jst.toISOString().split('T')[0];
+      const timeStr = `${String(jst.getUTCHours()).padStart(2, '0')}:${String(jst.getUTCMinutes()).padStart(2, '0')}`;
+      return { dateKey, timeStr };
+    };
+
     const days: Record<string, { count: number; types: string[]; items: { id: string; name: string; type: string; time: string; isEvent: boolean }[] }> = {};
     for (const row of (data || []) as any[]) {
-      const dateKey = (row.starts_at as string).split('T')[0];
+      const { dateKey, timeStr } = toJstDateAndTime(row.starts_at as string);
       if (!days[dateKey]) {
         days[dateKey] = { count: 0, types: [], items: [] };
       }
@@ -843,7 +854,6 @@ router.get('/:storeId/reservations/monthly', requireKiosk, async (req: Request, 
       if (rtype && !days[dateKey].types.includes(rtype)) {
         days[dateKey].types.push(rtype);
       }
-      const timeStr = new Date(row.starts_at as string).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
       days[dateKey].items.push({
         id: row.id as string,
         name: row.customer_name as string,
@@ -855,8 +865,7 @@ router.get('/:storeId/reservations/monthly', requireKiosk, async (req: Request, 
 
     const events: { id: string; title: string; date: string; time: string }[] = [];
     for (const ev of (eventData || []) as any[]) {
-      const dateKey = (ev.starts_at as string).split('T')[0];
-      const timeStr = new Date(ev.starts_at as string).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const { dateKey, timeStr } = toJstDateAndTime(ev.starts_at as string);
       events.push({ id: ev.id as string, title: ev.title as string, date: dateKey, time: timeStr });
 
       if (!days[dateKey]) {
