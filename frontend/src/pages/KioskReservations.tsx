@@ -911,6 +911,17 @@ export default function KioskReservations({ storeId }: Props) {
     }
   };
 
+  const handleToggleEventStatus = async (ev: KioskEvent) => {
+    const newStatus = ev.status === 'published' ? 'draft' : 'published';
+    try {
+      await kioskApi.updateEvent(storeId, ev.id, { status: newStatus });
+      setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, status: newStatus } : e));
+      showMsg(newStatus === 'published' ? 'イベントを公開しました' : 'イベントを下書きに戻しました', 'success');
+    } catch {
+      showMsg('ステータスの更新に失敗しました', 'error');
+    }
+  };
+
   const handleDeleteEvent = async (eventId: string) => {
     setDeletingId(eventId);
     try {
@@ -1151,6 +1162,17 @@ export default function KioskReservations({ storeId }: Props) {
                       onClick={() => handleOpenEditEvent(ev)}
                     >
                       編集
+                    </button>
+                    <button
+                      style={{
+                        ...s.editBtn,
+                        background: ev.status === 'published' ? '#fef9c3' : '#dbeafe',
+                        color: ev.status === 'published' ? '#a16207' : '#2563eb',
+                        border: `1px solid ${ev.status === 'published' ? '#fde047' : '#93c5fd'}`,
+                      }}
+                      onClick={() => handleToggleEventStatus(ev)}
+                    >
+                      {ev.status === 'published' ? '下書きに戻す' : '公開する'}
                     </button>
                     <button
                       style={{ ...s.editBtn, background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}
