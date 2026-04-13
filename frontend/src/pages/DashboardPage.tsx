@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
 import type { TimeRecord, MonthlySummaryStaff, StaffMember, MonthlyRecordsResponse, MonthlyRawStaffRecord } from '../types/api';
-import { todayJST } from '../lib/dateUtils';
+import { todayJST, formatDateJST, formatShortDateJST, formatTimeJST, currentJstYearMonth, isoToJstDateTimeLocalValue, jstDateTimeLocalValueToIso } from '../lib/dateUtils';
 
 type ViewMode = 'daily' | 'monthly' | 'staff';
 
@@ -50,7 +50,7 @@ export default function DashboardPage() {
   const [records, setRecords] = useState<TimeRecord[]>([]);
   const [date, setDate] = useState(todayJST());
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
-  const [monthlyData, setMonthlyData] = useState<MonthlyTimecardResponse | null>(null);
+  const [monthlyData, setMonthlyData] = useState<MonthlyData | null>(null);
   const [year, setYear] = useState(initialMonth.year);
   const [month, setMonth] = useState(initialMonth.month);
 
@@ -279,12 +279,12 @@ export default function DashboardPage() {
   const totalDailyCost = totalLaborCost + totalTransportFee;
 
   const handlePrevMonth = () => {
-    if (month === 1) { setYear(y => y - 1); setMonth(12); }
-    else setMonth(m => m - 1);
+    if (month === 1) { setYear((y: number) => y - 1); setMonth(12); }
+    else setMonth((m: number) => m - 1);
   };
   const handleNextMonth = () => {
-    if (month === 12) { setYear(y => y + 1); setMonth(1); }
-    else setMonth(m => m + 1);
+    if (month === 12) { setYear((y: number) => y + 1); setMonth(1); }
+    else setMonth((m: number) => m + 1);
   };
 
   return (
@@ -604,7 +604,7 @@ export default function DashboardPage() {
           {/* スタッフ別月間明細 */}
           {selectedStaff && monthlyData?.records ? (() => {
             const staffRecords = (monthlyData.records || [])
-              .filter((r: MonthlyTimeRecord) => r.staff_id === selectedStaff.staffId)
+              .filter((r: MonthlyRawStaffRecord) => r.staff_id === selectedStaff.staffId)
               .sort((a, b) => new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime());
 
             const staffSummary = monthlyData.summary?.find((s) => s.staffId === selectedStaff.staffId);
@@ -659,7 +659,7 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {staffRecords.map((r: MonthlyTimeRecord) => {
+                    {staffRecords.map((r: MonthlyRawStaffRecord) => {
                       const mapped: TimeRecord = {
                         id: r.id,
                         clockIn: r.clock_in,
