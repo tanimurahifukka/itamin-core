@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { kioskApi } from '../api/kioskClient';
+import { toDateStr, addDays } from '../lib/dateUtils';
 
 interface Reading {
   temperature: number | null;
@@ -12,16 +13,6 @@ interface DeviceData {
   deviceId: string;
   deviceName: string;
   readings: Reading[];
-}
-
-function toDateStr(d: Date): string {
-  return d.toISOString().split('T')[0];
-}
-
-function addDays(dateStr: string, n: number): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() + n);
-  return toDateStr(d);
 }
 
 function fmtTime(iso: string): string {

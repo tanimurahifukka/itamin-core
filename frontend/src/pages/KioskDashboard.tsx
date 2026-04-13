@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { kioskApi, clearKioskSession } from '../api/kioskClient';
+import { toDateStr, addDays } from '../lib/dateUtils';
 import KioskShiftManager from './KioskShiftManager';
 import KioskHaccp from './KioskHaccp';
 import KioskSwitchBotLog from './KioskSwitchBotLog';
@@ -19,16 +20,6 @@ interface Props {
   storeId: string;
   storeName: string;
   onLogout: () => void;
-}
-
-function toDateStr(d: Date) {
-  return d.toISOString().split('T')[0];
-}
-
-function addDays(dateStr: string, n: number) {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + n);
-  return toDateStr(d);
 }
 
 function formatTime(iso: string | null | undefined): string {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { kioskApi } from '../api/kioskClient';
 import TimePicker15 from '../components/TimePicker15';
+import { toDateStr, addDays } from '../lib/dateUtils';
 
 type ViewMode = 'week' | '15days' | 'month';
 
@@ -44,16 +45,6 @@ interface Props {
 }
 
 // ──────────────── 日付ユーティリティ ────────────────
-function toDateStr(d: Date) {
-  return d.toISOString().split('T')[0];
-}
-
-function addDays(dateStr: string, n: number) {
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() + n);
-  return toDateStr(d);
-}
-
 function getRangeStart(anchor: string, mode: ViewMode): string {
   if (mode === 'week') {
     const d = new Date(anchor + 'T00:00:00');

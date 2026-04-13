@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { kioskApi } from '../api/kioskClient';
+import { toDateStr } from '../lib/dateUtils';
 
 interface TemplateItem {
   id: string;
@@ -64,8 +65,6 @@ const TIMING_SHORT: Record<string, string> = {
 };
 
 const TIMINGS = ['store_opening', 'store_daily', 'store_closing', 'ad_hoc'] as const;
-
-function toDateStr(d: Date) { return d.toISOString().split('T')[0]; }
 
 // カレンダー用: 月の日付一覧を生成(週の先頭を日曜として前後の空白込み)
 function buildCalendarGrid(year: number, month: number): Array<string | null> {
