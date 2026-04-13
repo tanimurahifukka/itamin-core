@@ -17,6 +17,18 @@ import {
   staffBelongsToStore,
 } from '../auth/authorization';
 
+/** Row from shift_requests with joined staff/profile */
+interface ShiftRequestRow {
+  id: string;
+  staff_id: string;
+  date: string;
+  request_type: string;
+  start_time: string | null;
+  end_time: string | null;
+  note: string | null;
+  staff: { id: string; user: { name: string } | null } | null;
+}
+
 const router = Router();
 
 // 週間の希望取得
@@ -52,7 +64,7 @@ router.get('/:storeId/requests', requireAuth, async (req: Request, res: Response
       return;
     }
 
-    const requests = (data || []).map((r: any) => ({
+    const requests = ((data || []) as ShiftRequestRow[]).map((r: ShiftRequestRow) => ({
       id: r.id,
       staffId: r.staff_id,
       staffName: r.staff?.user?.name || '',

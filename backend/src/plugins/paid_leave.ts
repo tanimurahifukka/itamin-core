@@ -5,6 +5,15 @@ import type { Express } from 'express';
 import type { Plugin } from '../types';
 import { requireManagedStore, requireStoreMembership, staffBelongsToStore } from '../auth/authorization';
 
+/** Row from paid_leaves table */
+interface PaidLeaveRow {
+  id: string;
+  staff_id: string;
+  total_days: number;
+  used_days: number;
+  fiscal_year: number;
+}
+
 const router = Router();
 
 // ============================================================
@@ -39,7 +48,7 @@ router.get('/:storeId/summary', requireAuth, async (req: Request, res: Response)
     }
 
     // スタッフ名を取得
-    const staffIds = [...new Set((data || []).map((d: any) => d.staff_id))];
+    const staffIds = [...new Set(((data || []) as PaidLeaveRow[]).map((d: PaidLeaveRow) => d.staff_id))];
     const { data: members } = staffIds.length > 0
       ? await supabaseAdmin
           .from('store_staff')
