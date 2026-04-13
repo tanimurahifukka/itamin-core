@@ -13,6 +13,51 @@ import {
 
 const router = Router();
 
+/** store_staff row joined with profiles (name, picture) */
+interface StaffWithProfileRow {
+  id: string;
+  user_id: string;
+  role: string;
+  user: { name: string | null; picture: string | null } | null;
+}
+
+/** Mapped staff entry for admin today view */
+interface StaffListEntry {
+  userId: string;
+  staffId: string;
+  staffName: string;
+  staffPicture: string | null | undefined;
+  role: string;
+  currentStatus: string;
+  clockInAt: string | null;
+  clockOutAt: string | null;
+  breakMinutes: number;
+  shift: { startTime: string; endTime: string } | null;
+  sessions: ReturnType<typeof formatSession>[];
+  checklist: { clockIn: boolean; clockOut: boolean };
+}
+
+/** attendance_records row (from select *, with breaks relation) */
+interface AttendanceRecordRow {
+  id: string;
+  user_id: string;
+  business_date: string;
+  session_no: number;
+  status: string;
+  clock_in_at: string | null;
+  clock_out_at: string | null;
+  source?: string | null;
+  note?: string | null;
+  breaks?: { id: string; started_at: string; ended_at: string | null; reason?: string | null }[];
+}
+
+/** shifts row selected for today view */
+interface TodayShiftRow {
+  staff_id: string;
+  start_time: string;
+  end_time: string;
+}
+
 // ================================================================
 // スタッフ向け: 当日状態取得
 // ================================================================
@@ -556,13 +601,13 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
       .eq('store_id', storeId)
       .in('status', ['working', 'on_break']);
 
-    const openByUser = new Map<string, any>();
-    for (const s of openSessions || []) {
+    const openByUser = new Map<string, AttendanceRecordRow>();
+    for (const s of (openSessions || []) as AttendanceRecordRow[]) {
       openByUser.set(s.user_id, s);
     }
 
-    const recordByUser = new Map<string, any[]>();
-    for (const r of records || []) {
+    const recordByUser = new Map<string, AttendanceRecordRow[]>();
+    for (const r of (records || []) as AttendanceRecordRow[]) {
       const arr = recordByUser.get(r.user_id) || [];
       arr.push(r);
       recordByUser.set(r.user_id, arr);
@@ -576,8 +621,8 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
       .eq('date', businessDate)
       .eq('status', 'published');
 
-    const shiftByStaffId = new Map<string, any>();
-    for (const s of todayShifts || []) {
+    const shiftByStaffId = new Map<string, TodayShiftRow>();
+    for (const s of (todayShifts || []) as TodayShiftRow[]) {
       shiftByStaffId.set(s.staff_id, s);
     }
 
@@ -598,7 +643,7 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
       checkByStaffId.set(cr.staff_id, entry);
     }
 
-    let staffList = (allStaff || []).map((s: any) => {
+    let staffList: StaffListEntry[] = (allStaff || []).map((s: StaffWithProfileRow) => {
       const userRecords = recordByUser.get(s.user_id) || [];
       const openSession = openByUser.get(s.user_id);
       const shift = shiftByStaffId.get(s.id);
@@ -607,7 +652,7 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
       let currentStatus = 'not_clocked_in';
       if (openSession) {
         currentStatus = openSession.status;
-      } else if (userRecords.some((r: any) => r.status === 'completed')) {
+      } else if (userRecords.some((r: AttendanceRecordRow) => r.status === 'completed')) {
         currentStatus = 'completed';
       }
 
@@ -625,7 +670,7 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
         clockOutAt: latestRecord?.clock_out_at || null,
         breakMinutes,
         shift: shift ? { startTime: shift.start_time, endTime: shift.end_time } : null,
-        sessions: userRecords.map((r: any) => formatSession(r)),
+        sessions: userRecords.map((r: AttendanceRecordRow) => formatSession(r)),
         checklist: checkStatus,
       };
     });
@@ -633,12 +678,12 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
     // 名前検索
     if (q) {
       const lower = q.toLowerCase();
-      staffList = staffList.filter((s: any) => s.staffName.toLowerCase().includes(lower));
+      staffList = staffList.filter((s: StaffListEntry) => s.staffName.toLowerCase().includes(lower));
     }
 
     // ステータスフィルタ
     if (statusFilter) {
-      staffList = staffList.filter((s: any) => s.currentStatus === statusFilter);
+      staffList = staffList.filter((s: StaffListEntry) => s.currentStatus === statusFilter);
     }
 
     res.json({ businessDate, staff: staffList });

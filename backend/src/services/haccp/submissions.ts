@@ -183,9 +183,20 @@ export async function listKioskSubmissionsForDate(storeId: string, date: string)
 
 // ── service 関数 (router / kiosk / LINE 共通) ─────────────────────────────────
 
+/** A template enriched with its items */
+interface EnrichedTemplate extends TemplateFullRow {
+  items: TemplateItemFullRow[];
+}
+
+/** A merged item annotated with its parent template info */
+interface MergedItem extends TemplateItemFullRow {
+  template_name: string;
+  template_layer: string;
+}
+
 export interface ActiveChecklistResult {
-  templates: Array<any>;
-  merged_items: Array<any>;
+  templates: EnrichedTemplate[];
+  merged_items: MergedItem[];
 }
 
 /**
@@ -251,13 +262,13 @@ export async function listActiveChecklist(
 
   if (itemErr) throw new Error(itemErr.message);
 
-  const itemsByTemplate = (items || []).reduce((acc: any, item: any) => {
+  const itemsByTemplate = (items || []).reduce((acc: Record<string, TemplateItemFullRow[]>, item: TemplateItemFullRow) => {
     if (!acc[item.template_id]) acc[item.template_id] = [];
     acc[item.template_id].push(item);
     return acc;
-  }, {} as Record<string, any[]>);
+  }, {} as Record<string, TemplateItemFullRow[]>);
 
-  const enriched = (templates || []).map((t: any) => ({
+  const enriched = (templates || []).map((t: TemplateFullRow) => ({
     ...t,
     items: itemsByTemplate[t.id] || [],
   }));
@@ -267,8 +278,8 @@ export async function listActiveChecklist(
     return (order[a.layer] ?? 0) - (order[b.layer] ?? 0);
   });
 
-  const mergedItems = sorted.flatMap((t: any) =>
-    (t.items || []).map((item: any) => ({
+  const mergedItems = sorted.flatMap((t) =>
+    (t.items || []).map((item: TemplateItemFullRow) => ({
       ...item,
       template_id: t.id,
       template_name: t.name,
@@ -341,9 +352,23 @@ export async function createSubmission(input: SubmissionInput): Promise<any> {
     .eq('template_id', templateId)
     .order('sort_order', { ascending: true });
 
-  const itemMap = new Map((tplItems || []).map((i: any) => [i.id, i]));
+  const itemMap = new Map((tplItems || []).map((i: TemplateItemFullRow) => [i.id, i]));
 
-  const processedItems: any[] = [];
+  interface ProcessedItem {
+    item_key: string;
+    template_item_id: string | null;
+    bool_value: boolean | null;
+    numeric_value: number | null;
+    text_value: string | null;
+    select_value: string | null;
+    file_path: string | null;
+    checked_by: string | null;
+    checked_at: string | null;
+    passed: boolean | null;
+    tplItem: TemplateItemFullRow | undefined | null;
+  }
+
+  const processedItems: ProcessedItem[] = [];
   let allPassed = true;
   let hasDeviation = false;
 
@@ -375,7 +400,7 @@ export async function createSubmission(input: SubmissionInput): Promise<any> {
 
   const snapshot = {
     template: { id: tpl.id, name: tpl.name, version: tpl.version, timing: tpl.timing, scope: tpl.scope },
-    items: (tplItems || []).map((i: any) => ({
+    items: (tplItems || []).map((i: TemplateItemFullRow) => ({
       id: i.id, item_key: i.item_key, label: i.label, item_type: i.item_type,
       required: i.required, min_value: i.min_value, max_value: i.max_value,
       unit: i.unit, is_ccp: i.is_ccp,
@@ -407,7 +432,19 @@ export async function createSubmission(input: SubmissionInput): Promise<any> {
     throw new Error(subErr?.message || '提出に失敗しました');
   }
 
-  const deviationsToInsert: any[] = [];
+  interface DeviationInsert {
+    store_id: string;
+    submission_id: string;
+    template_item_id: string | null;
+    item_key: string;
+    severity: string;
+    status: string;
+    detected_value: string;
+    description: string | null;
+    measurement_id: string | null;
+  }
+
+  const deviationsToInsert: DeviationInsert[] = [];
 
   for (const pi of processedItems) {
     let measurementId: string | null = null;

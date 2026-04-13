@@ -169,7 +169,7 @@ router.get('/:storeId/staff', requireKiosk, async (req: Request, res: Response) 
       .is('clock_out', null);
 
     interface OpenTimeRecord { staff_id: string; id: string; clock_in: string }
-    const openMap = new Map((openRecords || []).map((r: OpenTimeRecord) => [r.staff_id, r]));
+    const openMap = new Map(((openRecords || []) as OpenTimeRecord[]).map((r) => [r.staff_id, r]));
 
     interface StaffRow { id: string; role: string; user: { id: string; name: string } | null }
     const staff = (data || []).map((s: StaffRow) => ({
@@ -673,11 +673,12 @@ router.get('/:storeId/haccp/submissions/monthly', requireKiosk, async (req: Requ
     }
     const days: Record<string, Record<string, TimingInfo>> = {};
 
-    for (const row of (data || []) as any[]) {
-      const dateKey = (row.submitted_at as string).split('T')[0];
+    interface SubmissionRow { id: string; timing: string; submitted_at: string; all_passed: boolean | null; has_deviation: boolean | null }
+    for (const row of (data || []) as SubmissionRow[]) {
+      const dateKey = row.submitted_at.split('T')[0];
       if (!days[dateKey]) days[dateKey] = {};
 
-      const timing = row.timing as string;
+      const timing = row.timing;
       const allPassed = row.all_passed === true && row.has_deviation !== true;
 
       if (!days[dateKey][timing]) {
@@ -824,13 +825,14 @@ router.get('/:storeId/reservations/monthly', requireKiosk, async (req: Request, 
     if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     const days: Record<string, { count: number; types: string[] }> = {};
-    for (const row of (data || []) as any[]) {
-      const dateKey = (row.starts_at as string).split('T')[0];
+    interface ReservationSummaryRow { id: string; starts_at: string; reservation_type: string }
+    for (const row of (data || []) as ReservationSummaryRow[]) {
+      const dateKey = row.starts_at.split('T')[0];
       if (!days[dateKey]) {
         days[dateKey] = { count: 0, types: [] };
       }
       days[dateKey].count += 1;
-      const rtype = row.reservation_type as string;
+      const rtype = row.reservation_type;
       if (rtype && !days[dateKey].types.includes(rtype)) {
         days[dateKey].types.push(rtype);
       }
@@ -927,7 +929,8 @@ router.patch('/:storeId/events/:eventId', requireKiosk, async (req: Request, res
     }
 
     const { title, description, starts_at, ends_at, capacity, price, status, form_schema } = req.body || {};
-    const updates: Record<string, any> = {};
+    interface EventUpdates { title?: string; description?: string | null; starts_at?: string; ends_at?: string; capacity?: number; price?: number | null; status?: string; form_schema?: Array<{ key: string; label: string; type: string; required?: boolean }> }
+    const updates: EventUpdates = {};
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
     if (starts_at !== undefined) updates.starts_at = starts_at;
@@ -1011,8 +1014,9 @@ router.get('/:storeId/events/available', requireKiosk, async (req: Request, res:
 
     if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
+    interface EventRow { id: string; title: string; description: string | null; starts_at: string; ends_at: string; capacity: number; price: number | null; image_url: string | null; form_schema: Array<{ key: string; label: string; type: string; required?: boolean }> | null; status: string; store_id: string; sort_order: number; created_at: string; updated_at: string }
     const events = await Promise.all(
-      (data || []).map(async (ev: any) => {
+      (data || []).map(async (ev: EventRow) => {
         const remaining = await getRemainingCapacity({
           storeId,
           resourceRef: ev.id,
@@ -1085,11 +1089,12 @@ router.post('/:storeId/events/:eventId/book', requireKiosk, async (req: Request,
     }
 
     // Derive customer_name from first text field, fallback to "ゲスト"
-    const firstTextField = schema.find((f: any) => f.type === 'text');
+    interface FormSchemaField { key: string; label: string; type: string; required?: boolean }
+    const firstTextField = schema.find((f: FormSchemaField) => f.type === 'text');
     const customerName = firstTextField ? String(responses[firstTextField.key] || 'ゲスト') : 'ゲスト';
 
     // Derive party_size from first number field, fallback to 1
-    const firstNumberField = schema.find((f: any) => f.type === 'number');
+    const firstNumberField = schema.find((f: FormSchemaField) => f.type === 'number');
     const partySize = firstNumberField ? Math.max(1, Number(responses[firstNumberField.key]) || 1) : 1;
 
     const reservation = await createCapacityReservation({
@@ -1137,7 +1142,8 @@ router.post('/:storeId/reservations/:reservationId/status', requireKiosk, async 
       res.status(400).json({ error: `status は ${allowedStatuses.join(', ')} のいずれかを指定してください` }); return;
     }
 
-    const updates: Record<string, any> = { status };
+    interface ReservationStatusUpdate { status: string; cancelled_at?: string }
+    const updates: ReservationStatusUpdate = { status };
     if (status === 'cancelled') {
       updates.cancelled_at = new Date().toISOString();
     }

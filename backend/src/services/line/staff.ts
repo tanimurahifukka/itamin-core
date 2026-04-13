@@ -225,7 +225,7 @@ router.post('/shift-requests', async (req: Request, res: Response) => {
       return;
     }
 
-    const requests = (data || []).map((r: any) => ({
+    const requests = (data || []).map((r: ShiftRequestRow) => ({
       id: r.id,
       date: r.date,
       requestType: r.request_type,
@@ -317,9 +317,9 @@ router.post('/history', async (req: Request, res: Response) => {
       return;
     }
 
-    const records = (data || []).map((r: any) => {
+    const records: AttendanceHistoryEntry[] = (data || []).map((r: AttendanceRecordRow) => {
       const breaks = r.breaks || [];
-      const breakMinutes = breaks.reduce((sum: number, b: any) => {
+      const breakMinutes = breaks.reduce((sum: number, b: AttendanceBreakRow) => {
         if (!b.started_at || !b.ended_at) return sum;
         return sum + Math.round((new Date(b.ended_at).getTime() - new Date(b.started_at).getTime()) / 60000);
       }, 0);
@@ -335,8 +335,8 @@ router.post('/history', async (req: Request, res: Response) => {
     });
 
     // サマリー
-    const completed = records.filter((r: any) => r.status === 'completed');
-    const totalMinutes = completed.reduce((sum: number, r: any) => {
+    const completed = records.filter((r: AttendanceHistoryEntry) => r.status === 'completed');
+    const totalMinutes = completed.reduce((sum: number, r: AttendanceHistoryEntry) => {
       if (!r.clockInAt || !r.clockOutAt) return sum;
       const worked = Math.round((new Date(r.clockOutAt).getTime() - new Date(r.clockInAt).getTime()) / 60000);
       return sum + worked - (r.breakMinutes || 0);
@@ -511,7 +511,7 @@ router.post('/notices', async (req: Request, res: Response) => {
     }
 
     // 既読情報
-    const noticeIds = (data || []).map((n: any) => n.id);
+    const noticeIds = (data || []).map((n: NoticeRow) => n.id);
     const { data: reads } = noticeIds.length > 0
       ? await supabaseAdmin
           .from('notice_reads')
@@ -520,9 +520,9 @@ router.post('/notices', async (req: Request, res: Response) => {
           .in('notice_id', noticeIds)
       : { data: [] };
 
-    const readMap = new Map((reads || []).map((r: any) => [r.notice_id, r.read_at]));
+    const readMap = new Map((reads || []).map((r: NoticeReadRow) => [r.notice_id, r.read_at]));
 
-    const notices = (data || []).map((n: any) => ({
+    const notices = (data || []).map((n: NoticeRow) => ({
       id: n.id,
       title: n.title,
       body: n.body,

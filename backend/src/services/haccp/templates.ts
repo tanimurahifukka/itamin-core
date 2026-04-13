@@ -19,6 +19,50 @@ import {
   isValidLayer,
 } from './helpers';
 
+// ── Row types for Supabase query results ─────────────────────────────────────
+
+/** checklist_system_templates: full row via select('*') */
+interface SystemTemplateRow {
+  id: string;
+  business_type: string;
+  name: string;
+  timing: string;
+  scope: string;
+  layer: string;
+  description: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** checklist_system_template_items: full row via select('*') */
+interface SystemTemplateItemRow {
+  id: string;
+  system_template_id: string;
+  item_key: string;
+  label: string;
+  item_type: string;
+  required: boolean;
+  min_value: number | null;
+  max_value: number | null;
+  unit: string | null;
+  options: Record<string, unknown>;
+  is_ccp: boolean;
+  tracking_mode: string;
+  frequency_per_day: number | null;
+  frequency_interval_minutes: number | null;
+  deviation_action: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** checklist_templates: system_template_id only (existing provisioned check) */
+interface ExistingProvisionRow {
+  system_template_id: string | null;
+}
+
 export const templatesRouter = Router();
 
 // ── プロビジョニング ───────────────────────────────────────────────────────────
@@ -57,7 +101,7 @@ export async function provisionSystemTemplates(
   }
 
   // 2. Fetch system template items in one batch
-  const sysTemplateIds = systemTemplates.map((t: any) => t.id);
+  const sysTemplateIds = systemTemplates.map((t: SystemTemplateRow) => t.id);
   const { data: systemItems, error: siErr } = await supabaseAdmin
     .from('checklist_system_template_items')
     .select('*')
@@ -68,8 +112,8 @@ export async function provisionSystemTemplates(
     throw new Error(`Failed to fetch system template items: ${siErr.message}`);
   }
 
-  const itemsBySystemTemplate = ((systemItems || []) as any[]).reduce(
-    (acc: Record<string, any[]>, item: any) => {
+  const itemsBySystemTemplate = ((systemItems || []) as SystemTemplateItemRow[]).reduce(
+    (acc: Record<string, SystemTemplateItemRow[]>, item) => {
       if (!acc[item.system_template_id]) acc[item.system_template_id] = [];
       acc[item.system_template_id].push(item);
       return acc;
@@ -89,14 +133,14 @@ export async function provisionSystemTemplates(
   }
 
   const alreadyProvisioned = new Set(
-    ((existing || []) as any[])
-      .map((t: any) => t.system_template_id)
+    ((existing || []) as ExistingProvisionRow[])
+      .map(t => t.system_template_id)
       .filter(Boolean),
   );
 
   // 4. Insert missing templates and their items
   let created = 0;
-  for (const sys of systemTemplates as any[]) {
+  for (const sys of systemTemplates as SystemTemplateRow[]) {
     if (alreadyProvisioned.has(sys.id)) continue;
 
     const { data: tpl, error: tplErr } = await supabaseAdmin
@@ -120,10 +164,10 @@ export async function provisionSystemTemplates(
       throw new Error(`Failed to create template for system_template_id ${sys.id}: ${tplErr?.message}`);
     }
 
-    const tplId = (tpl as any).id;
-    const sysItems: any[] = itemsBySystemTemplate[sys.id] || [];
+    const tplId = tpl.id;
+    const sysItems: SystemTemplateItemRow[] = itemsBySystemTemplate[sys.id] || [];
     if (sysItems.length > 0) {
-      const itemsToInsert = sysItems.map((si: any) => ({
+      const itemsToInsert = sysItems.map((si) => ({
         store_id: storeId,
         template_id: tplId,
         item_key: si.item_key,
@@ -183,7 +227,7 @@ templatesRouter.get('/system-templates', requireAuth, async (req: Request, res: 
       return;
     }
 
-    const tplIds = templates.map((t: any) => t.id);
+    const tplIds = templates.map((t: SystemTemplateRow) => t.id);
     const { data: items, error: itemErr } = await supabaseAdmin
       .from('checklist_system_template_items')
       .select('*')
@@ -195,13 +239,13 @@ templatesRouter.get('/system-templates', requireAuth, async (req: Request, res: 
       return;
     }
 
-    const itemsByTemplate = (items || []).reduce((acc: any, item: any) => {
+    const itemsByTemplate = (items || []).reduce((acc: Record<string, SystemTemplateItemRow[]>, item: SystemTemplateItemRow) => {
       if (!acc[item.system_template_id]) acc[item.system_template_id] = [];
       acc[item.system_template_id].push(item);
       return acc;
-    }, {} as Record<string, any[]>);
+    }, {} as Record<string, SystemTemplateItemRow[]>);
 
-    const result = templates.map((t: any) => ({
+    const result = templates.map((t: SystemTemplateRow) => ({
       ...t,
       items: itemsByTemplate[t.id] || [],
     }));
@@ -330,7 +374,7 @@ templatesRouter.post('/:storeId/templates/from-system', requireAuth, async (req:
     }
 
     if (sysItems && sysItems.length > 0) {
-      const itemsToInsert = sysItems.map((si: any) => ({
+      const itemsToInsert = sysItems.map((si: SystemTemplateItemRow) => ({
         store_id: storeId,
         template_id: tpl.id,
         item_key: si.item_key,
@@ -750,7 +794,7 @@ templatesRouter.put('/:storeId/assignments', requireAuth, async (req: Request, r
       return;
     }
 
-    const toInsert = mappings.map((m: any) => ({
+    const toInsert = mappings.map((m: { timing: string; scope: string; shift_type?: string | null; template_id: string }) => ({
       store_id: storeId,
       timing: m.timing,
       scope: m.scope,
