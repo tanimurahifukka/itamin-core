@@ -712,7 +712,7 @@ export default function KioskReservations({ storeId }: Props) {
   const handleSaveEvent = async (form: EventFormState) => {
     setEventFormSaving(true);
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         title: form.title,
         description: form.description || null,
         starts_at: new Date(form.starts_at).toISOString(),
@@ -720,8 +720,10 @@ export default function KioskReservations({ storeId }: Props) {
         capacity: parseInt(form.capacity, 10),
         price: form.price ? parseFloat(form.price) : null,
         status: form.status,
-        form_schema: form.form_schema,
       };
+      if (form.form_schema.length > 0) {
+        payload.form_schema = form.form_schema;
+      }
       if (editingEvent) {
         await kioskApi.updateEvent(storeId, editingEvent.id, payload);
       } else {

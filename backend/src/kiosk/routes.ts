@@ -884,20 +884,22 @@ router.post('/:storeId/events', requireKiosk, async (req: Request, res: Response
       }
     }
 
+    const insertPayload: Record<string, unknown> = {
+      store_id: storeId,
+      title,
+      description: description ?? null,
+      starts_at,
+      ends_at,
+      capacity,
+      price: price ?? null,
+      status: status ?? 'published',
+      sort_order: 0,
+    };
+    if (schema.length > 0) insertPayload.form_schema = schema;
+
     const { data, error } = await supabaseAdmin
       .from('reservation_events')
-      .insert({
-        store_id: storeId,
-        title,
-        description: description ?? null,
-        starts_at,
-        ends_at,
-        capacity,
-        price: price ?? null,
-        status: status ?? 'published',
-        sort_order: 0,
-        form_schema: schema,
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
@@ -930,13 +932,13 @@ router.patch('/:storeId/events/:eventId', requireKiosk, async (req: Request, res
     if (price !== undefined) updates.price = price;
     if (status !== undefined) updates.status = status;
     if (form_schema !== undefined) {
-      const schema = Array.isArray(form_schema) ? form_schema : [];
-      for (const f of schema) {
+      const patchSchema = Array.isArray(form_schema) ? form_schema : [];
+      for (const f of patchSchema) {
         if (!f.key || !f.label || !f.type) {
           res.status(400).json({ error: 'form_schema の各フィールドには key, label, type が必要です' }); return;
         }
       }
-      updates.form_schema = schema;
+      updates.form_schema = patchSchema;
     }
 
     if (Object.keys(updates).length === 0) {
