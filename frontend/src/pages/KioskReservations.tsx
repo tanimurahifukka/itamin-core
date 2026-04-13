@@ -595,6 +595,7 @@ export default function KioskReservations({ storeId }: Props) {
   const [eventFormSaving, setEventFormSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [calendarNewEventDay, setCalendarNewEventDay] = useState<string | null>(null);
 
   // Toast message
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -701,6 +702,7 @@ export default function KioskReservations({ storeId }: Props) {
 
   const handleOpenCreateEvent = () => {
     setEditingEvent(null);
+    setCalendarNewEventDay(null);
     setShowEventModal(true);
   };
 
@@ -731,7 +733,10 @@ export default function KioskReservations({ storeId }: Props) {
       }
       setShowEventModal(false);
       setEditingEvent(null);
+      setCalendarNewEventDay(null);
       loadEvents();
+      loadMonthly(calYear, calMonth);
+      if (selectedDay) loadDayReservations(selectedDay);
       showMsg(editingEvent ? 'イベントを更新しました' : 'イベントを作成しました', 'success');
     } catch {
       showMsg('イベントの保存に失敗しました', 'error');
@@ -768,7 +773,13 @@ export default function KioskReservations({ storeId }: Props) {
         status: editingEvent.status,
         form_schema: editingEvent.form_schema || [],
       }
-    : EMPTY_FORM;
+    : calendarNewEventDay
+      ? {
+          ...EMPTY_FORM,
+          starts_at: `${calendarNewEventDay}T18:00`,
+          ends_at: `${calendarNewEventDay}T21:00`,
+        }
+      : EMPTY_FORM;
 
   return (
     <div style={{ fontFamily: 'sans-serif', position: 'relative' }}>
@@ -832,6 +843,19 @@ export default function KioskReservations({ storeId }: Props) {
                 {!resLoading && (
                   <span style={s.countBadge}>{reservations.length}件</span>
                 )}
+                <div style={{ flex: 1 }} />
+                <button
+                  style={s.primaryBtn}
+                  onClick={() => {
+                    setEditingEvent(null);
+                    const day = selectedDay!;
+                    setShowEventModal(true);
+                    // Pre-fill starts_at/ends_at with the selected day
+                    setCalendarNewEventDay(day);
+                  }}
+                >
+                  ＋ イベント作成
+                </button>
               </div>
 
               {resLoading && (
@@ -1014,7 +1038,7 @@ export default function KioskReservations({ storeId }: Props) {
         <EventFormModal
           initial={initialFormForEdit}
           onSave={handleSaveEvent}
-          onClose={() => { setShowEventModal(false); setEditingEvent(null); }}
+          onClose={() => { setShowEventModal(false); setEditingEvent(null); setCalendarNewEventDay(null); }}
           saving={eventFormSaving}
         />
       )}
