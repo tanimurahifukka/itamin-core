@@ -199,7 +199,11 @@ export const kioskApi = {
     method: 'POST', body: JSON.stringify(data),
   }),
 
-  updateEvent: (storeId: string, eventId: string, patch: Record<string, unknown>) =>
+  updateEvent: (storeId: string, eventId: string, patch: {
+    title?: string; description?: string | null; starts_at?: string; ends_at?: string;
+    capacity?: number; price?: number | null; status?: string;
+    form_schema?: EventFormField[];
+  }) =>
     kioskRequest<{ event: Record<string, unknown> }>(`/kiosk/${storeId}/events/${eventId}`, {
       method: 'PATCH', body: JSON.stringify(patch),
     }),
