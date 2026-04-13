@@ -843,8 +843,26 @@ router.get('/:storeId/reservations/monthly', requireKiosk, async (req: Request, 
       return { dateKey, timeStr };
     };
 
-    const days: Record<string, { count: number; types: string[]; items: { id: string; name: string; type: string; time: string; isEvent: boolean }[] }> = {};
+    type DayItem = { id: string; name: string; type: string; time: string; isEvent: boolean; children?: { id: string; name: string }[] };
+    const days: Record<string, { count: number; types: string[]; items: DayItem[] }> = {};
+
+    // Collect event reservations grouped by resource_ref (event ID)
+    const eventReservations: Record<string, { id: string; name: string }[]> = {};
+    const nonEventReservations: any[] = [];
+
     for (const row of (data || []) as any[]) {
+      const rtype = row.reservation_type as string;
+      if (rtype === 'event' && row.resource_ref) {
+        const ref = row.resource_ref as string;
+        if (!eventReservations[ref]) eventReservations[ref] = [];
+        eventReservations[ref].push({ id: row.id as string, name: row.customer_name as string });
+      } else {
+        nonEventReservations.push(row);
+      }
+    }
+
+    // Add non-event reservations as flat items
+    for (const row of nonEventReservations) {
       const { dateKey, timeStr } = toJstDateAndTime(row.starts_at as string);
       if (!days[dateKey]) {
         days[dateKey] = { count: 0, types: [], items: [] };
@@ -863,10 +881,12 @@ router.get('/:storeId/reservations/monthly', requireKiosk, async (req: Request, 
       });
     }
 
+    // Add events with nested reservation children
     const events: { id: string; title: string; date: string; time: string }[] = [];
     for (const ev of (eventData || []) as any[]) {
       const { dateKey, timeStr } = toJstDateAndTime(ev.starts_at as string);
-      events.push({ id: ev.id as string, title: ev.title as string, date: dateKey, time: timeStr });
+      const evId = ev.id as string;
+      events.push({ id: evId, title: ev.title as string, date: dateKey, time: timeStr });
 
       if (!days[dateKey]) {
         days[dateKey] = { count: 0, types: [], items: [] };
@@ -874,12 +894,15 @@ router.get('/:storeId/reservations/monthly', requireKiosk, async (req: Request, 
       if (!days[dateKey].types.includes('event')) {
         days[dateKey].types.push('event');
       }
+      const children = eventReservations[evId] || [];
+      days[dateKey].count += children.length;
       days[dateKey].items.push({
-        id: ev.id as string,
+        id: evId,
         name: ev.title as string,
         type: 'event',
         time: timeStr,
         isEvent: true,
+        children,
       });
     }
 

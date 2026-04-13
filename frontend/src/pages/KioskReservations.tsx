@@ -45,6 +45,7 @@ interface DayItem {
   type: string;
   time: string;
   isEvent?: boolean;
+  children?: { id: string; name: string }[];
 }
 
 interface DayData {
@@ -345,8 +346,25 @@ function CalendarGrid({
           const weekday = (idx % 7);
 
           const items = data?.items || [];
-          const visibleItems = items.slice(0, 3);
-          const extraCount = items.length - visibleItems.length;
+          // Count total visible rows (event + its children count as 1 + N)
+          let visibleRows = 0;
+          const maxRows = 3;
+          const visibleItems: DayItem[] = [];
+          let totalRows = 0;
+          for (const item of items) {
+            const childCount = item.children?.length || 0;
+            const rowsNeeded = 1 + childCount;
+            totalRows += rowsNeeded;
+            if (visibleRows + rowsNeeded <= maxRows) {
+              visibleItems.push(item);
+              visibleRows += rowsNeeded;
+            } else if (visibleRows < maxRows) {
+              // Partially show: event title only, truncate children
+              visibleItems.push({ ...item, children: item.children?.slice(0, maxRows - visibleRows - 1) });
+              visibleRows = maxRows;
+            }
+          }
+          const extraCount = totalRows - visibleRows;
 
           return (
             <div
@@ -387,38 +405,71 @@ function CalendarGrid({
                 const bgColor = isSelected ? 'rgba(255,255,255,0.18)' : `${dotColor}18`;
                 const textColor = isSelected ? '#fff' : dotColor;
                 return (
-                  <div
-                    key={item.id}
-                    onClick={e => {
-                      e.stopPropagation();
-                      if (item.isEvent) {
-                        const ev = events.find(ev => ev.id === item.id);
-                        if (ev) onEventClick(ev);
-                      } else {
-                        onReservationClick(dateStr, item.id);
-                      }
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      fontSize: 10,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      maxWidth: '100%',
-                      borderRadius: 3,
-                      padding: '1px 3px',
-                      marginBottom: 1,
-                      background: bgColor,
-                      color: textColor,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <span style={{ flexShrink: 0, fontSize: 8 }}>●</span>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.time} {item.name}
-                    </span>
+                  <div key={item.id}>
+                    {/* Parent item row */}
+                    <div
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (item.isEvent) {
+                          const ev = events.find(ev => ev.id === item.id);
+                          if (ev) onEventClick(ev);
+                        } else {
+                          onReservationClick(dateStr, item.id);
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        fontSize: 10,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        maxWidth: '100%',
+                        borderRadius: 3,
+                        padding: '1px 3px',
+                        marginBottom: 0,
+                        background: bgColor,
+                        color: textColor,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{ flexShrink: 0, fontSize: 8 }}>●</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.time} {item.name}
+                      </span>
+                    </div>
+                    {/* Nested children (event reservations) */}
+                    {item.children && item.children.length > 0 && item.children.map(child => (
+                      <div
+                        key={child.id}
+                        onClick={e => {
+                          e.stopPropagation();
+                          onReservationClick(dateStr, child.id);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 2,
+                          fontSize: 9,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          maxWidth: '100%',
+                          borderRadius: 2,
+                          padding: '0px 3px 0px 10px',
+                          marginBottom: 0,
+                          background: isSelected ? 'rgba(255,255,255,0.10)' : `${dotColor}0a`,
+                          color: isSelected ? 'rgba(255,255,255,0.85)' : '#64748b',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span style={{ flexShrink: 0, fontSize: 7 }}>└</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {child.name}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 );
               })}
