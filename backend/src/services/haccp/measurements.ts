@@ -11,6 +11,13 @@ import { supabaseAdmin } from '../../config/supabase';
 import { requireStoreMembership } from '../../auth/authorization';
 import { calcPassed } from './helpers';
 
+/** Row from checklist_measurements for daily summary */
+interface MeasurementSummaryRow {
+  numeric_value: number | null;
+  passed: boolean | null;
+  item_key: string;
+}
+
 export const measurementsRouter = Router();
 
 // GET /api/haccp/:storeId/measurements/daily-summary?date=&item_key=
@@ -35,9 +42,9 @@ measurementsRouter.get('/:storeId/measurements/daily-summary', requireAuth, asyn
     const { data, error } = await query;
     if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
-    const rows = data || [];
-    const numericRows = rows.filter((r: any) => r.numeric_value != null);
-    const numericValues = numericRows.map((r: any) => Number(r.numeric_value));
+    const rows = (data || []) as MeasurementSummaryRow[];
+    const numericRows = rows.filter((r: MeasurementSummaryRow) => r.numeric_value != null);
+    const numericValues = numericRows.map((r: MeasurementSummaryRow) => Number(r.numeric_value));
 
     const summary = {
       date,
@@ -47,7 +54,7 @@ measurementsRouter.get('/:storeId/measurements/daily-summary', requireAuth, asyn
       min: numericValues.length ? Math.min(...numericValues) : null,
       max: numericValues.length ? Math.max(...numericValues) : null,
       avg: numericValues.length ? numericValues.reduce((a, b) => a + b, 0) / numericValues.length : null,
-      deviation_count: rows.filter((r: any) => r.passed === false).length,
+      deviation_count: rows.filter((r: MeasurementSummaryRow) => r.passed === false).length,
     };
 
     res.json({ summary });

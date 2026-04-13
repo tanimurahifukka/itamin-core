@@ -59,6 +59,32 @@ interface AttendanceHistoryEntry {
   breakMinutes: number;
 }
 
+/** Merged checklist item from listActiveChecklist (TemplateItemFullRow + template info) */
+interface ChecklistMergedItem {
+  id: string;
+  item_key: string;
+  label: string;
+  template_id: string;
+  template_name: string;
+  item_type: string;
+  required: boolean;
+  min_value: number | null;
+  max_value: number | null;
+  unit: string | null;
+  is_ccp: boolean;
+}
+
+/** Checklist result entry from LINE bot submission */
+interface ChecklistResultEntry {
+  template_item_id?: string | null;
+  item_key?: string;
+  checked?: boolean;
+  bool_value?: boolean | null;
+  numeric_value?: number | null;
+  text_value?: string | null;
+  select_value?: string | null;
+}
+
 /** notices table row */
 interface NoticeRow {
   id: string;
@@ -375,7 +401,7 @@ router.post('/checklist', async (req: Request, res: Response) => {
 
     const active = await listActiveChecklist(auth.storeId, timing, 'personal', null);
 
-    const items = active.merged_items.map((mi: any) => ({
+    const items = active.merged_items.map((mi: ChecklistMergedItem) => ({
       template_item_id: mi.id,
       item_key: mi.item_key,
       label: mi.label,
@@ -461,7 +487,7 @@ router.post('/checklist/submit', async (req: Request, res: Response) => {
         timing,
         templateId: resolvedTemplateId,
         membershipId: auth.staffId,
-        items: results.map((r: any) => ({
+        items: results.map((r: ChecklistResultEntry) => ({
           template_item_id: r.template_item_id ?? null,
           item_key: r.item_key,
           bool_value: typeof r.checked === 'boolean' ? r.checked : (r.bool_value ?? null),

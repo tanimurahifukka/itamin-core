@@ -244,7 +244,7 @@ router.post('/:storeId/reports', requireAuth, async (req: Request, res: Response
         }
 
         interface MenuRow { id: string; name: string; price: number; is_active: boolean; store_id: string }
-        const menuMap = new Map((menuRows || []).map((item: MenuRow) => [item.id, item]));
+        const menuMap = new Map<string, MenuRow>((menuRows || []).map((item: MenuRow) => [item.id, item]));
         const invalidItem = items.find(item => {
           const menu = menuMap.get(item.menuItemId);
           return !menu || menu.store_id !== storeId;

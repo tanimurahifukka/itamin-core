@@ -4,6 +4,19 @@ import { requireAuth } from '../../middleware/auth';
 import { checkOrgLimits } from '../../lib/billing';
 import { requireOrgManager } from '../../auth/authorization';
 
+/** Row from organization_members with joined organization */
+interface OrgMembershipRow {
+  role: string;
+  organizations: {
+    id: string;
+    name: string;
+    slug: string;
+    parent_id: string | null;
+    org_type: string;
+    created_at: string;
+  };
+}
+
 export const organizationsRouter = Router();
 
 organizationsRouter.use(requireAuth);
@@ -21,7 +34,7 @@ organizationsRouter.get('/', async (req: Request, res: Response) => {
     return;
   }
 
-  const organizations = (data || []).map((row: any) => ({
+  const organizations = ((data || []) as OrgMembershipRow[]).map((row: OrgMembershipRow) => ({
     ...row.organizations,
     myRole: row.role,
   }));
