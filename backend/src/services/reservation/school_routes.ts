@@ -251,6 +251,21 @@ schoolAdminRouter.post(
       return;
     }
 
+    // H2: Prevent creating sessions in the past
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (startDate < today) {
+      res.status(400).json({ error: '過去の日付は指定できません' });
+      return;
+    }
+
+    // H3: Limit date range to prevent excessive loop
+    const daysDiff = (endDate.getTime() - startDate.getTime()) / 86400000;
+    if (daysDiff > 365) {
+      res.status(400).json({ error: '日付範囲は1年以内にしてください' });
+      return;
+    }
+
     // Generate sessions for matching days
     const rows: Array<{
       school_id: string;
@@ -384,6 +399,19 @@ schoolAdminRouter.post(
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
+    // C3: Verify store ownership BEFORE cancelling
+    const { data: target } = await supabaseAdmin
+      .from('reservations')
+      .select('store_id')
+      .eq('id', reservationId)
+      .eq('store_id', storeId)
+      .eq('reservation_type', 'school')
+      .maybeSingle();
+    if (!target) {
+      res.status(404).json({ error: '予約が見つかりません' });
+      return;
+    }
+
     try {
       const reservation = await cancelReservation({
         reservationId,
@@ -391,10 +419,6 @@ schoolAdminRouter.post(
         actorType: 'staff',
         actorId: req.user!.id,
       });
-      if (reservation.store_id !== storeId) {
-        res.status(403).json({ error: 'この予約は別店舗のものです' });
-        return;
-      }
       res.json({ reservation });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -446,6 +470,22 @@ schoolAdminRouter.patch(
       return;
     }
 
+    // H8: Fetch current status and validate transition before updating
+    const { data: current } = await supabaseAdmin
+      .from('reservations')
+      .select('status')
+      .eq('id', reservationId)
+      .eq('store_id', storeId)
+      .eq('reservation_type', 'school')
+      .maybeSingle();
+    if (!current) { res.status(404).json({ error: '予約が見つかりません' }); return; }
+
+    const currentStatus = (current as { status: string }).status;
+    if (['completed', 'no_show', 'cancelled'].includes(currentStatus)) {
+      res.status(400).json({ error: `${currentStatus} の予約はステータス変更できません` });
+      return;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('reservations')
       .update({ status, updated_at: new Date().toISOString() })
@@ -455,7 +495,6 @@ schoolAdminRouter.patch(
       .select('*')
       .single();
     if (error) { res.status(400).json({ error: error.message }); return; }
-    if (!data) { res.status(404).json({ error: '予約が見つかりません' }); return; }
 
     const reservation = data as import('./types').ReservationRow;
 
@@ -560,15 +599,27 @@ schoolPublicRouter.get('/courses/:schoolId/sessions', async (req: Request, res: 
     note: string | null;
   }>;
 
-  for (const sess of (sessions || []) as SchoolSessionRow[]) {
+  // H4: Batch fetch all bookings to avoid N+1 queries
+  const sessionList = (sessions || []) as SchoolSessionRow[];
+  const sessionIds = sessionList.map((sess) => sess.id);
+  const { data: allBookings } = sessionIds.length > 0
+    ? await supabaseAdmin
+        .from('reservations')
+        .select('resource_ref, party_size')
+        .eq('store_id', store.id)
+        .in('resource_ref', sessionIds)
+        .in('status', ['pending', 'confirmed', 'seated'])
+    : { data: [] };
+
+  const bookedMap = new Map<string, number>();
+  for (const b of (allBookings || []) as Array<{ resource_ref: string; party_size: number }>) {
+    bookedMap.set(b.resource_ref, (bookedMap.get(b.resource_ref) ?? 0) + b.party_size);
+  }
+
+  for (const sess of sessionList) {
     const capacity = sess.capacity_override ?? s.capacity;
-    const remaining = await getRemainingCapacity({
-      storeId: store.id,
-      resourceRef: sess.id,
-      capacity,
-      startsAt: new Date(sess.starts_at),
-      endsAt: new Date(sess.ends_at),
-    });
+    const booked = bookedMap.get(sess.id) ?? 0;
+    const remaining = Math.max(0, capacity - booked);
     results.push({
       id: sess.id,
       starts_at: sess.starts_at,
@@ -694,7 +745,7 @@ schoolPublicRouter.post(
 );
 
 // ── 公開キャンセル (UX-4) ────────────────────────────────────
-schoolPublicRouter.post('/cancel', async (req: Request, res: Response) => {
+schoolPublicRouter.post('/cancel', rateLimit({ action: 'public.school.cancel', windowSec: 60, max: 5 }), async (req: Request, res: Response) => {
   const slug = String((req.params as { slug: string }).slug);
   const { confirmation_code, email } = req.body as {
     confirmation_code?: string;
@@ -757,7 +808,7 @@ schoolPublicRouter.post('/cancel', async (req: Request, res: Response) => {
 });
 
 // ── 公開予約照会 (UX-4) ─────────────────────────────────────
-schoolPublicRouter.get('/lookup', async (req: Request, res: Response) => {
+schoolPublicRouter.get('/lookup', rateLimit({ action: 'public.school.lookup', windowSec: 60, max: 10 }), async (req: Request, res: Response) => {
   const slug = String((req.params as { slug: string }).slug);
   const code = String(req.query.code || '');
   const email = String(req.query.email || '');

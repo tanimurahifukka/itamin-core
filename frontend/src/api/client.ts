@@ -915,7 +915,7 @@ export const api = {
       { method: 'PATCH', body: JSON.stringify(patch) },
     ),
   getPublicSchoolCourses: (slug: string) =>
-    request<{ courses: ReservationSchool[] }>(`/public/r/${slug}/school/courses`),
+    request<{ courses: ReservationSchool[]; settings: { require_phone: boolean; accept_days_ahead: number } }>(`/public/r/${slug}/school/courses`),
   getPublicSchoolSessions: (slug: string, schoolId: string) =>
     request<{
       course: ReservationSchool;

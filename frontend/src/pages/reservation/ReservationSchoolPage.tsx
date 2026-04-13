@@ -72,9 +72,13 @@ function CoursesTab({ storeId }: { storeId: string }) {
 
   const onDelete = async (id: string) => {
     if (!confirm('コースを削除しますか? (セッションも全削除されます)')) return;
-    await api.deleteReservationSchool(storeId, id);
-    if (selected?.id === id) setSelected(null);
-    await load();
+    try {
+      await api.deleteReservationSchool(storeId, id);
+      if (selected?.id === id) setSelected(null);
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '削除に失敗しました');
+    }
   };
 
   if (loading) return <div>読み込み中...</div>;
@@ -352,8 +356,12 @@ function SessionsView({
 
   const onDelete = async (id: string) => {
     if (!confirm('セッションを削除しますか?')) return;
-    await api.deleteSchoolSession(storeId, id);
-    await load();
+    try {
+      await api.deleteSchoolSession(storeId, id);
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '削除に失敗しました');
+    }
   };
 
   return (
@@ -631,13 +639,21 @@ function ReservationsTab({ storeId }: { storeId: string }) {
 
   const onCancel = async (id: string) => {
     if (!confirm('この申込をキャンセルしますか?')) return;
-    await api.cancelSchoolReservation(storeId, id);
-    await load();
+    try {
+      await api.cancelSchoolReservation(storeId, id);
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'キャンセルに失敗しました');
+    }
   };
 
   const onStatusChange = async (id: string, status: string) => {
-    await api.updateSchoolReservation(storeId, id, { status });
-    await load();
+    try {
+      await api.updateSchoolReservation(storeId, id, { status });
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'ステータス変更に失敗しました');
+    }
   };
 
   if (loading) return <div>読み込み中...</div>;

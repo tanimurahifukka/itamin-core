@@ -6,8 +6,8 @@
 //    "残キャパ = capacity − 既存予約の party_size 合計"
 //  - 残キャパが party_size 以上なら予約可能
 //
-// 厳密には count → insert 間に小さな race があるが、MVP 許容。
-// 将来的には DB 関数 + トランザクション化を検討する。
+// BUG-4 修正済み: reserve_with_capacity_check DB 関数 (00034) で
+// advisory lock + SELECT FOR UPDATE + INSERT を 1 トランザクションに統合。
 
 import { supabaseAdmin } from '../../config/supabase';
 import {

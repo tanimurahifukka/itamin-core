@@ -86,6 +86,22 @@ export default function CustomersPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeId]);
 
+  // CRM-3: Auto-select customer from URL ?id parameter
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (id && selectedStore) {
+      (async () => {
+        try {
+          const customer = await api.getCustomer(selectedStore.id, id);
+          if (customer) setSelectedCustomer(customer);
+        } catch {
+          // Customer not found, ignore
+        }
+      })();
+    }
+  }, [selectedStore]);
+
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);

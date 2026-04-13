@@ -63,7 +63,7 @@ export default function PublicSchoolBookingPage() {
         setStore(s.store);
         const c = await api.getPublicSchoolCourses(slug);
         setCourses(c.courses);
-        if ((c as { settings?: { require_phone?: boolean } }).settings?.require_phone) {
+        if (c.settings?.require_phone) {
           setRequirePhone(true);
         }
         setStep('courses');
