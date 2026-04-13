@@ -951,11 +951,15 @@ router.patch('/:storeId/events/:eventId', requireKiosk, async (req: Request, res
       .select()
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) {
+      console.error('[kiosk] event update error:', error.message, 'updates:', JSON.stringify(updates));
+      res.status(500).json({ error: error.message }); return;
+    }
     if (!data) { res.status(404).json({ error: 'イベントが見つかりません' }); return; }
 
     res.json({ event: data });
   } catch (e: any) {
+    console.error('[kiosk] event update exception:', e.message, 'body:', JSON.stringify(req.body));
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
 });
