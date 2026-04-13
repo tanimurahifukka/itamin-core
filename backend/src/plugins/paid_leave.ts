@@ -302,6 +302,7 @@ export const paidLeavePlugin: Plugin = {
   description: '有給残日数管理・取得記録',
   label: '有給管理',
   icon: '🏖️',
+  category: 'attendance',
   defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (app: Express) => {
     app.use('/api/paid-leave', router);

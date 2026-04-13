@@ -18,6 +18,7 @@ export const calendarPlugin: Plugin = {
   description: '店舗の営業日・営業時間・休業日カレンダーを管理し、他機能の営業判定ソースにする',
   label: '営業日カレンダー',
   icon: '📅',
+  category: 'operations',
   defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (app: Express) => {
     app.use('/api/calendar', calendarRouter);

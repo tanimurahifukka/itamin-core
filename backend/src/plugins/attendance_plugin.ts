@@ -13,6 +13,7 @@ export const attendancePlugin: Plugin = {
   label: '勤怠管理',
   icon: '📊',
   core: true,
+  category: 'core',
   defaultRoles: ['owner', 'manager', 'leader'],
   // export_permission は config JSONB に role 配列として保存される。
   // PluginSettingField は配列型 default を持てないため settingsSchema に入れず、

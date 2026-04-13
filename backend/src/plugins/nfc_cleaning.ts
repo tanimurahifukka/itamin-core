@@ -15,6 +15,7 @@ export const nfcCleaningPlugin: Plugin = {
   label: 'NFC チェック',
   icon: '🧹',
   core: false,
+  category: 'operations',
   defaultRoles: ['owner', 'manager', 'leader', 'full_time', 'part_time'],
   initialize: (_app: Express) => {},
 };

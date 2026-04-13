@@ -11,6 +11,8 @@ export interface PluginSettingField {
 
 export type StaffRole = 'owner' | 'manager' | 'leader' | 'full_time' | 'part_time';
 
+export type PluginCategory = 'core' | 'attendance' | 'sales' | 'reservation' | 'operations' | 'communication' | 'device';
+
 export interface Plugin {
   name: string;
   version: string;
@@ -18,6 +20,7 @@ export interface Plugin {
   label: string;
   icon: string;
   core?: boolean;                        // true = 無効化不可（打刻・設定など）
+  category: PluginCategory;
   defaultEnabled?: boolean;              // store_plugins に未登録のときの既定値（非core プラグイン用）
   defaultRoles: StaffRole[];             // デフォルトでアクセスできるロール
   settingsSchema?: PluginSettingField[];

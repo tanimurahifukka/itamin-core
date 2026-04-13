@@ -320,6 +320,7 @@ export const shiftPlugin: Plugin = {
   description: 'シフト管理・テンプレート機能',
   label: 'シフト管理',
   icon: '📅',
+  category: 'attendance',
   defaultRoles: ['owner', 'manager', 'leader'],
   settingsSchema: [
     {

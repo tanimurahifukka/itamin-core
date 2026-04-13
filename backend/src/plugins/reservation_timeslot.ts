@@ -9,6 +9,7 @@ export const reservationTimeslotPlugin: Plugin = {
   label: '時間帯予約',
   icon: '⏰',
   core: false,
+  category: 'reservation',
   defaultRoles: ['owner', 'manager', 'leader'],
   settingsSchema: [
     {

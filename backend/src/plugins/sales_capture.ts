@@ -415,6 +415,7 @@ export const salesCapturePlugin: Plugin = {
   description: '売上証跡のアップロード・精算・現金締めを管理',
   label: '売上締め',
   icon: '💰',
+  category: 'sales',
   defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (app: Express) => {
     app.use('/api/sales-capture', router);

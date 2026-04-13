@@ -19,6 +19,7 @@ export const punchPlugin: Plugin = {
   label: '打刻',
   icon: '🕐',
   core: true,
+  category: 'core',
   defaultRoles: ['manager', 'leader', 'full_time', 'part_time'],
   settingsSchema: [
     {

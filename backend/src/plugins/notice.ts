@@ -494,6 +494,7 @@ export const noticePlugin: Plugin = {
   description: 'スタッフ間の申し送り・既読管理',
   label: '連絡ノート',
   icon: '💬',
+  category: 'communication',
   defaultRoles: ['owner', 'manager', 'leader', 'full_time', 'part_time'],
   initialize: (app: Express) => {
     app.use('/api/notice', router);

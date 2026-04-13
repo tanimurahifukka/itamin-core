@@ -118,6 +118,7 @@ export interface PluginInfo {
   label: string;
   icon: string;
   core?: boolean;
+  category?: string;
   defaultRoles: string[];
   settingsSchema: PluginSettingField[];
   enabled: boolean;

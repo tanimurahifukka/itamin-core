@@ -175,6 +175,7 @@ export const feedbackPlugin: Plugin = {
   description: 'お客様からのクレーム・お褒め・要望の記録',
   label: 'お客様の声',
   icon: '📣',
+  category: 'communication',
   defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (app: Express) => {
     app.use('/api/feedback', router);

@@ -29,6 +29,7 @@ export const switchbotPlugin: Plugin = {
   label: 'SwitchBot',
   icon: '🌡️',
   core: false,
+  category: 'device',
   defaultRoles: ['owner', 'manager'],
   settingsSchema: [
     { key: 'token', label: 'APIトークン', type: 'password', description: 'SwitchBotアプリ → プロフィール → 開発者向けオプション' },

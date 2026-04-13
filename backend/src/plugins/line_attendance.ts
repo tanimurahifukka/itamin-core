@@ -16,6 +16,7 @@ export const lineAttendancePlugin: Plugin = {
   label: 'LINE打刻',
   icon: '📱',
   core: false,
+  category: 'attendance',
   defaultEnabled: true,
   defaultRoles: ['manager', 'leader', 'full_time', 'part_time'],
   settingsSchema: [

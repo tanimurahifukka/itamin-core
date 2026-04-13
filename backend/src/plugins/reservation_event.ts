@@ -9,6 +9,7 @@ export const reservationEventPlugin: Plugin = {
   label: 'イベント予約',
   icon: '🎉',
   core: false,
+  category: 'reservation',
   defaultRoles: ['owner', 'manager', 'leader'],
   settingsSchema: [
     {

@@ -59,6 +59,17 @@ const ALL_ROLES = [
   { value: 'part_time', label: 'アルバイト' },
 ];
 
+const CATEGORY_ORDER = ['core', 'attendance', 'sales', 'reservation', 'operations', 'communication', 'device'] as const;
+const CATEGORY_LABELS: Record<string, string> = {
+  core: 'コア機能',
+  attendance: '勤怠・労務',
+  sales: '売上・経費',
+  reservation: '予約',
+  operations: '店舗運営',
+  communication: '顧客・コミュニケーション',
+  device: 'デバイス連携',
+};
+
 function normalizeAccount(account: ApiStoreAccount | null | undefined): StoreAccount {
   return {
     id: String(account?.id ?? ''),
@@ -582,8 +593,17 @@ export default function PluginSettingsPage() {
         機能の有効/無効と、各ロールのアクセス権限を設定
       </p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {plugins.map(plugin => {
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {CATEGORY_ORDER.map(cat => {
+          const grouped = plugins.filter(p => (p.category || 'core') === cat);
+          if (grouped.length === 0) return null;
+          return (
+            <div key={cat}>
+              <h5 style={{ margin: '0 0 10px', fontSize: '0.9rem', color: '#475569', fontWeight: 600 }}>
+                {CATEGORY_LABELS[cat] || cat}
+              </h5>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {grouped.map(plugin => {
           const isExpanded = expandedPlugin === plugin.name;
           return (
             <div key={plugin.name} data-testid={`plugin-card-${plugin.name}`} style={{
@@ -768,6 +788,10 @@ export default function PluginSettingsPage() {
                   </div>
                 </div>
               )}
+            </div>
+          );
+        })}
+              </div>
             </div>
           );
         })}

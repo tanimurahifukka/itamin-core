@@ -13,6 +13,7 @@ export const settingsPlugin: Plugin = {
   label: '設定',
   icon: '⚙️',
   core: true,
+  category: 'core',
   defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (_app: Express) => {},
 };
