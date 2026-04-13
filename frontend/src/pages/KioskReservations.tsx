@@ -572,7 +572,7 @@ function EventFormModal({
     <div style={s.modalOverlay}>
       <div style={s.modalBox}>
         <div style={s.modalHeader}>
-          <span style={s.modalTitle}>{initial.title ? 'イベント編集' : 'イベント作成'}</span>
+          <span style={s.modalTitle}>{initial.title?.endsWith('（コピー）') ? 'イベント複製' : initial.title ? 'イベント編集' : 'イベント作成'}</span>
           <button style={s.iconBtn} onClick={onClose}>✕</button>
         </div>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -824,13 +824,23 @@ export default function KioskReservations({ storeId }: Props) {
     }
   };
 
+  const [duplicatingEvent, setDuplicatingEvent] = useState<KioskEvent | null>(null);
+
   const handleOpenCreateEvent = () => {
     setEditingEvent(null);
+    setDuplicatingEvent(null);
     setShowEventModal(true);
   };
 
   const handleOpenEditEvent = (ev: KioskEvent) => {
     setEditingEvent(ev);
+    setDuplicatingEvent(null);
+    setShowEventModal(true);
+  };
+
+  const handleDuplicateEvent = (ev: KioskEvent) => {
+    setEditingEvent(null);
+    setDuplicatingEvent(ev);
     setShowEventModal(true);
   };
 
@@ -890,8 +900,10 @@ export default function KioskReservations({ storeId }: Props) {
       }
       setShowEventModal(false);
       setEditingEvent(null);
+      setDuplicatingEvent(null);
       loadEvents();
-      showMsg(editingEvent ? 'イベントを更新しました' : 'イベントを作成しました', 'success');
+      loadMonthly(calYear, calMonth);
+      showMsg(editingEvent ? 'イベントを更新しました' : duplicatingEvent ? 'イベントを複製しました' : 'イベントを作成しました', 'success');
     } catch (e) {
       showMsg(e instanceof Error ? e.message : 'イベントの保存に失敗しました', 'error');
     } finally {
@@ -916,16 +928,17 @@ export default function KioskReservations({ storeId }: Props) {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const initialFormForEdit = editingEvent
+  const sourceEvent = editingEvent || duplicatingEvent;
+  const initialFormForEdit = sourceEvent
     ? {
-        title: editingEvent.title,
-        description: editingEvent.description || '',
-        starts_at: formatDateTimeLocal(editingEvent.starts_at),
-        ends_at: formatDateTimeLocal(editingEvent.ends_at),
-        capacity: String(editingEvent.capacity),
-        price: editingEvent.price != null ? String(editingEvent.price) : '',
-        status: editingEvent.status,
-        form_schema: editingEvent.form_schema || [],
+        title: duplicatingEvent ? `${sourceEvent.title}（コピー）` : sourceEvent.title,
+        description: sourceEvent.description || '',
+        starts_at: formatDateTimeLocal(sourceEvent.starts_at),
+        ends_at: formatDateTimeLocal(sourceEvent.ends_at),
+        capacity: String(sourceEvent.capacity),
+        price: sourceEvent.price != null ? String(sourceEvent.price) : '',
+        status: duplicatingEvent ? 'draft' : sourceEvent.status,
+        form_schema: sourceEvent.form_schema || [],
       }
     : EMPTY_FORM;
 
@@ -1139,6 +1152,12 @@ export default function KioskReservations({ storeId }: Props) {
                     >
                       編集
                     </button>
+                    <button
+                      style={{ ...s.editBtn, background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}
+                      onClick={() => handleDuplicateEvent(ev)}
+                    >
+                      複製
+                    </button>
                     {deleteConfirmId === ev.id ? (
                       <div style={{ display: 'flex', gap: 5 }}>
                         <button
@@ -1176,7 +1195,7 @@ export default function KioskReservations({ storeId }: Props) {
         <EventFormModal
           initial={initialFormForEdit}
           onSave={handleSaveEvent}
-          onClose={() => { setShowEventModal(false); setEditingEvent(null); }}
+          onClose={() => { setShowEventModal(false); setEditingEvent(null); setDuplicatingEvent(null); }}
           saving={eventFormSaving}
         />
       )}
