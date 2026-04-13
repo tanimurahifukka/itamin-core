@@ -79,19 +79,21 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  pending: '確認待ち',
-  confirmed: '確定',
-  seated: '来店中',
-  completed: '完了',
+  pending: '未来店',
+  confirmed: '未来店',
+  seated: '来店',
+  completed: '来店',
   no_show: '未来店',
+  cancelled: 'キャンセル',
 };
 
 const STATUS_COLOR: Record<string, string> = {
   pending: '#f59e0b',
-  confirmed: '#16a34a',
-  seated: '#0ea5e9',
-  completed: '#94a3b8',
-  no_show: '#dc2626',
+  confirmed: '#f59e0b',
+  seated: '#16a34a',
+  completed: '#16a34a',
+  no_show: '#f59e0b',
+  cancelled: '#dc2626',
 };
 
 const TYPE_COLOR: Record<string, string> = {
@@ -231,17 +233,17 @@ function StatusActionButtons({
   const { status } = reservation;
   const buttons: { label: string; nextStatus: string; color: string }[] = [];
 
-  if (status === 'pending') {
-    buttons.push({ label: '確定', nextStatus: 'confirmed', color: '#16a34a' });
+  // Not yet visited → mark as visited
+  if (['pending', 'confirmed', 'no_show'].includes(status)) {
+    buttons.push({ label: '来店', nextStatus: 'seated', color: '#16a34a' });
   }
-  if (status === 'confirmed') {
-    buttons.push({ label: '来店', nextStatus: 'seated', color: '#0ea5e9' });
+  // Visited → revert to not visited
+  if (['seated', 'completed'].includes(status)) {
+    buttons.push({ label: '未来店に戻す', nextStatus: 'confirmed', color: '#f59e0b' });
   }
-  if (status === 'seated') {
-    buttons.push({ label: '完了', nextStatus: 'completed', color: '#94a3b8' });
-  }
-  if (['pending', 'confirmed', 'seated'].includes(status)) {
-    buttons.push({ label: '未来店', nextStatus: 'no_show', color: '#dc2626' });
+  // Cancel (from any non-cancelled status)
+  if (status !== 'cancelled') {
+    buttons.push({ label: 'キャンセル', nextStatus: 'cancelled', color: '#dc2626' });
   }
 
   if (buttons.length === 0) return null;
