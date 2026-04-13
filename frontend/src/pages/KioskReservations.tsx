@@ -155,6 +155,45 @@ const FIELD_TYPE_LABELS: Record<string, string> = {
   checkbox: 'チェックボックス',
 };
 
+function normalizeEventFormSchemaForSave(schema: EventFormField[]): { schema: EventFormField[]; error?: string } {
+  const normalized: EventFormField[] = [];
+
+  for (const [index, field] of schema.entries()) {
+    const key = field.key.trim();
+    const label = field.label.trim();
+
+    if (!key) {
+      return { schema: [], error: `予約フォームの ${index + 1} 行目に key がありません` };
+    }
+    if (!label) {
+      return { schema: [], error: `予約フォームの ${index + 1} 行目のラベルを入力してください` };
+    }
+
+    const nextField: EventFormField = {
+      key,
+      label,
+      type: field.type,
+      required: field.required,
+    };
+
+    if (field.type === 'select') {
+      const options = (field.options || []).map(option => option.trim()).filter(Boolean);
+      if (options.length === 0) {
+        return { schema: [], error: `予約フォームの ${index + 1} 行目の選択肢を 1 つ以上入力してください` };
+      }
+      nextField.options = options;
+    }
+
+    if (field.placeholder?.trim()) {
+      nextField.placeholder = field.placeholder.trim();
+    }
+
+    normalized.push(nextField);
+  }
+
+  return { schema: normalized };
+}
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
@@ -712,6 +751,12 @@ export default function KioskReservations({ storeId }: Props) {
   const handleSaveEvent = async (form: EventFormState) => {
     setEventFormSaving(true);
     try {
+      const title = form.title.trim();
+      if (!title) {
+        showMsg('タイトルを入力してください', 'error');
+        setEventFormSaving(false);
+        return;
+      }
       const startsDate = new Date(form.starts_at);
       const endsDate = new Date(form.ends_at);
       if (isNaN(startsDate.getTime()) || isNaN(endsDate.getTime())) {
@@ -730,15 +775,27 @@ export default function KioskReservations({ storeId }: Props) {
         setEventFormSaving(false);
         return;
       }
+      const parsedPrice = form.price === '' ? null : Number(form.price);
+      if (parsedPrice != null && (!Number.isFinite(parsedPrice) || parsedPrice < 0 || !Number.isInteger(parsedPrice))) {
+        showMsg('参加費は0以上の整数で入力してください', 'error');
+        setEventFormSaving(false);
+        return;
+      }
+      const normalizedSchema = normalizeEventFormSchemaForSave(form.form_schema);
+      if (normalizedSchema.error) {
+        showMsg(normalizedSchema.error, 'error');
+        setEventFormSaving(false);
+        return;
+      }
       const payload = {
-        title: form.title,
+        title,
         description: form.description || null,
         starts_at: startsDate.toISOString(),
         ends_at: endsDate.toISOString(),
         capacity: cap,
-        price: form.price ? parseFloat(form.price) : null,
+        price: parsedPrice,
         status: form.status,
-        form_schema: form.form_schema,
+        form_schema: normalizedSchema.schema,
       };
       if (editingEvent) {
         await kioskApi.updateEvent(storeId, editingEvent.id, payload);

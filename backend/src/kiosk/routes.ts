@@ -22,6 +22,11 @@ import {
   createCapacityReservation,
   getRemainingCapacity,
 } from '../services/reservation/capacity';
+import {
+  coerceEventFormSchema,
+  parseEventFormSchema,
+  toEventFormSchemaPersistenceError,
+} from '../services/reservation/event_form_schema';
 
 const router = Router();
 
@@ -854,7 +859,12 @@ router.get('/:storeId/events', requireKiosk, async (req: Request, res: Response)
 
     if (error) { res.status(500).json({ error: error.message }); return; }
 
-    res.json({ events: data || [] });
+    res.json({
+      events: (data || []).map((event: Record<string, unknown>) => ({
+        ...event,
+        form_schema: coerceEventFormSchema(event.form_schema),
+      })),
+    });
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }
@@ -876,13 +886,11 @@ router.post('/:storeId/events', requireKiosk, async (req: Request, res: Response
       res.status(400).json({ error: 'title, starts_at, ends_at, capacity は必須です' }); return;
     }
 
-    // Validate form_schema if provided
-    const schema = Array.isArray(form_schema) ? form_schema : [];
-    for (const f of schema) {
-      if (!f.key || !f.label || !f.type) {
-        res.status(400).json({ error: 'form_schema の各フィールドには key, label, type が必要です' }); return;
-      }
+    const parsedSchema = parseEventFormSchema(form_schema);
+    if (parsedSchema.error) {
+      res.status(400).json({ error: parsedSchema.error }); return;
     }
+    const schema = parsedSchema.schema;
 
     const { data, error } = await supabaseAdmin
       .from('reservation_events')
@@ -901,7 +909,10 @@ router.post('/:storeId/events', requireKiosk, async (req: Request, res: Response
       .select()
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) {
+      const persistenceMessage = toEventFormSchemaPersistenceError(error);
+      res.status(persistenceMessage ? 503 : 500).json({ error: persistenceMessage || error.message }); return;
+    }
 
     res.status(201).json({ event: data });
   } catch (e: any) {
@@ -930,13 +941,11 @@ router.patch('/:storeId/events/:eventId', requireKiosk, async (req: Request, res
     if (price !== undefined) updates.price = price;
     if (status !== undefined) updates.status = status;
     if (form_schema !== undefined) {
-      const schema = Array.isArray(form_schema) ? form_schema : [];
-      for (const f of schema) {
-        if (!f.key || !f.label || !f.type) {
-          res.status(400).json({ error: 'form_schema の各フィールドには key, label, type が必要です' }); return;
-        }
+      const parsedSchema = parseEventFormSchema(form_schema);
+      if (parsedSchema.error) {
+        res.status(400).json({ error: parsedSchema.error }); return;
       }
-      updates.form_schema = schema;
+      updates.form_schema = parsedSchema.schema;
     }
 
     if (Object.keys(updates).length === 0) {
@@ -953,7 +962,8 @@ router.patch('/:storeId/events/:eventId', requireKiosk, async (req: Request, res
 
     if (error) {
       console.error('[kiosk] event update error:', error.message, 'updates:', JSON.stringify(updates));
-      res.status(500).json({ error: error.message }); return;
+      const persistenceMessage = toEventFormSchemaPersistenceError(error);
+      res.status(persistenceMessage ? 503 : 500).json({ error: persistenceMessage || error.message }); return;
     }
     if (!data) { res.status(404).json({ error: 'イベントが見つかりません' }); return; }
 
@@ -1028,7 +1038,7 @@ router.get('/:storeId/events/available', requireKiosk, async (req: Request, res:
           remaining,
           price: ev.price,
           image_url: ev.image_url,
-          form_schema: ev.form_schema || [],
+          form_schema: coerceEventFormSchema(ev.form_schema),
         };
       }),
     );
@@ -1072,7 +1082,7 @@ router.post('/:storeId/events/:eventId/book', requireKiosk, async (req: Request,
     }
 
     // Validate required fields from form_schema
-    const schema = Array.isArray(event.form_schema) ? event.form_schema : [];
+    const schema = coerceEventFormSchema(event.form_schema);
     for (const field of schema) {
       if (field.required) {
         const val = responses[field.key];

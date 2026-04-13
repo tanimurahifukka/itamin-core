@@ -10,6 +10,7 @@ import { requireStoreMembership, requireManagedStore } from '../../auth/authoriz
 import { supabaseAdmin } from '../../config/supabase';
 import { resolvePublicStoreBySlug, cancelReservation } from './core';
 import { createCapacityReservation, getRemainingCapacity } from './capacity';
+import { coerceEventFormSchema, parseEventFormSchema, toEventFormSchemaPersistenceError, type EventFormField } from './event_form_schema';
 import { rateLimit } from './rate_limit';
 
 interface EventRow {
@@ -24,6 +25,7 @@ interface EventRow {
   image_url: string | null;
   status: 'draft' | 'published' | 'cancelled' | 'completed';
   sort_order: number;
+  form_schema: EventFormField[];
 }
 
 // ============================================================
@@ -45,7 +47,12 @@ eventAdminRouter.get(
       .eq('store_id', storeId)
       .order('starts_at', { ascending: false });
     if (error) { res.status(500).json({ error: error.message }); return; }
-    res.json({ events: data });
+    res.json({
+      events: (data || []).map((event: Record<string, unknown>) => ({
+        ...event,
+        form_schema: coerceEventFormSchema(event.form_schema),
+      })),
+    });
   },
 );
 
@@ -63,6 +70,12 @@ eventAdminRouter.post(
       return;
     }
 
+    const parsedSchema = parseEventFormSchema((body as Record<string, unknown>).form_schema);
+    if (parsedSchema.error) {
+      res.status(400).json({ error: parsedSchema.error });
+      return;
+    }
+
     const { data, error } = await supabaseAdmin
       .from('reservation_events')
       .insert({
@@ -76,10 +89,14 @@ eventAdminRouter.post(
         image_url: body.image_url || null,
         status: body.status || 'published',
         sort_order: body.sort_order ?? 0,
+        form_schema: parsedSchema.schema,
       })
       .select('*')
       .single();
-    if (error) { res.status(400).json({ error: error.message }); return; }
+    if (error) {
+      const persistenceMessage = toEventFormSchemaPersistenceError(error);
+      res.status(persistenceMessage ? 503 : 400).json({ error: persistenceMessage || error.message }); return;
+    }
     res.status(201).json({ event: data });
   },
 );
@@ -101,6 +118,14 @@ eventAdminRouter.patch(
     ] as const) {
       if (k in body) patch[k] = (body as Record<string, unknown>)[k];
     }
+    if ('form_schema' in body) {
+      const parsedSchema = parseEventFormSchema((body as Record<string, unknown>).form_schema);
+      if (parsedSchema.error) {
+        res.status(400).json({ error: parsedSchema.error });
+        return;
+      }
+      patch.form_schema = parsedSchema.schema;
+    }
 
     const { data, error } = await supabaseAdmin
       .from('reservation_events')
@@ -109,7 +134,10 @@ eventAdminRouter.patch(
       .eq('store_id', storeId)
       .select('*')
       .single();
-    if (error) { res.status(400).json({ error: error.message }); return; }
+    if (error) {
+      const persistenceMessage = toEventFormSchemaPersistenceError(error);
+      res.status(persistenceMessage ? 503 : 400).json({ error: persistenceMessage || error.message }); return;
+    }
     res.json({ event: data });
   },
 );
@@ -330,6 +358,7 @@ eventPublicRouter.get('/events', async (req: Request, res: Response) => {
     remaining: number;
     price: number | null;
     image_url: string | null;
+    form_schema: EventFormField[];
   }>;
 
   for (const ev of (events || []) as EventRow[]) {
@@ -350,6 +379,7 @@ eventPublicRouter.get('/events', async (req: Request, res: Response) => {
       remaining,
       price: ev.price,
       image_url: ev.image_url,
+      form_schema: coerceEventFormSchema(ev.form_schema),
     });
   }
 
