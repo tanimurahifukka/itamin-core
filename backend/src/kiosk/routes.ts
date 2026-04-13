@@ -18,6 +18,10 @@ import {
   fetchDeviceStatus,
   listStoreReadingsForDate,
 } from '../services/switchbot/routes';
+import {
+  createCapacityReservation,
+  getRemainingCapacity,
+} from '../services/reservation/capacity';
 
 const router = Router();
 
@@ -866,10 +870,18 @@ router.post('/:storeId/events', requireKiosk, async (req: Request, res: Response
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
 
-    const { title, description, starts_at, ends_at, capacity, price, status } = req.body || {};
+    const { title, description, starts_at, ends_at, capacity, price, status, form_schema } = req.body || {};
 
     if (!title || !starts_at || !ends_at || capacity == null) {
       res.status(400).json({ error: 'title, starts_at, ends_at, capacity は必須です' }); return;
+    }
+
+    // Validate form_schema if provided
+    const schema = Array.isArray(form_schema) ? form_schema : [];
+    for (const f of schema) {
+      if (!f.key || !f.label || !f.type) {
+        res.status(400).json({ error: 'form_schema の各フィールドには key, label, type が必要です' }); return;
+      }
     }
 
     const { data, error } = await supabaseAdmin
@@ -884,6 +896,7 @@ router.post('/:storeId/events', requireKiosk, async (req: Request, res: Response
         price: price ?? null,
         status: status ?? 'published',
         sort_order: 0,
+        form_schema: schema,
       })
       .select()
       .single();
@@ -907,7 +920,7 @@ router.patch('/:storeId/events/:eventId', requireKiosk, async (req: Request, res
       res.status(403).json({ error: 'アクセス権限がありません' }); return;
     }
 
-    const { title, description, starts_at, ends_at, capacity, price, status } = req.body || {};
+    const { title, description, starts_at, ends_at, capacity, price, status, form_schema } = req.body || {};
     const updates: Record<string, any> = {};
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
@@ -916,6 +929,15 @@ router.patch('/:storeId/events/:eventId', requireKiosk, async (req: Request, res
     if (capacity !== undefined) updates.capacity = capacity;
     if (price !== undefined) updates.price = price;
     if (status !== undefined) updates.status = status;
+    if (form_schema !== undefined) {
+      const schema = Array.isArray(form_schema) ? form_schema : [];
+      for (const f of schema) {
+        if (!f.key || !f.label || !f.type) {
+          res.status(400).json({ error: 'form_schema の各フィールドには key, label, type が必要です' }); return;
+        }
+      }
+      updates.form_schema = schema;
+    }
 
     if (Object.keys(updates).length === 0) {
       res.status(400).json({ error: '更新するフィールドを指定してください' }); return;
@@ -960,6 +982,135 @@ router.delete('/:storeId/events/:eventId', requireKiosk, async (req: Request, re
     res.json({ ok: true });
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// 公開中イベント一覧＋残席（キオスク認証）
+// ============================================================
+router.get('/:storeId/events/available', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    if (storeId !== req.kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('reservation_events')
+      .select('*')
+      .eq('store_id', storeId)
+      .eq('status', 'published')
+      .gte('starts_at', new Date().toISOString())
+      .order('starts_at', { ascending: true });
+
+    if (error) { res.status(500).json({ error: error.message }); return; }
+
+    const events = await Promise.all(
+      (data || []).map(async (ev: any) => {
+        const remaining = await getRemainingCapacity({
+          storeId,
+          resourceRef: ev.id,
+          capacity: ev.capacity,
+          startsAt: new Date(ev.starts_at),
+          endsAt: new Date(ev.ends_at),
+        });
+        return {
+          id: ev.id,
+          title: ev.title,
+          description: ev.description,
+          starts_at: ev.starts_at,
+          ends_at: ev.ends_at,
+          capacity: ev.capacity,
+          remaining,
+          price: ev.price,
+          image_url: ev.image_url,
+          form_schema: ev.form_schema || [],
+        };
+      }),
+    );
+
+    res.json({ events });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  }
+});
+
+// ============================================================
+// イベント予約登録（キオスク認証）
+// ============================================================
+router.post('/:storeId/events/:eventId/book', requireKiosk, async (req: Request, res: Response) => {
+  try {
+    const storeId = req.params.storeId as string;
+    const eventId = req.params.eventId as string;
+    if (storeId !== req.kioskStoreId) {
+      res.status(403).json({ error: 'アクセス権限がありません' }); return;
+    }
+
+    const { responses } = req.body || {};
+    if (!responses || typeof responses !== 'object') {
+      res.status(400).json({ error: 'responses は必須です' }); return;
+    }
+
+    // Fetch the event
+    const { data: event } = await supabaseAdmin
+      .from('reservation_events')
+      .select('*')
+      .eq('id', eventId)
+      .eq('store_id', storeId)
+      .eq('status', 'published')
+      .maybeSingle();
+    if (!event) {
+      res.status(404).json({ error: 'イベントが見つかりません' }); return;
+    }
+
+    if (new Date(event.starts_at) < new Date()) {
+      res.status(400).json({ error: '過去のイベントは予約できません' }); return;
+    }
+
+    // Validate required fields from form_schema
+    const schema = Array.isArray(event.form_schema) ? event.form_schema : [];
+    for (const field of schema) {
+      if (field.required) {
+        const val = responses[field.key];
+        if (val === undefined || val === null || val === '') {
+          res.status(400).json({ error: `「${field.label}」は必須です` }); return;
+        }
+      }
+    }
+
+    // Derive customer_name from first text field, fallback to "ゲスト"
+    const firstTextField = schema.find((f: any) => f.type === 'text');
+    const customerName = firstTextField ? String(responses[firstTextField.key] || 'ゲスト') : 'ゲスト';
+
+    // Derive party_size from first number field, fallback to 1
+    const firstNumberField = schema.find((f: any) => f.type === 'number');
+    const partySize = firstNumberField ? Math.max(1, Number(responses[firstNumberField.key]) || 1) : 1;
+
+    const reservation = await createCapacityReservation({
+      storeId,
+      type: 'event',
+      source: 'walkin',
+      resourceRef: event.id,
+      capacity: event.capacity,
+      startsAt: new Date(event.starts_at),
+      endsAt: new Date(event.ends_at),
+      partySize,
+      customerName,
+      metadata: { event_id: event.id, event_title: event.title, form_responses: responses },
+    });
+
+    res.status(201).json({
+      reservation: {
+        id: reservation.id,
+        confirmation_code: reservation.confirmation_code,
+        starts_at: reservation.starts_at,
+        ends_at: reservation.ends_at,
+        party_size: reservation.party_size,
+      },
+    });
+  } catch (err) {
+    const e = err as Error & { statusCode?: number };
+    res.status(e.statusCode || 500).json({ error: e.message });
   }
 });
 
