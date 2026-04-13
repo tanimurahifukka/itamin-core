@@ -170,7 +170,7 @@ router.post('/:storeId/clock-out', requireAuth, async (req: Request, res: Respon
       return;
     }
 
-    const update: any = { clock_out: new Date().toISOString() };
+    const update: { clock_out: string; break_minutes?: number } = { clock_out: new Date().toISOString() };
     if (breakMinutes !== undefined) update.break_minutes = breakMinutes;
 
     const { data: record, error } = await supabaseAdmin
@@ -256,7 +256,22 @@ router.get('/:storeId/daily', requireAuth, async (req: Request, res: Response) =
       return;
     }
 
-    const records = (data || []).map((r: any) => ({
+    interface DailyTimeRecordRow {
+      id: string;
+      store_id: string;
+      staff_id: string;
+      clock_in: string;
+      clock_out: string | null;
+      break_minutes: number;
+      staff: {
+        id: string;
+        hourly_wage: number;
+        transport_fee: number;
+        user: { name: string; picture: string | null } | null;
+      } | null;
+    }
+
+    const records = (data as DailyTimeRecordRow[] || []).map((r) => ({
       id: r.id,
       storeId: r.store_id,
       staffId: r.staff_id,
@@ -310,8 +325,21 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
 
     // スタッフごとに集計（aggregateSummary を使用して /export との重複解消）
     // 交通費計算に必要な transportFee は aggregateSummary の対象外のため別途保持する
+    interface MonthlyTimeRecordRow {
+      staff_id: string;
+      clock_in: string;
+      clock_out: string | null;
+      break_minutes: number;
+      staff: {
+        id: string;
+        hourly_wage: number;
+        transport_fee: number;
+        user: { name: string } | null;
+      } | null;
+    }
+
     const transportFeeMap = new Map<string, number>();
-    const rawRecords: RawRecord[] = (data || []).map((r: any) => {
+    const rawRecords: RawRecord[] = (data as MonthlyTimeRecordRow[] || []).map((r) => {
       const sid: string = r.staff_id;
       if (!transportFeeMap.has(sid)) {
         transportFeeMap.set(sid, r.staff?.transport_fee || 0);
@@ -398,7 +426,7 @@ router.post('/:storeId/correct-and-clockin', requireAuth, async (req: Request, r
     }
 
     // 未退勤レコードをクローズ
-    const update: any = { clock_out: clockOut };
+    const update: { clock_out: string; break_minutes?: number } = { clock_out: clockOut };
     if (breakMinutes !== undefined) update.break_minutes = breakMinutes;
 
     const { error: updateErr } = await supabaseAdmin
@@ -462,7 +490,7 @@ router.put('/:storeId/records/:recordId', requireAuth, async (req: Request, res:
       return;
     }
 
-    const update: any = {};
+    const update: { clock_in?: string; clock_out?: string; break_minutes?: number } = {};
     if (clockIn !== undefined) update.clock_in = clockIn;
     if (clockOut !== undefined) update.clock_out = clockOut;
     if (breakMinutes !== undefined) update.break_minutes = breakMinutes;
