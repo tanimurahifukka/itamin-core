@@ -468,7 +468,7 @@ router.get('/me/history', requireAuth, async (req: Request, res: Response) => {
     if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     // 修正申請のステータスも取得
-    const recordIds = (data || []).map((r: any) => r.id);
+    const recordIds = (data || []).map((r: AttendanceRecordRow) => r.id);
     const { data: corrections } = recordIds.length > 0
       ? await supabaseAdmin
           .from('attendance_correction_requests')
@@ -481,7 +481,7 @@ router.get('/me/history', requireAuth, async (req: Request, res: Response) => {
       if (c.status === 'pending') correctionMap.set(c.attendance_record_id, 'pending');
     }
 
-    const records = (data || []).map((r: any) => ({
+    const records = (data || []).map((r: AttendanceRecordRow) => ({
       ...formatSession(r),
       correctionStatus: correctionMap.get(r.id) || null,
     }));
@@ -844,7 +844,7 @@ router.get('/admin/staff/:userId', requireAuth, async (req: Request, res: Respon
         role: staffInfo.role,
         hourlyWage: staffInfo.hourly_wage,
       } : null,
-      records: (records || []).map((r: any) => formatSession(r)),
+      records: (records || []).map((r: AttendanceRecordRow) => formatSession(r)),
       corrections: corrections || [],
     });
   } catch (e: unknown) {

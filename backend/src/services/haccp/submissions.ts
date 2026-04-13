@@ -352,7 +352,9 @@ export async function createSubmission(input: SubmissionInput): Promise<any> {
     .eq('template_id', templateId)
     .order('sort_order', { ascending: true });
 
-  const itemMap = new Map((tplItems || []).map((i: TemplateItemFullRow) => [i.id, i]));
+  const itemMap = new Map<string, TemplateItemFullRow>(
+    (tplItems || []).map((i: TemplateItemFullRow) => [i.id, i]),
+  );
 
   interface ProcessedItem {
     item_key: string;
@@ -365,7 +367,7 @@ export async function createSubmission(input: SubmissionInput): Promise<any> {
     checked_by: string | null;
     checked_at: string | null;
     passed: boolean | null;
-    tplItem: TemplateItemFullRow | undefined | null;
+    tplItem: TemplateItemFullRow | undefined;
   }
 
   const processedItems: ProcessedItem[] = [];
@@ -373,7 +375,9 @@ export async function createSubmission(input: SubmissionInput): Promise<any> {
   let hasDeviation = false;
 
   for (const item of items) {
-    const tplItem = item.template_item_id ? itemMap.get(item.template_item_id) : null;
+    const tplItem: TemplateItemFullRow | undefined = item.template_item_id
+      ? itemMap.get(item.template_item_id)
+      : undefined;
     const passed = tplItem ? calcPassed(tplItem, item) : null;
 
     if (passed === false && tplItem?.required) {
