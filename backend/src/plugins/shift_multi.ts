@@ -507,6 +507,7 @@ export const shiftMultiPlugin: Plugin = {
   description: '複数店舗横断シフト管理',
   label: 'マルチ店舗シフト',
   icon: '🏢',
+  category: 'attendance',
   defaultRoles: ['owner', 'manager'],
   settingsSchema: [],
   initialize: (app: Express) => {

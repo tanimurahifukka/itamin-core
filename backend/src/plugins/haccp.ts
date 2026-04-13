@@ -17,6 +17,7 @@ export const haccpPlugin: Plugin = {
   description: 'HACCP 準拠チェックリスト・測定・逸脱管理',
   label: 'チェックリスト',
   icon: '✅',
+  category: 'operations',
   defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (app: Express) => {
     app.use('/api/haccp', haccpRouter);

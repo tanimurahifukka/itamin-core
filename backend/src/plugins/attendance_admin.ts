@@ -16,6 +16,7 @@ export const attendanceAdminPlugin: Plugin = {
   label: '勤怠管理(LINE)',
   icon: '📋',
   core: false,
+  category: 'attendance',
   defaultEnabled: true,
   defaultRoles: ['owner', 'manager'],
   initialize: (_app: Express) => {

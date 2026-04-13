@@ -12,6 +12,7 @@ export const staffPlugin: Plugin = {
   label: 'スタッフ',
   icon: '👥',
   core: true,
+  category: 'core',
   defaultRoles: ['owner', 'manager', 'leader'],
   settingsSchema: [
     {

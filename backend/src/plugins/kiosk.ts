@@ -12,6 +12,7 @@ export const kioskPlugin: Plugin = {
   label: 'キオスク',
   icon: '🖥️',
   core: false,
+  category: 'device',
   defaultRoles: ['owner', 'manager'],
   initialize: (_app: Express) => {},
 };

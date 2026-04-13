@@ -9,6 +9,7 @@ export const reservationSchoolPlugin: Plugin = {
   label: 'スクール予約',
   icon: '🎓',
   core: false,
+  category: 'reservation',
   defaultRoles: ['owner', 'manager', 'leader'],
   settingsSchema: [
     {

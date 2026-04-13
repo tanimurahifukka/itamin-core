@@ -9,6 +9,7 @@ export const customersPlugin: Plugin = {
   label: '顧客管理',
   icon: '👥',
   core: false,
+  category: 'communication',
   defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (app: Express) => {
     app.use('/api/customers', customersRouter);

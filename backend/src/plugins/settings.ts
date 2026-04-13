@@ -34,6 +34,7 @@ router.get('/:storeId', requireAuth, async (req: Request, res: Response) => {
       label: p.label,
       icon: p.icon,
       core: p.core || false,
+      category: p.category,
       defaultEnabled: p.defaultEnabled || false,
       defaultRoles: p.defaultRoles,
       settingsSchema: p.settingsSchema || [],

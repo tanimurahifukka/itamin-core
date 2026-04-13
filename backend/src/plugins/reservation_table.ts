@@ -26,6 +26,7 @@ export const reservationTablePlugin: Plugin = {
   label: 'テーブル予約',
   icon: '📅',
   core: false,
+  category: 'reservation',
   defaultRoles: ['owner', 'manager', 'leader'],
   settingsSchema: [
     {

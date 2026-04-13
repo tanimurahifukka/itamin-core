@@ -182,6 +182,7 @@ export const shiftRequestPlugin: Plugin = {
   description: 'シフト希望の提出',
   label: 'シフト希望',
   icon: '📋',
+  category: 'attendance',
   defaultRoles: ['full_time', 'part_time'],
   settingsSchema: [
     {

@@ -141,6 +141,7 @@ app.get('/api/plugins', (_req, res) => {
     description: p.description,
     label: p.label,
     icon: p.icon,
+    category: p.category,
     settingsSchema: p.settingsSchema || [],
   }));
   res.json({ plugins });

@@ -206,6 +206,7 @@ export const inventoryPlugin: Plugin = {
   description: '在庫管理機能',
   label: '在庫管理',
   icon: '📦',
+  category: 'operations',
   defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (app: Express) => {
     app.use('/api/inventory', router);

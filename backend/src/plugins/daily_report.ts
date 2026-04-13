@@ -327,6 +327,7 @@ export const dailyReportPlugin: Plugin = {
   description: '毎日の売上・来客数・天気・メモを記録',
   label: '日報',
   icon: '📝',
+  category: 'sales',
   defaultRoles: ['owner', 'manager', 'leader'],
   initialize: (app: Express) => {
     app.use('/api/daily-report', router);
