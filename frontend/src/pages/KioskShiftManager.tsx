@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { kioskApi } from '../api/kioskClient';
+import TimePicker15 from '../components/TimePicker15';
 
 type ViewMode = 'week' | '15days' | 'month';
 
@@ -415,89 +416,117 @@ export default function KioskShiftManager({ storeId, staff }: Props) {
         </div>
       </div>
 
-      {/* 編集パネル */}
+      {/* 編集モーダル */}
       {editing && (
-        <div style={g.editPanel}>
-          <div style={g.editTitle}>
-            {staff.find(s => s.id === editing.staffId)?.name} —{' '}
-            {new Date(editing.date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' })}
-          </div>
-          <div style={g.editRow}>
-            <label style={g.editLabel}>開始</label>
-            <input type="time" value={editing.startTime}
-              onChange={e => setEditing(v => v && ({ ...v, startTime: e.target.value }))}
-              style={g.editInput} />
-            <label style={g.editLabel}>終了</label>
-            <input type="time" value={editing.endTime}
-              onChange={e => setEditing(v => v && ({ ...v, endTime: e.target.value }))}
-              style={g.editInput} />
-            <label style={g.editLabel}>休憩(分)</label>
-            <input type="number" value={editing.breakMinutes} min={0} step={15}
-              onChange={e => setEditing(v => v && ({ ...v, breakMinutes: Number(e.target.value) }))}
-              style={{ ...g.editInput, width: 64 }} />
-            <button style={g.saveBtn} onClick={handleSave} disabled={saving} data-testid="kiosk-shift-mgr-save">
-              {saving ? '...' : '保存'}
-            </button>
-            {getShift(editing.staffId, editing.date) && (
-              <button
-                style={g.deleteBtn}
-                onClick={() => handleDelete(getShift(editing.staffId, editing.date)!.id)}
-                disabled={saving}
-              >
-                削除
-              </button>
-            )}
-            <button style={g.cancelBtn} onClick={() => setEditing(null)}>✕</button>
-          </div>
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+        }} onClick={() => setEditing(null)}>
+          <div style={{
+            background: 'white', borderRadius: 10, padding: 24,
+            width: '90%', maxWidth: 400,
+          }} onClick={e => e.stopPropagation()}>
+            <h4 style={{ marginBottom: 16, fontSize: '0.95rem', color: '#1a56db' }}>
+              {staff.find(s => s.id === editing.staffId)?.name} —{' '}
+              {new Date(editing.date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' })}
+            </h4>
 
-          {/* 希望表示 */}
-          {getRequests(editing.staffId, editing.date).length > 0 && (
-            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 11, color: '#666', fontWeight: 700 }}>シフト希望</span>
-              {getRequests(editing.staffId, editing.date).map(r => (
-                <div key={r.id} style={{ ...g.reqTag, background: REQUEST_TYPE_COLOR[r.requestType] + '18', color: REQUEST_TYPE_COLOR[r.requestType], display: 'flex', flexDirection: 'column', gap: 4, padding: '8px 10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700 }}>{REQUEST_TYPE_LABEL[r.requestType] || r.requestType}</span>
-                    {r.startTime && <span style={{ fontSize: 11 }}>{r.startTime} 〜 {r.endTime}</span>}
-                    {/* 希望時間帯があれば確定ボタン */}
-                    {r.startTime && r.endTime && (
-                      <button
-                        style={g.confirmReqBtn}
-                        disabled={saving}
-                        data-testid={`kiosk-confirm-req-${r.id}`}
-                        onClick={async () => {
-                          setSaving(true);
-                          try {
-                            await kioskApi.createShift(storeId, {
-                              staffId: editing.staffId,
-                              date: editing.date,
-                              startTime: r.startTime!,
-                              endTime: r.endTime!,
-                              breakMinutes: 60,
-                            });
-                            showMsg('希望をシフトに確定しました', true);
-                            setEditing(null);
-                            await load();
-                          } catch (e: unknown) {
-                            showMsg(e instanceof Error ? e.message : '確定失敗', false);
-                          } finally {
-                            setSaving(false);
-                          }
-                        }}
-                      >
-                        ✓ この希望で確定
-                      </button>
+            {/* 希望表示 */}
+            {getRequests(editing.staffId, editing.date).length > 0 && (
+              <div style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ fontSize: 11, color: '#666', fontWeight: 700 }}>シフト希望</span>
+                {getRequests(editing.staffId, editing.date).map(r => (
+                  <div key={r.id} style={{ background: REQUEST_TYPE_COLOR[r.requestType] + '18', color: REQUEST_TYPE_COLOR[r.requestType], borderRadius: 6, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 700 }}>{REQUEST_TYPE_LABEL[r.requestType] || r.requestType}</span>
+                      {r.startTime && <span style={{ fontSize: 11 }}>{r.startTime} 〜 {r.endTime}</span>}
+                      {r.startTime && r.endTime && (
+                        <button
+                          style={g.confirmReqBtn}
+                          disabled={saving}
+                          data-testid={`kiosk-confirm-req-${r.id}`}
+                          onClick={async () => {
+                            setSaving(true);
+                            try {
+                              await kioskApi.createShift(storeId, {
+                                staffId: editing.staffId,
+                                date: editing.date,
+                                startTime: r.startTime!,
+                                endTime: r.endTime!,
+                                breakMinutes: 60,
+                              });
+                              showMsg('希望をシフトに確定しました', true);
+                              setEditing(null);
+                              await load();
+                            } catch (e: unknown) {
+                              showMsg(e instanceof Error ? e.message : '確定失敗', false);
+                            } finally {
+                              setSaving(false);
+                            }
+                          }}
+                        >
+                          この希望で確定
+                        </button>
+                      )}
+                    </div>
+                    {r.note && (
+                      <div style={{ fontSize: 12, color: '#444', background: '#fff8', borderRadius: 4, padding: '3px 8px' }}>
+                        {r.note}
+                      </div>
                     )}
                   </div>
-                  {r.note && (
-                    <div style={{ fontSize: 12, color: '#444', background: '#fff8', borderRadius: 4, padding: '3px 8px' }}>
-                      💬 {r.note}
-                    </div>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+
+            {/* 時間入力 */}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+              <TimePicker15 value={editing.startTime}
+                onChange={v => setEditing(prev => prev && ({ ...prev, startTime: v }))} />
+              <span style={{ color: '#888' }}>〜</span>
+              <TimePicker15 value={editing.endTime}
+                onChange={v => setEditing(prev => prev && ({ ...prev, endTime: v }))} />
             </div>
-          )}
+
+            {/* 休憩時間プリセット */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: '0.8rem', color: '#666', display: 'block', marginBottom: 6 }}>休憩時間</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[0, 30, 45, 60].map(mins => (
+                  <button
+                    key={mins}
+                    onClick={() => setEditing(prev => prev && ({ ...prev, breakMinutes: mins }))}
+                    style={{
+                      padding: '6px 12px', border: '1px solid #d4d9df', borderRadius: 6,
+                      background: editing.breakMinutes === mins ? '#4f8ef7' : '#fff',
+                      color: editing.breakMinutes === mins ? '#fff' : '#555',
+                      fontSize: '0.85rem', cursor: 'pointer', fontFamily: 'inherit',
+                      fontWeight: editing.breakMinutes === mins ? 600 : 400,
+                    }}
+                  >
+                    {mins}分
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* アクションボタン */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button style={{ ...g.saveBtn, flex: 1 }} onClick={handleSave} disabled={saving} data-testid="kiosk-shift-mgr-save">
+                {saving ? '...' : '保存'}
+              </button>
+              {getShift(editing.staffId, editing.date) && (
+                <button
+                  style={g.deleteBtn}
+                  onClick={() => handleDelete(getShift(editing.staffId, editing.date)!.id)}
+                  disabled={saving}
+                >
+                  削除
+                </button>
+              )}
+              <button style={g.cancelBtn} onClick={() => setEditing(null)}>閉じる</button>
+            </div>
+          </div>
         </div>
       )}
 
