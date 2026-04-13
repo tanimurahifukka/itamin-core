@@ -25,7 +25,7 @@ export default function OvertimeAlertPage() {
       .then((data) => {
         setStaffOvertime(data.staffOvertime ?? []);
       })
-      .catch(() => {});
+      .catch(() => { console.error('[OvertimeAlertPage] fetch failed'); });
   }, [selectedStore, year, month]);
 
   useEffect(() => { loadData(); }, [loadData]);

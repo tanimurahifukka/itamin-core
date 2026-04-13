@@ -23,7 +23,7 @@ export default function MenuPage() {
     const active = showInactive ? undefined : true;
     api.getMenuItems(selectedStore.id, active)
       .then((data) => setItems(data.items))
-      .catch(() => {});
+      .catch(() => { console.error('[MenuPage] fetch failed'); });
   }, [selectedStore, showInactive]);
 
   useEffect(() => { loadItems(); }, [loadItems]);

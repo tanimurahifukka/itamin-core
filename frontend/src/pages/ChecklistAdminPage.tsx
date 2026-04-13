@@ -145,7 +145,7 @@ function TemplatesTab({ storeId }: { storeId: string }) {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    checkApi.getSystemTemplates('cafe').then(d => setSystemTemplates(d.system_templates)).catch(() => {});
+    checkApi.getSystemTemplates('cafe').then(d => setSystemTemplates(d.system_templates)).catch(() => { console.error('[ChecklistAdminPage] fetch failed'); });
   }, []);
 
   // SwitchBot 連携が設定済みの店舗では device 一覧を取得する。失敗しても UI は崩さない。
@@ -156,7 +156,7 @@ function TemplatesTab({ storeId }: { storeId: string }) {
   }, [storeId]);
 
   useEffect(() => {
-    api.listNfcLocations(storeId).then(d => setNfcLocations(d.locations || [])).catch(() => {});
+    api.listNfcLocations(storeId).then(d => setNfcLocations(d.locations || [])).catch(() => { console.error('[ChecklistAdminPage] fetch failed'); });
   }, [storeId]);
 
   const handleCreate = async () => {

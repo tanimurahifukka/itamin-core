@@ -45,7 +45,7 @@ export default function DailyReportPage() {
         setReports(data.reports);
         if (data.summary) setSummary(data.summary);
       })
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore, year, month]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -55,10 +55,10 @@ export default function DailyReportPage() {
     if (!selectedStore) return;
     api.getMenuItems(selectedStore.id, true)
       .then(data => setMenuItems(data.items || []))
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
     api.getInventory(selectedStore.id)
       .then(data => setInventoryItems(data.items || []))
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore]);
 
   // 日付が変わったら既存のレコードをロード
@@ -87,7 +87,7 @@ export default function DailyReportPage() {
         }
         setQuantities(q);
       })
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore, formDate]);
 
   const menuTotal = Object.entries(quantities).reduce((sum, [id, qty]) => {
@@ -131,7 +131,7 @@ export default function DailyReportPage() {
       if (invUpdates.length > 0) {
         api.getInventory(selectedStore.id)
           .then(data => setInventoryItems(data.items || []))
-          .catch(() => {});
+          .catch(() => { showToast('読み込みに失敗しました', 'error'); });
         setInventoryUpdates({});
       }
 

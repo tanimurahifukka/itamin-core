@@ -28,7 +28,7 @@ export default function PolicySettingsPage() {
     setLoading(true);
     api.getAttendancePolicy(storeId)
       .then(res => setPolicy(res.policy))
-      .catch(() => {})
+      .catch(() => { console.error('[PolicySettingsPage] fetch failed'); })
       .finally(() => setLoading(false));
   }, [storeId]);
 

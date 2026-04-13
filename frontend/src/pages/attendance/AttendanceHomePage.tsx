@@ -5,24 +5,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
-/** Attendance today response shape as returned by the API. */
-interface AttendanceTodayData {
-  businessDate: string;
-  currentStatus: string;
-  activeSession: {
-    clockInAt: string;
-    breakMinutes: number;
-    status: string;
-  } | null;
-  recentEvents: RawAttendanceEvent[];
-  todayShift: { startTime: string; endTime: string } | null;
-}
+import type { AttendanceTodayResponse, AttendanceRawEvent } from '../../types/api';
 
-/** Raw event shape returned by the attendance today endpoint (snake_case fields). */
-interface RawAttendanceEvent {
-  event_type: string;
-  event_at: string;
-}
+type AttendanceTodayData = AttendanceTodayResponse;
+type RawAttendanceEvent = AttendanceRawEvent;
 
 const STATUS_LABELS: Record<string, string> = {
   not_clocked_in: '未出勤',
@@ -70,7 +56,7 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
     if (selectedStore?.role === 'owner') { setLoading(false); return; }
     try {
       const res = await api.getAttendanceToday(storeId);
-      setData(res as unknown as AttendanceTodayData);
+      setData(res);
     } catch (e: unknown) {
       console.error('Failed to load attendance status:', e);
     } finally {

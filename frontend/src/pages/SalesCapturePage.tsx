@@ -56,7 +56,7 @@ export default function SalesCapturePage() {
         setGrossSales(''); setNetSales(''); setTaxAmount('');
         setCashSales(''); setCardSales(''); setQrSales(''); setReceiptCount('');
       }
-    }).catch(() => {});
+    }).catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore, date]);
 
   // レシート読込
@@ -64,7 +64,7 @@ export default function SalesCapturePage() {
     if (!selectedStore) return;
     api.getSalesReceipts(selectedStore.id, date)
       .then(data => setReceipts(data.receipts || []))
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore, date]);
 
   // 現金締め読込
@@ -79,7 +79,7 @@ export default function SalesCapturePage() {
       } else {
         setExpectedCash(''); setCountedCash(''); setCashNote('');
       }
-    }).catch(() => {});
+    }).catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore, date]);
 
   // 売上締め保存

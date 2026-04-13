@@ -95,10 +95,10 @@ export default function PunchClockPage() {
     if (!selectedStore || !isManagerRole) return;
     api.getMenuItems(selectedStore.id, true)
       .then(data => setMenuItems(data.items || []))
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
     api.getInventory(selectedStore.id)
       .then(data => setInventoryItems(data.items || []))
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore, isManagerRole]);
 
   // 打刻ボタン押下 → チェックリスト表示
@@ -148,7 +148,7 @@ export default function PunchClockPage() {
       // 在庫データを再取得
       api.getInventory(selectedStore.id)
         .then(d => setInventoryItems(d.items || []))
-        .catch(() => {});
+        .catch(() => { showToast('読み込みに失敗しました', 'error'); });
       setShowClockOutReport(true);
       return;
     }

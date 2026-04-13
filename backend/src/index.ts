@@ -65,9 +65,9 @@ app.use(cors({
 // JSON 再シリアライズだとホワイトスペースの有無で不一致になるため、必ず
 // 受信した生バイト列で HMAC を計算する必要がある。
 app.use(express.json({
-  verify: (req: any, _res, buf) => {
+  verify: (req, _res, buf) => {
     if (buf && buf.length) {
-      req.rawBody = Buffer.from(buf);
+      (req as Express.Request).rawBody = Buffer.from(buf);
     }
   },
 }));
@@ -156,9 +156,9 @@ app.get('/api/health', (_req, res) => {
 
 
 // エラーハンドラ
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('[Error]', err);
-  res.status(500).json({ error: err.message || 'Internal Server Error' });
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
 // ローカル開発時のみlistenする（Vercel Serverless では不要）

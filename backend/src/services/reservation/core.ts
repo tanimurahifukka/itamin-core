@@ -8,6 +8,7 @@
 //  - 監査ログ書き込み
 //  - 通知キュー投入
 
+import { randomInt } from 'crypto';
 import { supabaseAdmin } from '../../config/supabase';
 import { normalizePhone } from '../../lib/phone';
 import type {
@@ -22,7 +23,7 @@ const CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // 紛らわしい 0/1
 export function generateConfirmationCode(): string {
   let out = '';
   for (let i = 0; i < 8; i++) {
-    out += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+    out += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
   }
   return out;
 }

@@ -37,6 +37,7 @@ declare global {
       accessToken?: string;
       kioskStoreId?: string;
       rawBody?: Buffer;
+      platformRole?: string;
     }
   }
 }

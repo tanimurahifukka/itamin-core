@@ -77,7 +77,8 @@ async function requirePinUser(req: Request, res: Response): Promise<{
     return null;
   }
 
-  const membershipId = (pinRow as any).membership_id as string;
+  const pinData = pinRow as { membership_id: string; store_id: string };
+  const membershipId = pinData.membership_id;
 
   const { data: staff } = await supabaseAdmin
     .from('store_staff')
@@ -85,16 +86,18 @@ async function requirePinUser(req: Request, res: Response): Promise<{
     .eq('id', membershipId)
     .maybeSingle();
 
-  if (!staff || (staff as any).store_id !== storeId) {
+  const staffRow = staff as { id: string; user_id: string; store_id: string; user: { name: string }[] | null } | null;
+
+  if (!staffRow || staffRow.store_id !== storeId) {
     res.status(401).json({ error: 'スタッフ情報の解決に失敗しました' });
     return null;
   }
 
   return {
-    userId: (staff as any).user_id,
+    userId: staffRow.user_id,
     storeId,
-    staffId: (staff as any).id,
-    userName: (staff as any).user?.name ?? null,
+    staffId: staffRow.id,
+    userName: staffRow.user?.[0]?.name ?? null,
   };
 }
 
@@ -135,12 +138,15 @@ nfcPunchRouter.post('/resolve', async (req: Request, res: Response) => {
       .eq('status', 'completed')
       .order('clock_in_at');
 
+    const storeRow = store as { id: string; name: string } | null;
+    const activeRow = activeSession as { status: 'working' | 'on_break' } | null;
+
     let currentStatus: 'not_clocked_in' | 'working' | 'on_break' | 'completed' = 'not_clocked_in';
-    if (activeSession) currentStatus = (activeSession as any).status;
+    if (activeRow) currentStatus = activeRow.status;
     else if (completedToday && completedToday.length > 0) currentStatus = 'completed';
 
     res.json({
-      store: { id: (store as any)?.id, name: (store as any)?.name || '' },
+      store: { id: storeRow?.id, name: storeRow?.name || '' },
       staff: { staffId: auth.staffId, userName: auth.userName },
       businessDate,
       currentStatus,
@@ -193,16 +199,18 @@ nfcPunchRouter.post('/clock-in', async (req: Request, res: Response) => {
 
     if (error) { res.status(500).json({ error: error.message }); return; }
 
+    const recordRow = record as { id: string; clock_in_at: string };
+
     await writeEvent(supabaseAdmin, {
-      storeId: auth.storeId, userId: auth.userId, recordId: (record as any).id,
+      storeId: auth.storeId, userId: auth.userId, recordId: recordRow.id,
       eventType: 'clock_in', source: 'nfc', idempotencyKey,
       payload: { staffName: auth.userName },
     });
 
     res.status(201).json({
-      recordId: (record as any).id,
+      recordId: recordRow.id,
       status: 'working',
-      effectiveAt: (record as any).clock_in_at,
+      effectiveAt: recordRow.clock_in_at,
       businessDate,
       staffName: auth.userName,
       message: '出勤しました',
@@ -230,26 +238,29 @@ nfcPunchRouter.post('/break-start', async (req: Request, res: Response) => {
       .eq('store_id', auth.storeId).eq('user_id', auth.userId).eq('status', 'working').maybeSingle();
     if (!session) { res.status(409).json({ error: '勤務中のセッションがありません', code: 'NO_OPEN_SESSION' }); return; }
 
+    const sessionRow = session as { id: string };
+
     const { data: openBreak } = await supabaseAdmin
       .from('attendance_breaks').select('id')
-      .eq('attendance_record_id', (session as any).id).is('ended_at', null).maybeSingle();
+      .eq('attendance_record_id', sessionRow.id).is('ended_at', null).maybeSingle();
     if (openBreak) { res.status(409).json({ error: '既に休憩中です', code: 'ALREADY_ON_BREAK' }); return; }
 
     const now = new Date();
     await supabaseAdmin.from('attendance_breaks').insert({
-      attendance_record_id: (session as any).id, started_at: now.toISOString(),
+      attendance_record_id: sessionRow.id, started_at: now.toISOString(),
     });
-    await supabaseAdmin.from('attendance_records').update({
+    const { error: updateErr } = await supabaseAdmin.from('attendance_records').update({
       status: 'on_break', updated_by: auth.userId, updated_at: now.toISOString(),
-    }).eq('id', (session as any).id);
+    }).eq('id', sessionRow.id);
+    if (updateErr) console.error('[nfc punch /break-start] update error:', updateErr);
     await writeEvent(supabaseAdmin, {
-      storeId: auth.storeId, userId: auth.userId, recordId: (session as any).id,
+      storeId: auth.storeId, userId: auth.userId, recordId: sessionRow.id,
       eventType: 'break_start', source: 'nfc', idempotencyKey,
       payload: { staffName: auth.userName },
     });
 
     res.json({
-      recordId: (session as any).id,
+      recordId: sessionRow.id,
       status: 'on_break',
       effectiveAt: now.toISOString(),
       staffName: auth.userName,
@@ -278,25 +289,30 @@ nfcPunchRouter.post('/break-end', async (req: Request, res: Response) => {
       .eq('store_id', auth.storeId).eq('user_id', auth.userId).eq('status', 'on_break').maybeSingle();
     if (!session) { res.status(409).json({ error: '休憩中のセッションがありません', code: 'NO_OPEN_BREAK' }); return; }
 
+    const sessionRow = session as { id: string };
+
     const now = new Date();
     const { data: openBreak } = await supabaseAdmin
       .from('attendance_breaks').select('id')
-      .eq('attendance_record_id', (session as any).id).is('ended_at', null).maybeSingle();
+      .eq('attendance_record_id', sessionRow.id).is('ended_at', null).maybeSingle();
     if (openBreak) {
-      await supabaseAdmin.from('attendance_breaks').update({ ended_at: now.toISOString() }).eq('id', (openBreak as any).id);
+      const breakRow = openBreak as { id: string };
+      const { error: breakUpdateErr } = await supabaseAdmin.from('attendance_breaks').update({ ended_at: now.toISOString() }).eq('id', breakRow.id);
+      if (breakUpdateErr) console.error('[nfc punch /break-end] break update error:', breakUpdateErr);
     }
 
-    await supabaseAdmin.from('attendance_records').update({
+    const { error: updateErr } = await supabaseAdmin.from('attendance_records').update({
       status: 'working', updated_by: auth.userId, updated_at: now.toISOString(),
-    }).eq('id', (session as any).id);
+    }).eq('id', sessionRow.id);
+    if (updateErr) console.error('[nfc punch /break-end] record update error:', updateErr);
     await writeEvent(supabaseAdmin, {
-      storeId: auth.storeId, userId: auth.userId, recordId: (session as any).id,
+      storeId: auth.storeId, userId: auth.userId, recordId: sessionRow.id,
       eventType: 'break_end', source: 'nfc', idempotencyKey,
       payload: { staffName: auth.userName },
     });
 
     res.json({
-      recordId: (session as any).id,
+      recordId: sessionRow.id,
       status: 'working',
       effectiveAt: now.toISOString(),
       staffName: auth.userName,
@@ -326,35 +342,40 @@ nfcPunchRouter.post('/clock-out', async (req: Request, res: Response) => {
       .in('status', ['working', 'on_break']).maybeSingle();
     if (!session) { res.status(409).json({ error: '勤務中のセッションがありません', code: 'NO_OPEN_SESSION' }); return; }
 
+    const sessionRow = session as { id: string; status: string };
+
     const policy = await getPolicy(supabaseAdmin, auth.storeId);
     const now = new Date();
 
-    if ((session as any).status === 'on_break') {
+    if (sessionRow.status === 'on_break') {
       if (!policy.auto_close_break_before_clock_out) {
         res.status(409).json({ error: '休憩中は退勤できません', code: 'CLOCK_OUT_DURING_BREAK_NOT_ALLOWED' });
         return;
       }
       const { data: openBreak } = await supabaseAdmin
         .from('attendance_breaks').select('id')
-        .eq('attendance_record_id', (session as any).id).is('ended_at', null).maybeSingle();
+        .eq('attendance_record_id', sessionRow.id).is('ended_at', null).maybeSingle();
       if (openBreak) {
-        await supabaseAdmin.from('attendance_breaks').update({ ended_at: now.toISOString() }).eq('id', (openBreak as any).id);
+        const breakRow = openBreak as { id: string };
+        const { error: breakUpdateErr } = await supabaseAdmin.from('attendance_breaks').update({ ended_at: now.toISOString() }).eq('id', breakRow.id);
+        if (breakUpdateErr) console.error('[nfc punch /clock-out] break update error:', breakUpdateErr);
       }
     }
 
-    await supabaseAdmin.from('attendance_records').update({
+    const { error: updateErr } = await supabaseAdmin.from('attendance_records').update({
       status: 'completed', clock_out_at: now.toISOString(), clock_out_method: 'nfc_pin',
       updated_by: auth.userId, updated_at: now.toISOString(),
-    }).eq('id', (session as any).id);
+    }).eq('id', sessionRow.id);
+    if (updateErr) console.error('[nfc punch /clock-out] record update error:', updateErr);
 
     await writeEvent(supabaseAdmin, {
-      storeId: auth.storeId, userId: auth.userId, recordId: (session as any).id,
+      storeId: auth.storeId, userId: auth.userId, recordId: sessionRow.id,
       eventType: 'clock_out', source: 'nfc', idempotencyKey,
       payload: { staffName: auth.userName },
     });
 
     res.json({
-      recordId: (session as any).id,
+      recordId: sessionRow.id,
       status: 'completed',
       effectiveAt: now.toISOString(),
       staffName: auth.userName,

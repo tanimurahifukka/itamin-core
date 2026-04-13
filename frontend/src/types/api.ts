@@ -420,11 +420,15 @@ export interface StaffConsecutiveInfo {
 export interface AttendanceTodayResponse {
   businessDate: string;
   currentStatus: string;
-  activeSession: AttendanceSession | null;
+  activeSession: {
+    clockInAt: string;
+    breakMinutes: number;
+    status: string;
+  } | null;
   completedSessions: AttendanceSession[];
-  recentEvents: AttendanceEvent[];
-  todayShift: Shift | null;
-  policy: { timezone: string; autoCloseBreak: boolean };
+  recentEvents: AttendanceRawEvent[];
+  todayShift: { startTime: string; endTime: string } | null;
+  policy?: { timezone: string; autoCloseBreak: boolean };
 }
 
 export interface AttendanceSession {
@@ -440,6 +444,12 @@ export interface AttendanceEvent {
   effectiveAt: string;
 }
 
+/** Raw event shape returned by the attendance today endpoint (snake_case fields). */
+export interface AttendanceRawEvent {
+  event_type: string;
+  event_at: string;
+}
+
 export interface AttendanceActionResponse {
   recordId: string;
   status: string;
@@ -448,13 +458,76 @@ export interface AttendanceActionResponse {
   message: string;
 }
 
+/** Record shape returned by the attendance history endpoint. */
+export interface AttendanceHistoryRecord {
+  id: string;
+  businessDate: string;
+  clockInAt: string;
+  clockOutAt: string | null;
+  breakMinutes: number;
+  status: string;
+  correctionStatus?: string;
+  note?: string;
+}
+
+/** Record shape returned by the admin staff detail endpoint. */
+export interface AdminStaffAttendanceRecord {
+  id: string;
+  businessDate: string;
+  clockInAt: string | null;
+  clockOutAt: string | null;
+  breakMinutes: number;
+  status: string;
+  note?: string;
+}
+
+/** Correction item in the admin staff detail response. */
+export interface AdminStaffCorrectionItem {
+  id: string;
+  requested_business_date: string;
+  status: string;
+  request_type: string;
+  reason: string;
+}
+
+/** Response shape for the admin staff attendance detail endpoint. */
+export interface AdminStaffAttendanceDetail {
+  staff?: { name: string };
+  records?: AdminStaffAttendanceRecord[];
+  corrections?: AdminStaffCorrectionItem[];
+}
+
+/** Response shape for monthly timecard records. */
+export interface MonthlyRecordsResponse {
+  summary: MonthlySummaryStaff[];
+  records?: MonthlyRawStaffRecord[];
+}
+
+/** Raw Supabase record shape in monthly staff detail response (snake_case). */
+export interface MonthlyRawStaffRecord {
+  id: string;
+  staff_id: string;
+  clock_in: string;
+  clock_out: string | null;
+  break_minutes: number;
+  staff?: { hourly_wage?: number };
+}
+
 export interface AttendanceCorrection {
   id: string;
-  storeId: string;
+  storeId?: string;
   staffId?: string;
   staffName?: string;
   status: string;
   comment?: string;
+  user?: { name?: string };
+  user_id?: string;
+  requested_business_date: string;
+  request_type: string;
+  reason: string;
+  before_snapshot?: Record<string, unknown>;
+  after_snapshot?: Record<string, unknown>;
+  review_comment?: string;
 }
 
 export interface AdminTodayStaff {
@@ -467,9 +540,9 @@ export interface AdminTodayStaff {
   clockInAt?: string;
   clockOutAt?: string;
   breakMinutes?: number;
-  shift?: Shift;
+  shift?: { startTime: string; endTime: string };
   sessions?: AttendanceSession[];
-  checklist?: unknown;
+  checklist?: { clockIn?: boolean; clockOut?: boolean };
 }
 
 export interface AdminMonthlySummary {
@@ -521,8 +594,11 @@ export interface LineLoginUrlResponse {
 export interface LineLink {
   userId: string;
   staffName?: string;
+  role?: string;
   lineDisplayName?: string;
   linkedAt?: string;
+  lineLink?: { displayName?: string; linkedAt?: string };
+  activeToken?: { code: string; expiresAt: string };
 }
 
 // ============================================================

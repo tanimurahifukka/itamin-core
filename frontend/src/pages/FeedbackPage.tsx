@@ -35,14 +35,14 @@ export default function FeedbackPage() {
     if (!selectedStore) return;
     api.getFeedback(selectedStore.id, filterStatus || undefined, filterType || undefined)
       .then((data) => setItems(data.items))
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore, filterStatus, filterType]);
 
   const loadAllItems = useCallback(() => {
     if (!selectedStore) return;
     api.getFeedback(selectedStore.id)
       .then((data) => setAllItems(data.items))
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore]);
 
   useEffect(() => { loadData(); }, [loadData]);

@@ -48,14 +48,18 @@ router.get('/:storeId/summary', requireAuth, async (req: Request, res: Response)
           .in('user_id', staffIds)
       : { data: [] };
 
-    const memberMap = new Map((members || []).map((m: any) => [m.user_id, m]));
+    type StaffWithProfile = { user_id: string; role: string; user?: { name?: string; email?: string } | null };
+    const memberMap = new Map((members || []).map((m) => {
+      const userJoin = Array.isArray(m.user) ? m.user[0] : m.user;
+      return [m.user_id, { ...m, user: userJoin } as StaffWithProfile] as const;
+    }));
 
-    const summary = (data || []).map((d: any) => {
+    const summary = (data || []).map((d: { id: string; staff_id: string; total_days: number; used_days: number; fiscal_year: number }) => {
       const member = memberMap.get(d.staff_id);
       return {
         id: d.id,
         staffId: d.staff_id,
-        staffName: (member as any)?.user?.name || (member as any)?.user?.email || '不明',
+        staffName: member?.user?.name || member?.user?.email || '不明',
         totalDays: d.total_days,
         usedDays: d.used_days,
         remainingDays: d.total_days - d.used_days,

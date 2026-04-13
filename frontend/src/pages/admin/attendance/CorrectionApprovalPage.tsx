@@ -4,18 +4,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
-interface CorrectionItem {
-  id: string;
-  status: string;
-  user?: { name?: string };
-  user_id?: string;
-  requested_business_date: string;
-  request_type: string;
-  reason: string;
-  before_snapshot?: Record<string, unknown>;
-  after_snapshot?: Record<string, unknown>;
-  review_comment?: string;
-}
+import type { AttendanceCorrection } from '../../../types/api';
+
+type CorrectionItem = AttendanceCorrection;
 
 const STATUS_LABELS: Record<string, string> = {
   pending: '申請中',
@@ -47,7 +38,7 @@ export default function CorrectionApprovalPage() {
     setLoading(true);
     try {
       const res = await api.getAdminCorrections(storeId);
-      setCorrections((res.corrections || []) as unknown as CorrectionItem[]);
+      setCorrections(res.corrections || []);
     } catch {
       setCorrections([]);
     } finally {

@@ -212,7 +212,7 @@ export default function KioskHaccp({ storeId, staff }: Props) {
         if (!locationId) return;
         kioskApi.getNfcLocationStatus(storeId, locationId, today)
           .then(d => setNfcStatuses(prev => ({ ...prev, [item.id]: { done: d.done, submitted_at: d.submitted_at } })))
-          .catch(() => {});
+          .catch(() => { console.error('[KioskHaccp] fetch failed'); });
       });
     }
   };
