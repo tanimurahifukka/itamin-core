@@ -303,7 +303,7 @@ export const api = {
   // Shift
   getWeeklyShifts: (storeId: string, date: string, days?: number) =>
     request<{ shifts: Shift[]; startDate: string; endDate: string }>(`/shift/${storeId}/weekly?date=${date}${days ? `&days=${days}` : ''}`),
-  saveShift: (storeId: string, shift: { staffId: string; date: string; startTime: string; endTime: string; status?: string }) =>
+  saveShift: (storeId: string, shift: { staffId: string; date: string; startTime: string; endTime: string; breakMinutes?: number; status?: string }) =>
     request<{ shift: Shift }>(`/shift/${storeId}`, { method: 'POST', body: JSON.stringify(shift) }),
   publishShifts: (storeId: string, startDate: string, endDate: string) =>
     request<{ published: number }>(`/shift/${storeId}/publish`, { method: 'POST', body: JSON.stringify({ startDate, endDate }) }),

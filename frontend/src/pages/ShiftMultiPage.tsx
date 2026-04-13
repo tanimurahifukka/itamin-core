@@ -12,7 +12,7 @@ import type {
   ShiftConflict,
 } from '../types/shiftMulti';
 
-type ViewSpan = 'week' | 'half-month';
+type ViewSpan = 'week' | 'half-month' | 'month';
 
 const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
@@ -72,10 +72,13 @@ export default function ShiftMultiPage() {
   } | null>(null);
   const [editStart, setEditStart] = useState('09:00');
   const [editEnd, setEditEnd] = useState('17:00');
+  const [editBreakMinutes, setEditBreakMinutes] = useState(60);
   const [editStoreId, setEditStoreId] = useState('');
 
-  const numDays = viewSpan === 'half-month' ? 15 : 7;
-  const isCompact = viewSpan === 'half-month';
+  const numDays = viewSpan === 'month'
+    ? new Date(weekStart.getFullYear(), weekStart.getMonth() + 1, 0).getDate()
+    : viewSpan === 'half-month' ? 15 : 7;
+  const isCompact = viewSpan !== 'week';
 
   const viewDates = Array.from({ length: numDays }, (_, i) => {
     const d = new Date(weekStart);
@@ -136,14 +139,22 @@ export default function ShiftMultiPage() {
   // ナビゲーション
   const stepDays = viewSpan === 'half-month' ? 15 : 7;
   const prevPeriod = () => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() - stepDays);
-    setWeekStart(getMonday(d));
+    if (viewSpan === 'month') {
+      setWeekStart(new Date(weekStart.getFullYear(), weekStart.getMonth() - 1, 1));
+    } else {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() - stepDays);
+      setWeekStart(getMonday(d));
+    }
   };
   const nextPeriod = () => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + stepDays);
-    setWeekStart(getMonday(d));
+    if (viewSpan === 'month') {
+      setWeekStart(new Date(weekStart.getFullYear(), weekStart.getMonth() + 1, 1));
+    } else {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + stepDays);
+      setWeekStart(getMonday(d));
+    }
   };
 
   // 店舗フィルター切替
@@ -183,6 +194,7 @@ export default function ShiftMultiPage() {
       setEditing({ userId: emp.userId, date: dateStr, storeId: s.storeId, staffId: s.staffId });
       setEditStart(s.startTime?.slice(0, 5) || '09:00');
       setEditEnd(s.endTime?.slice(0, 5) || '17:00');
+      setEditBreakMinutes(s.breakMinutes ?? 60);
       setEditStoreId(s.storeId);
     } else {
       setEditing({
@@ -193,6 +205,7 @@ export default function ShiftMultiPage() {
       });
       setEditStart('09:00');
       setEditEnd('17:00');
+      setEditBreakMinutes(60);
       setEditStoreId(firstStore.storeId);
     }
   };
@@ -222,6 +235,7 @@ export default function ShiftMultiPage() {
         date: editing.date,
         startTime: editStart,
         endTime: editEnd,
+        breakMinutes: editBreakMinutes,
       });
       setEditing(null);
       if (result.conflicts && result.conflicts.length > 0) {
@@ -287,7 +301,9 @@ export default function ShiftMultiPage() {
   const hasTimeConflicts = conflicts.some(c => c.hasTimeOverlap);
 
   const lastDate = viewDates[viewDates.length - 1];
-  const periodLabel = viewSpan === 'half-month'
+  const periodLabel = viewSpan === 'month'
+    ? `${weekStart.getFullYear()}年${weekStart.getMonth() + 1}月`
+    : viewSpan === 'half-month'
     ? `${weekStart.getMonth() + 1}/${weekStart.getDate()} 〜 ${lastDate.getMonth() + 1}/${lastDate.getDate()}`
     : `${weekStart.getMonth() + 1}/${weekStart.getDate()} 〜`;
 
@@ -327,15 +343,21 @@ export default function ShiftMultiPage() {
           <div className="view-mode-tabs" style={{ marginBottom: 0 }}>
             <button
               className={`view-mode-tab ${viewSpan === 'week' ? 'active' : ''}`}
-              onClick={() => setViewSpan('week')}
+              onClick={() => { setViewSpan('week'); setWeekStart(getMonday(weekStart)); }}
             >
               週
             </button>
             <button
               className={`view-mode-tab ${viewSpan === 'half-month' ? 'active' : ''}`}
-              onClick={() => setViewSpan('half-month')}
+              onClick={() => { setViewSpan('half-month'); setWeekStart(getMonday(weekStart)); }}
             >
               半月
+            </button>
+            <button
+              className={`view-mode-tab ${viewSpan === 'month' ? 'active' : ''}`}
+              onClick={() => { setViewSpan('month'); setWeekStart(new Date(weekStart.getFullYear(), weekStart.getMonth(), 1)); }}
+            >
+              月
             </button>
           </div>
           {hasTimeConflicts && (
@@ -633,6 +655,28 @@ export default function ShiftMultiPage() {
                 <TimePicker15 value={editStart} onChange={setEditStart} />
                 <span>〜</span>
                 <TimePicker15 value={editEnd} onChange={setEditEnd} />
+              </div>
+
+              {/* 休憩時間プリセット */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: '0.8rem', color: '#666', display: 'block', marginBottom: 6 }}>休憩時間</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[0, 30, 45, 60].map(mins => (
+                    <button
+                      key={mins}
+                      onClick={() => setEditBreakMinutes(mins)}
+                      style={{
+                        padding: '6px 12px', border: '1px solid #d4d9df', borderRadius: 6,
+                        background: editBreakMinutes === mins ? '#2563eb' : '#fff',
+                        color: editBreakMinutes === mins ? '#fff' : '#555',
+                        fontSize: '0.85rem', cursor: 'pointer', fontFamily: 'inherit',
+                        fontWeight: editBreakMinutes === mins ? 600 : 400,
+                      }}
+                    >
+                      {mins}分
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* アクションボタン */}
