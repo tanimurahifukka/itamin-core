@@ -2010,9 +2010,9 @@ router.put('/:storeId/nfc-locations/:id', requireAuth, async (req: Request, res:
     });
 
     res.json({ ok: true, location: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores PUT /:storeId/nfc-locations/:id] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -2046,9 +2046,9 @@ router.delete('/:storeId/nfc-locations/:id', requireAuth, async (req: Request, r
     });
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores DELETE /:storeId/nfc-locations/:id] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -2071,9 +2071,9 @@ router.get('/:storeId/checklist-templates', requireAuth, async (req: Request, re
     }
 
     res.json({ templates: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores GET /:storeId/checklist-templates] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
