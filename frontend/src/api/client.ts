@@ -7,7 +7,7 @@ import type {
   AuditLogEntry,
   TimeRecord,
   TimecardStatus,
-  MonthlySummaryStaff,
+  MonthlyTimecardResponse,
   PluginInfo,
   Shift,
   ShiftRequest,
@@ -250,7 +250,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ breakMinutes }),
     }),
-  updateTimeRecord: (storeId: string, recordId: string, updates: { clockIn?: string; clockOut?: string; breakMinutes?: number }) =>
+  updateTimeRecord: (storeId: string, recordId: string, updates: { clockIn?: string; clockOut?: string | null; breakMinutes?: number }) =>
     request<{ record: TimeRecord }>(`/timecard/${storeId}/records/${recordId}`, {
       method: 'PUT',
       body: JSON.stringify(updates),

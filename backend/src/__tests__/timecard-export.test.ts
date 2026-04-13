@@ -11,6 +11,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { aggregateSummary, computeWorkMinutes } from '../timecard/aggregate';
 import type { RawRecord } from '../timecard/aggregate';
+import { currentJstYearMonth, dayBoundsJST, formatDateJST, isValidJstDate, isValidJstYearMonth, monthBoundsJST } from '../timecard/datetime';
 
 // -------------------------------------------------------------------
 // モジュールモック
@@ -331,7 +332,69 @@ describe('aggregateSummary', () => {
     expect(result[0].wageTotal).toBe(16000);  // 960/60 * 1000
   });
 
+  it('JST では同日の複数勤務を 1 出勤日として集計する', () => {
+    const records: RawRecord[] = [
+      {
+        staff_id: 's1',
+        clock_in: '2026-04-01T00:30:00+09:00',
+        clock_out: '2026-04-01T03:00:00+09:00',
+        break_minutes: 0,
+        hourly_wage: 1000,
+        staff_name: '田中',
+      },
+      {
+        staff_id: 's1',
+        clock_in: '2026-04-01T12:00:00+09:00',
+        clock_out: '2026-04-01T18:00:00+09:00',
+        break_minutes: 60,
+        hourly_wage: 1000,
+        staff_name: '田中',
+      },
+    ];
+    const result = aggregateSummary(records);
+    expect(result).toHaveLength(1);
+    expect(result[0].workDays).toBe(1);
+    expect(result[0].laborMinutes).toBe(450);
+  });
+
   it('computeWorkMinutes: clock_out が null のとき 0 を返す', () => {
     expect(computeWorkMinutes('2026-04-01T09:00:00+09:00', null, 0)).toBe(0);
+  });
+});
+
+describe('timecard datetime helpers', () => {
+  it('formatDateJST は UTC 日付ではなく JST 日付を返す', () => {
+    expect(formatDateJST('2026-04-01T00:30:00+09:00')).toBe('2026-04-01');
+  });
+
+  it('dayBoundsJST は JST 1 日ぶんの UTC 範囲を返す', () => {
+    expect(dayBoundsJST('2026-04-01')).toEqual({
+      startIso: '2026-03-31T15:00:00.000Z',
+      endIsoExclusive: '2026-04-01T15:00:00.000Z',
+    });
+  });
+
+  it('isValidJstDate は存在しない日付を拒否する', () => {
+    expect(isValidJstDate('2026-02-30')).toBe(false);
+    expect(isValidJstDate('2026-2-30')).toBe(false);
+  });
+
+  it('monthBoundsJST は翌月の JST 0時を終端にする', () => {
+    expect(monthBoundsJST(2026, 4)).toEqual({
+      startIso: '2026-03-31T15:00:00.000Z',
+      endIsoExclusive: '2026-04-30T15:00:00.000Z',
+    });
+  });
+
+  it('monthBoundsJST は不正な month を拒否する', () => {
+    expect(isValidJstYearMonth(2026, 13)).toBe(false);
+    expect(() => monthBoundsJST(2026, 13)).toThrow(/Invalid JST year\/month/);
+  });
+
+  it('currentJstYearMonth は月初の UTC でも JST の当月を返す', () => {
+    expect(currentJstYearMonth(new Date('2026-03-31T16:00:00.000Z'))).toEqual({
+      year: 2026,
+      month: 4,
+    });
   });
 });

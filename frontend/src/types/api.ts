@@ -107,6 +107,24 @@ export interface MonthlySummaryStaff {
   totalCost: number;
 }
 
+export interface MonthlyTimeRecord {
+  id: string;
+  staff_id: string;
+  clock_in: string;
+  clock_out: string | null;
+  break_minutes: number;
+  staff?: {
+    hourly_wage?: number;
+  };
+}
+
+export interface MonthlyTimecardResponse {
+  year: number;
+  month: number;
+  records: MonthlyTimeRecord[];
+  summary: MonthlySummaryStaff[];
+}
+
 // ============================================================
 // Plugin Settings
 // ============================================================

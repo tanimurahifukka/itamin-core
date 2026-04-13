@@ -24,6 +24,7 @@ function permissionLevelToRoles(level: string | undefined): string[] {
 
 export default function DashboardPage() {
   const { selectedStore } = useAuth();
+  const initialMonth = currentJstYearMonth();
   const isOwner = selectedStore?.role === 'owner';
   const [editAllowedRoles, setEditAllowedRoles] = useState<string[]>(['owner']);
   const [deleteAllowedRoles, setDeleteAllowedRoles] = useState<string[]>(['owner']);
@@ -49,9 +50,9 @@ export default function DashboardPage() {
   const [records, setRecords] = useState<TimeRecord[]>([]);
   const [date, setDate] = useState(todayJST());
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
-  const [monthlyData, setMonthlyData] = useState<MonthlyData | null>(null);
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [monthlyData, setMonthlyData] = useState<MonthlyTimecardResponse | null>(null);
+  const [year, setYear] = useState(initialMonth.year);
+  const [month, setMonth] = useState(initialMonth.month);
 
   // スタッフ別ビュー
   const [selectedStaff, setSelectedStaff] = useState<{ staffId: string; staffName: string } | null>(null);
@@ -99,7 +100,7 @@ export default function DashboardPage() {
       for (let i = 0; i < 7; i++) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = formatDateJST(d);
         try {
           const data = await api.getDailyRecords(selectedStore.id, dateStr);
           const unpaired = (data.records || []).filter((r: TimeRecord) => !r.clockOut);
@@ -121,14 +122,7 @@ export default function DashboardPage() {
     checkStale();
   }, [selectedStore, canEdit]);
 
-  const formatTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-
-  const toLocalDatetimeStr = (iso: string) => {
-    const d = new Date(iso);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
+  const formatTime = (iso: string) => formatTimeJST(iso);
 
   const calcHours = (record: TimeRecord) => {
     if (!record.clockOut) return null;
@@ -148,8 +142,8 @@ export default function DashboardPage() {
     setIsCreating(false);
     setEditRecord(record);
     setEditStaffId(record.staffId || '');
-    setEditClockIn(toLocalDatetimeStr(record.clockIn));
-    setEditClockOut(record.clockOut ? toLocalDatetimeStr(record.clockOut) : '');
+    setEditClockIn(isoToJstDateTimeLocalValue(record.clockIn));
+    setEditClockOut(record.clockOut ? isoToJstDateTimeLocalValue(record.clockOut) : '');
     setEditBreakMinutes(record.breakMinutes || 0);
     setEditError('');
   };
@@ -200,8 +194,8 @@ export default function DashboardPage() {
           setEditSubmitting(false);
           return;
         }
-        const newClockIn = new Date(editClockIn).toISOString();
-        const newClockOut = editClockOut ? new Date(editClockOut).toISOString() : null;
+        const newClockIn = jstDateTimeLocalValueToIso(editClockIn);
+        const newClockOut = editClockOut ? jstDateTimeLocalValueToIso(editClockOut) : null;
         await api.createTimeRecord(selectedStore.id, {
           staffId: editStaffId,
           clockIn: newClockIn,
@@ -218,8 +212,8 @@ export default function DashboardPage() {
 
       // clockOut accepts null to explicitly clear the value (not supported by the API type, but handled server-side)
       const updates: { clockIn?: string; clockOut?: string | null; breakMinutes?: number } = {};
-      const newClockIn = new Date(editClockIn).toISOString();
-      const newClockOut = editClockOut ? new Date(editClockOut).toISOString() : undefined;
+      const newClockIn = jstDateTimeLocalValueToIso(editClockIn);
+      const newClockOut = editClockOut ? jstDateTimeLocalValueToIso(editClockOut) : undefined;
 
       if (newClockIn !== editRecord.clockIn) updates.clockIn = newClockIn;
       if (editClockOut && newClockOut !== editRecord.clockOut) updates.clockOut = newClockOut;
@@ -231,7 +225,7 @@ export default function DashboardPage() {
         return;
       }
 
-      await api.updateTimeRecord(selectedStore.id, editRecord.id, updates as { clockIn?: string; clockOut?: string; breakMinutes?: number });
+      await api.updateTimeRecord(selectedStore.id, editRecord.id, updates);
       showToast('勤怠記録を修正しました', 'success');
       closeEditModal();
       // データ再読み込み
@@ -610,7 +604,7 @@ export default function DashboardPage() {
           {/* スタッフ別月間明細 */}
           {selectedStaff && monthlyData?.records ? (() => {
             const staffRecords = (monthlyData.records || [])
-              .filter((r) => r.staff_id === selectedStaff.staffId)
+              .filter((r: MonthlyTimeRecord) => r.staff_id === selectedStaff.staffId)
               .sort((a, b) => new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime());
 
             const staffSummary = monthlyData.summary?.find((s) => s.staffId === selectedStaff.staffId);
@@ -665,7 +659,7 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {staffRecords.map((r) => {
+                    {staffRecords.map((r: MonthlyTimeRecord) => {
                       const mapped: TimeRecord = {
                         id: r.id,
                         clockIn: r.clock_in,
@@ -676,7 +670,7 @@ export default function DashboardPage() {
                       };
                       const h = calcHours(mapped);
                       const cost = h !== null && mapped.hourlyWage ? Math.round(h * mapped.hourlyWage) : null;
-                      const dateStr = new Date(r.clock_in).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' });
+                      const dateStr = formatShortDateJST(r.clock_in);
                       return (
                         <tr key={r.id} className={!r.clock_out ? 'row-working row-unpaired' : ''}>
                           <td>{dateStr}</td>

@@ -1,3 +1,5 @@
+import { formatDateJST } from './datetime';
+
 /**
  * 勤怠集計の純粋関数ライブラリ
  *
@@ -75,7 +77,7 @@ export function aggregateSummary(records: RawRecord[]): AggregateSummaryRecord[]
     entry.laborMinutes += computeWorkMinutes(r.clock_in, r.clock_out, bm);
     entry.breakMinutes += bm;
 
-    const day = new Date(r.clock_in).toISOString().split('T')[0];
+    const day = formatDateJST(r.clock_in);
     entry.workDays.add(day);
   }
 

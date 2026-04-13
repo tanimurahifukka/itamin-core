@@ -5,8 +5,29 @@ import { buildDetailCsv, buildSummaryCsv } from './csv';
 import type { DetailRecord, SummaryRecord } from './csv';
 import { aggregateSummary, computeWorkMinutes } from './aggregate';
 import type { RawRecord } from './aggregate';
+import { currentJstYearMonth, dayBoundsJST, formatDateJST, isValidJstDate, isValidJstYearMonth, monthBoundsJST, todayJST } from './datetime';
 
 const router = Router();
+
+function getSingleString(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0];
+  }
+  return undefined;
+}
+
+function parseIntegerQueryParam(value: unknown): number | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== 'string' || !/^\d+$/.test(value)) {
+    return null;
+  }
+  return Number.parseInt(value, 10);
+}
 
 // 自分の所属情報を取得
 async function getStoreStaff(storeId: string, userId: string) {
@@ -217,7 +238,7 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
 
     // 出勤日が今日でなければ「退勤押し忘れ」と判定
     const isStale = open
-      ? new Date(open.clock_in).toDateString() !== new Date().toDateString()
+      ? formatDateJST(open.clock_in) !== todayJST()
       : false;
 
     res.json({
@@ -240,15 +261,33 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
 // 日別タイムカード一覧
 router.get('/:storeId/daily', requireAuth, async (req: Request, res: Response) => {
   try {
-    const storeId = req.params.storeId as string;
-    const dateStr = req.query.date as string;
-    const date = dateStr || new Date().toISOString().split('T')[0];
+    const storeId = getSingleString(req.params.storeId);
+    if (!storeId) {
+      res.status(400).json({ error: 'storeId パラメータが不正です' });
+      return;
+    }
+
+    const rawDateQuery = req.query.date;
+    const dateQuery = getSingleString(rawDateQuery);
+    if (rawDateQuery !== undefined && dateQuery === undefined) {
+      res.status(400).json({ error: 'date パラメータは YYYY-MM-DD 形式で指定してください' });
+      return;
+    }
+
+    const dateStr = dateQuery;
+    const date = dateStr || todayJST();
+    if (!isValidJstDate(date)) {
+      res.status(400).json({ error: 'date パラメータは YYYY-MM-DD 形式で指定してください' });
+      return;
+    }
+
+    const { startIso, endIsoExclusive } = dayBoundsJST(date);
     const { data, error } = await supabaseAdmin
       .from('time_records')
       .select('*, staff:store_staff(id, hourly_wage, transport_fee, user:profiles(name, picture))')
       .eq('store_id', storeId)
-      .gte('clock_in', `${date}T00:00:00`)
-      .lte('clock_in', `${date}T23:59:59`)
+      .gte('clock_in', startIso)
+      .lt('clock_in', endIsoExclusive)
       .order('clock_in');
 
     if (error) {
@@ -279,9 +318,26 @@ router.get('/:storeId/daily', requireAuth, async (req: Request, res: Response) =
 // 月別タイムカード（全スタッフ集計 + 給与概算）
 router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response) => {
   try {
-    const storeId = req.params.storeId as string;
-    const year = parseInt(req.query.year as string) || new Date().getFullYear();
-    const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
+    const storeId = getSingleString(req.params.storeId);
+    if (!storeId) {
+      res.status(400).json({ error: 'storeId パラメータが不正です' });
+      return;
+    }
+
+    const currentMonth = currentJstYearMonth();
+    const yearQuery = parseIntegerQueryParam(req.query.year);
+    const monthQuery = parseIntegerQueryParam(req.query.month);
+    if (yearQuery === null || monthQuery === null) {
+      res.status(400).json({ error: 'year/month パラメータは数値で指定してください' });
+      return;
+    }
+
+    const year = yearQuery ?? currentMonth.year;
+    const month = monthQuery ?? currentMonth.month;
+    if (!isValidJstYearMonth(year, month)) {
+      res.status(400).json({ error: 'month パラメータは 1〜12 の範囲で指定してください' });
+      return;
+    }
     // 権限チェック（スタッフであること）
     const staff = await getStoreStaff(storeId, req.user!.id);
     if (!staff) {
@@ -289,18 +345,15 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
       return;
     }
 
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endMonth = month === 12 ? 1 : month + 1;
-    const endYear = month === 12 ? year + 1 : year;
-    const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
+    const { startIso, endIsoExclusive } = monthBoundsJST(year, month);
 
     // 全スタッフの勤怠レコードを取得（スタッフ名・時給付き）
     const { data, error } = await supabaseAdmin
       .from('time_records')
       .select('*, staff:store_staff(id, hourly_wage, transport_fee, user:profiles(name))')
       .eq('store_id', storeId)
-      .gte('clock_in', startDate)
-      .lt('clock_in', endDate)
+      .gte('clock_in', startIso)
+      .lt('clock_in', endIsoExclusive)
       .order('clock_in');
 
     if (error) {
@@ -628,10 +681,27 @@ router.post('/:storeId/records', requireAuth, async (req: Request, res: Response
 // 権限: attendance プラグインの config.export_permission (role 配列)。未設定時は ['owner','manager']
 router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) => {
   try {
-    const storeId = req.params.storeId as string;
-    const year = parseInt(req.query.year as string) || new Date().getFullYear();
-    const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
-    const modeParam = req.query.mode as string;
+    const storeId = getSingleString(req.params.storeId);
+    if (!storeId) {
+      res.status(400).json({ error: 'storeId パラメータが不正です' });
+      return;
+    }
+
+    const currentMonth = currentJstYearMonth();
+    const yearQuery = parseIntegerQueryParam(req.query.year);
+    const monthQuery = parseIntegerQueryParam(req.query.month);
+    if (yearQuery === null || monthQuery === null) {
+      res.status(400).json({ error: 'year/month パラメータは数値で指定してください' });
+      return;
+    }
+
+    const year = yearQuery ?? currentMonth.year;
+    const month = monthQuery ?? currentMonth.month;
+    if (!isValidJstYearMonth(year, month)) {
+      res.status(400).json({ error: 'month パラメータは 1〜12 の範囲で指定してください' });
+      return;
+    }
+    const modeParam = getSingleString(req.query.mode);
 
     // Medium 11: 不正な mode 値は 400 Bad Request
     if (modeParam !== 'detail' && modeParam !== 'summary') {
@@ -685,17 +755,14 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
     const storeName = (storeData as { name?: string } | null)?.name || storeId;
 
     // 対象月のレコードを取得
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endMonth = month === 12 ? 1 : month + 1;
-    const endYear = month === 12 ? year + 1 : year;
-    const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
+    const { startIso, endIsoExclusive } = monthBoundsJST(year, month);
 
     const { data, error } = await supabaseAdmin
       .from('time_records')
       .select('*, staff:store_staff(id, hourly_wage, user:profiles(name))')
       .eq('store_id', storeId)
-      .gte('clock_in', startDate)
-      .lt('clock_in', endDate)
+      .gte('clock_in', startIso)
+      .lt('clock_in', endIsoExclusive)
       .order('clock_in');
 
     if (error) {
@@ -726,7 +793,7 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
           const workMinutes = computeWorkMinutes(r.clock_in, r.clock_out, breakMins);
           const hourlyWage: number = r.staff?.hourly_wage || 0;
           const estimatedSalary = Math.round(workMinutes / 60 * hourlyWage);
-          const dateStr = clockInDate.toISOString().split('T')[0];
+          const dateStr = formatDateJST(r.clock_in);
           const clockInStr = clockInDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Tokyo' });
           const clockOutStr = clockOutDate.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Tokyo' });
           return {
