@@ -981,6 +981,28 @@ export const api = {
       `/reservation/event/${storeId}/reservations/${reservationId}/cancel`,
       { method: 'POST', body: JSON.stringify({ reason }) },
     ),
+  listEventReservationsByEvent: (storeId: string, eventId: string) =>
+    request<{ reservations: ReservationRow[] }>(
+      `/reservation/event/${storeId}/events/${eventId}/reservations`,
+    ),
+  createEventAdminReservation: (
+    storeId: string,
+    eventId: string,
+    data: { party_size: number; customer_name: string; customer_phone?: string; customer_email?: string; notes?: string },
+  ) =>
+    request<{ reservation: ReservationRow }>(
+      `/reservation/event/${storeId}/events/${eventId}/reservations`,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
+  updateEventReservation: (
+    storeId: string,
+    reservationId: string,
+    patch: Record<string, unknown>,
+  ) =>
+    request<{ reservation: ReservationRow }>(
+      `/reservation/event/${storeId}/reservations/${reservationId}`,
+      { method: 'PATCH', body: JSON.stringify(patch) },
+    ),
   getPublicEvents: (slug: string) =>
     request<{ events: PublicEventAvailability[] }>(`/public/r/${slug}/event/events`),
 
