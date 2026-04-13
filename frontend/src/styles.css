@@ -73,10 +73,10 @@ body {
 
 /* ===== Sidebar ===== */
 .sidebar {
-  width: 220px;
+  width: 230px;
   background: #fff;
   border-right: 1px solid #d4d9df;
-  padding: 20px 0;
+  padding: 12px 0;
   flex-shrink: 0;
   position: sticky;
   top: 56px;
@@ -84,22 +84,38 @@ body {
   overflow-y: auto;
 }
 
+.sidebar-category {
+  margin-bottom: 4px;
+}
+
+.sidebar-category-label {
+  padding: 8px 20px 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
 .sidebar-nav {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   padding: 0 8px;
 }
 
 .sidebar-nav-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  padding: 10px 16px;
+  padding: 8px 12px;
   border: none;
   background: none;
   text-align: left;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-family: inherit;
   color: #555;
   cursor: pointer;
@@ -107,7 +123,15 @@ body {
   transition: background 0.15s, color 0.15s;
   letter-spacing: 0.04em;
   font-weight: 500;
-  line-height: 1.6;
+  line-height: 1.5;
+}
+
+.sidebar-nav-icon {
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
 }
 
 .sidebar-nav-item:hover {
@@ -116,8 +140,8 @@ body {
 }
 
 .sidebar-nav-item.active {
-  background: #e8edf3;
-  color: #1a1a1a;
+  background: #eff6ff;
+  color: #1d4ed8;
   font-weight: 600;
   position: relative;
 }
@@ -131,6 +155,29 @@ body {
   width: 3px;
   background: #2563eb;
   border-radius: 0 2px 2px 0;
+}
+
+/* ===== Page Title Bar ===== */
+.page-title-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.page-title-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.page-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0;
+  letter-spacing: 0.02em;
 }
 
 /* ===== Profile Dropdown ===== */
@@ -2411,27 +2458,34 @@ body {
   padding: 0 4px;
 }
 
-.mobile-card-grid.primary {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 12px;
+.mobile-category-section {
+  margin-bottom: 16px;
 }
 
-.mobile-card-grid.secondary {
+.mobile-category-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 4px;
+  margin-bottom: 8px;
+}
+
+.mobile-card-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
 .mobile-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 14px 12px;
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.15s;
   font-family: inherit;
@@ -2448,38 +2502,17 @@ body {
   transform: scale(0.98);
 }
 
-.mobile-card.primary {
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 24px 16px;
-  gap: 8px;
-  background: #f0f7ff;
-  border-color: #bfdbfe;
-}
-
-.mobile-card.primary:hover {
-  background: #e0efff;
-  border-color: #93c5fd;
-}
-
 .mobile-card-icon {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   line-height: 1;
-}
-
-.mobile-card.primary .mobile-card-icon {
-  font-size: 2rem;
+  flex-shrink: 0;
 }
 
 .mobile-card-label {
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: #1a1a2e;
-}
-
-.mobile-card.primary .mobile-card-label {
-  font-size: 1.05rem;
+  line-height: 1.3;
 }
 
 .mobile-back-btn {
@@ -2511,40 +2544,32 @@ body {
   }
 
   .sidebar {
-    width: 100%;
-    height: auto;
-    position: static;
-    border-right: none;
-    border-bottom: 1px solid #d4d9df;
-    padding: 8px 0;
-    overflow-x: auto;
+    display: none;
   }
 
-  .sidebar-nav {
-    flex-direction: row;
-    gap: 0;
-    padding: 0 12px;
+  .sidebar-category-label {
+    display: none;
   }
 
-  .sidebar-nav li {
-    flex-shrink: 0;
+  .sidebar-nav-icon {
+    display: none;
   }
 
-  .sidebar-nav-item {
-    white-space: nowrap;
-    padding: 8px 14px;
-    font-size: 0.85rem;
-    border-radius: 4px;
+  .page-title-bar {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
   }
 
-  .sidebar-nav-item.active::before {
-    left: 8px;
-    right: 8px;
-    top: auto;
-    bottom: 0;
-    width: auto;
-    height: 2px;
-    border-radius: 2px 2px 0 0;
+  .page-title {
+    font-size: 1.05rem;
+  }
+
+  .page-title-icon {
+    font-size: 1.1rem;
+  }
+
+  .mobile-card-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .header {
