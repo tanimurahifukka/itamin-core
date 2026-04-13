@@ -93,6 +93,14 @@ const TYPE_COLOR: Record<string, string> = {
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
+// 15-minute interval time options: 00:00, 00:15, ..., 23:45
+const TIME_OPTIONS: string[] = [];
+for (let h = 0; h < 24; h++) {
+  for (let m = 0; m < 60; m += 15) {
+    TIME_OPTIONS.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+  }
+}
+
 const EVENT_STATUS_LABEL: Record<string, string> = {
   draft: '下書き',
   published: '公開中',
@@ -467,25 +475,27 @@ function InlineEventForm({ selectedDay, initial, saving, onSave, onCancel }: Inl
         </div>
         <div style={{ flex: '1 1 100px' }}>
           <div style={s.fieldLabel}>開始時間 <span style={s.required}>*</span></div>
-          <input
+          <select
             style={s.input}
-            type="time"
-            step="900"
             value={startTime}
             onChange={e => setStartTime(e.target.value)}
             required
-          />
+          >
+            <option value="">--:--</option>
+            {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
         </div>
         <div style={{ flex: '1 1 100px' }}>
           <div style={s.fieldLabel}>終了時間 <span style={s.required}>*</span></div>
-          <input
+          <select
             style={s.input}
-            type="time"
-            step="900"
             value={endTime}
             onChange={e => setEndTime(e.target.value)}
             required
-          />
+          >
+            <option value="">--:--</option>
+            {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
         </div>
         <div style={{ flex: '1 1 80px' }}>
           <div style={s.fieldLabel}>定員 <span style={s.required}>*</span></div>
