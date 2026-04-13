@@ -153,9 +153,9 @@ nfcPunchRouter.post('/resolve', async (req: Request, res: Response) => {
       activeSession: activeSession ? formatSession(activeSession) : null,
       completedSessions: (completedToday || []).map(formatSession),
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[nfc punch /resolve] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -197,7 +197,7 @@ nfcPunchRouter.post('/clock-in', async (req: Request, res: Response) => {
       })
       .select().single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     const recordRow = record as { id: string; clock_in_at: string };
 
@@ -215,9 +215,9 @@ nfcPunchRouter.post('/clock-in', async (req: Request, res: Response) => {
       staffName: auth.userName,
       message: '出勤しました',
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[nfc punch /clock-in] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -266,9 +266,9 @@ nfcPunchRouter.post('/break-start', async (req: Request, res: Response) => {
       staffName: auth.userName,
       message: '休憩を開始しました',
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[nfc punch /break-start] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -318,9 +318,9 @@ nfcPunchRouter.post('/break-end', async (req: Request, res: Response) => {
       staffName: auth.userName,
       message: '休憩を終了しました',
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[nfc punch /break-end] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -381,8 +381,8 @@ nfcPunchRouter.post('/clock-out', async (req: Request, res: Response) => {
       staffName: auth.userName,
       message: '退勤しました',
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[nfc punch /clock-out] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });

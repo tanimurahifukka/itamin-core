@@ -66,7 +66,7 @@ router.get('/:storeId', requireAuth, async (req: Request, res: Response) => {
 
     const plugins = allPlugins.map((p, index) => {
       const s = storedMap.get(p.name);
-      const defaults: Record<string, any> = {};
+      const defaults: Record<string, unknown> = {};
       for (const field of p.settingsSchema) {
         if (field.default !== undefined) defaults[field.key] = field.default;
       }
@@ -87,9 +87,9 @@ router.get('/:storeId', requireAuth, async (req: Request, res: Response) => {
     plugins.sort((a, b) => a.displayOrder - b.displayOrder);
 
     res.json({ plugins });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[settings GET /:storeId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -126,7 +126,7 @@ router.post('/:storeId/:pluginName', requireAuth, async (req: Request, res: Resp
       }, { onConflict: 'store_id,plugin_name' });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -137,16 +137,16 @@ router.post('/:storeId/:pluginName', requireAuth, async (req: Request, res: Resp
         if (count > 0) {
           console.log(`[settings] Auto-provisioned ${count} HACCP templates for store ${storeId}`);
         }
-      } catch (provErr: any) {
+      } catch (provErr: unknown) {
         // Provisioning failure must not prevent the plugin from being enabled
-        console.warn(`[settings] HACCP template provisioning warning for store ${storeId}:`, provErr.message);
+        console.warn(`[settings] HACCP template provisioning warning for store ${storeId}:`, provErr);
       }
     }
 
     res.json({ ok: true, pluginName, enabled });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[settings POST /:storeId/:pluginName] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -183,14 +183,14 @@ router.put('/:storeId/:pluginName/config', requireAuth, async (req: Request, res
       }, { onConflict: 'store_id,plugin_name' });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true, pluginName, config });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[settings PUT /:storeId/:pluginName/config] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -225,12 +225,24 @@ router.put('/:storeId/:pluginName/permissions', requireAuth, async (req: Request
 
     const normalizedRoles = normalizeAllowedRoles(pluginName, roles);
 
+    // 既存の権限を取得（INSERT 失敗時の復元用）
+    const { data: previousPerms } = await supabaseAdmin
+      .from('plugin_permissions')
+      .select('store_id, plugin_name, role')
+      .eq('store_id', storeId)
+      .eq('plugin_name', pluginName);
+
     // 既存の権限を全削除
-    await supabaseAdmin
+    const { error: deleteError } = await supabaseAdmin
       .from('plugin_permissions')
       .delete()
       .eq('store_id', storeId)
       .eq('plugin_name', pluginName);
+
+    if (deleteError) {
+      res.status(500).json({ error: 'Internal Server Error' });
+      return;
+    }
 
     // 新しい権限を挿入
     if (normalizedRoles.length > 0) {
@@ -245,15 +257,19 @@ router.put('/:storeId/:pluginName/permissions', requireAuth, async (req: Request
         .insert(rows);
 
       if (error) {
-        res.status(500).json({ error: error.message });
+        // INSERT 失敗時は元の権限を復元
+        if (previousPerms && previousPerms.length > 0) {
+          await supabaseAdmin.from('plugin_permissions').insert(previousPerms);
+        }
+        res.status(500).json({ error: 'Internal Server Error' });
         return;
       }
     }
 
     res.json({ ok: true, pluginName, roles: normalizedRoles });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[settings PUT /:storeId/:pluginName/permissions] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

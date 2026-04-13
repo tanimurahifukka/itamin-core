@@ -30,7 +30,7 @@ reservationSlugRouter.get(
       .maybeSingle();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
     res.json({ slug: (data as { slug: string | null } | null)?.slug || null });
@@ -54,7 +54,7 @@ reservationSlugRouter.put(
         .update({ slug: null })
         .eq('id', storeId);
       if (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Internal Server Error' });
         return;
       }
       res.json({ slug: null });
@@ -80,7 +80,7 @@ reservationSlugRouter.put(
         res.status(409).json({ error: 'この slug は既に使われています' });
         return;
       }
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
     res.json({ slug: rawSlug });

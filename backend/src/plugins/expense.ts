@@ -40,7 +40,7 @@ router.get('/:storeId/items', requireAuth, async (req: Request, res: Response) =
     const { data, error } = await query;
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -66,9 +66,9 @@ router.get('/:storeId/items', requireAuth, async (req: Request, res: Response) =
     }
 
     res.json({ expenses, summary: { totalAmount, categorySummary, count: expenses.length }, year, month });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[expense GET /:storeId/items] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -107,14 +107,14 @@ router.post('/:storeId/items', requireAuth, async (req: Request, res: Response) 
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.status(201).json({ expense: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[expense POST /:storeId/items] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -144,14 +144,14 @@ router.put('/:storeId/items/:expenseId', requireAuth, async (req: Request, res: 
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ expense: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[expense PUT /:storeId/items/:expenseId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -172,14 +172,14 @@ router.delete('/:storeId/items/:expenseId', requireAuth, async (req: Request, re
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[expense DELETE /:storeId/items/:expenseId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

@@ -17,7 +17,7 @@ organizationsRouter.get('/', async (req: Request, res: Response) => {
     .eq('user_id', userId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -190,7 +190,7 @@ organizationsRouter.put('/:orgId', async (req: Request, res: Response) => {
     .single();
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -220,7 +220,7 @@ organizationsRouter.get('/:orgId/members', async (req: Request, res: Response) =
     .eq('org_id', orgId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -270,7 +270,7 @@ organizationsRouter.post('/:orgId/members', async (req: Request, res: Response) 
     .single();
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -296,7 +296,7 @@ organizationsRouter.delete('/:orgId/members/:memberId', async (req: Request, res
     .eq('org_id', orgId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -328,7 +328,7 @@ organizationsRouter.put('/:orgId/members/:memberId/role', async (req: Request, r
     .eq('org_id', orgId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -358,7 +358,7 @@ organizationsRouter.get('/:orgId/stores', async (req: Request, res: Response) =>
     .eq('org_id', orgId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -419,7 +419,7 @@ organizationsRouter.post('/:orgId/stores/:storeId/assign', async (req: Request, 
     .eq('id', storeId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 

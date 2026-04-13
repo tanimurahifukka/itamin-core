@@ -130,7 +130,7 @@ router.post('/:storeId/clock-in', requireAuth, async (req: Request, res: Respons
         res.status(409).json({ error: '既に出勤中です（同時打刻検知）' });
         return;
       }
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -140,9 +140,9 @@ router.post('/:storeId/clock-in', requireAuth, async (req: Request, res: Respons
       clockOut: record.clock_out,
       breakMinutes: record.break_minutes,
     }});
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard POST /:storeId/clock-in] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -181,7 +181,7 @@ router.post('/:storeId/clock-out', requireAuth, async (req: Request, res: Respon
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -191,9 +191,9 @@ router.post('/:storeId/clock-out', requireAuth, async (req: Request, res: Respon
       clockOut: record.clock_out,
       breakMinutes: record.break_minutes,
     }});
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard POST /:storeId/clock-out] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -231,9 +231,9 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
       } : null,
       staffId,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard GET /:storeId/status] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -252,7 +252,7 @@ router.get('/:storeId/daily', requireAuth, async (req: Request, res: Response) =
       .order('clock_in');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -270,9 +270,9 @@ router.get('/:storeId/daily', requireAuth, async (req: Request, res: Response) =
     }));
 
     res.json({ date, records });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard GET /:storeId/daily] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -304,7 +304,7 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
       .order('clock_in');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -355,9 +355,9 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
       records: data,
       summary,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard GET /:storeId/monthly] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -433,9 +433,9 @@ router.post('/:storeId/correct-and-clockin', requireAuth, async (req: Request, r
       clockOut: record.clock_out,
       breakMinutes: record.break_minutes,
     }});
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard POST /:storeId/correct-and-clockin] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -488,7 +488,7 @@ router.put('/:storeId/records/:recordId', requireAuth, async (req: Request, res:
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -498,9 +498,9 @@ router.put('/:storeId/records/:recordId', requireAuth, async (req: Request, res:
       clockOut: record.clock_out,
       breakMinutes: record.break_minutes,
     }});
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard PUT /:storeId/records/:recordId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -532,14 +532,14 @@ router.delete('/:storeId/records/:recordId', requireAuth, async (req: Request, r
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard DELETE /:storeId/records/:recordId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -605,7 +605,7 @@ router.post('/:storeId/records', requireAuth, async (req: Request, res: Response
         res.status(409).json({ error: '既に出勤中のレコードがあります（同時存在検知）' });
         return;
       }
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -617,9 +617,9 @@ router.post('/:storeId/records', requireAuth, async (req: Request, res: Response
         breakMinutes: record.break_minutes,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard POST /:storeId/records] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -699,7 +699,7 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
       .order('clock_in');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -766,9 +766,9 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
       // High 6: Buffer.from で堅牢化
       res.send(Buffer.from(buildSummaryCsv(summaryRecords), 'utf8'));
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard GET /:storeId/export] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

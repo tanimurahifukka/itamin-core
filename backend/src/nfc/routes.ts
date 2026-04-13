@@ -115,7 +115,7 @@ nfcRouter.get('/location/:id', async (req: Request, res: Response) => {
     });
   } catch (e: unknown) {
     console.error('[nfc GET /location/:id] error:', e);
-    const message = e instanceof Error ? e.message : 'Internal Server Error';
+    const message = 'Internal Server Error';
     res.status(500).json({ error: message });
   }
 });
@@ -280,7 +280,7 @@ nfcRouter.post('/submit', async (req: Request, res: Response) => {
     });
   } catch (e: unknown) {
     console.error('[nfc POST /submit] error:', e);
-    const message = e instanceof Error ? e.message : 'Internal Server Error';
+    const message = 'Internal Server Error';
     res.status(500).json({ error: message });
   }
 });

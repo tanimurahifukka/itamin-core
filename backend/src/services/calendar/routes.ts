@@ -54,14 +54,14 @@ router.get('/:storeId/business-hours', requireAuth, async (req: Request, res: Re
       .order('day_of_week', { ascending: true });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ hours: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[calendar:hours:get] error', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -113,14 +113,14 @@ router.put('/:storeId/business-hours', requireAuth, async (req: Request, res: Re
 
     if (error) {
       console.error('[calendar:hours:put] upsert failed', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[calendar:hours:put] error', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -149,14 +149,14 @@ router.get('/:storeId/overrides', requireAuth, async (req: Request, res: Respons
       .order('date', { ascending: true });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ overrides: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[calendar:overrides:get] error', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -207,14 +207,14 @@ router.post('/:storeId/overrides', requireAuth, async (req: Request, res: Respon
 
     if (error) {
       console.error('[calendar:overrides:post] insert failed', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.status(201).json({ override: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[calendar:overrides:post] error', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -275,14 +275,14 @@ router.patch('/:storeId/overrides/:id', requireAuth, async (req: Request, res: R
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ override: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[calendar:overrides:patch] error', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -303,14 +303,14 @@ router.delete('/:storeId/overrides/:id', requireAuth, async (req: Request, res: 
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[calendar:overrides:delete] error', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -336,9 +336,9 @@ router.get('/:storeId/effective', requireAuth, async (req: Request, res: Respons
 
     const days = await getEffectiveHoursRange(storeId, from, to);
     res.json({ days });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[calendar:effective] error', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

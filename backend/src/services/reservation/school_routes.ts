@@ -56,7 +56,7 @@ schoolAdminRouter.get(
       .eq('store_id', storeId)
       .order('sort_order')
       .order('name');
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     res.json({ schools: data });
   },
 );
@@ -177,7 +177,7 @@ schoolAdminRouter.get(
       .eq('school_id', schoolId)
       .eq('store_id', storeId)
       .order('starts_at', { ascending: true });
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     res.json({ sessions: data });
   },
 );
@@ -350,7 +350,7 @@ schoolAdminRouter.get(
       .eq('resource_ref', sessionId)
       .eq('reservation_type', 'school')
       .order('created_at', { ascending: true });
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     res.json({ reservations: data || [] });
   },
 );
@@ -370,7 +370,7 @@ schoolAdminRouter.get(
       .eq('store_id', storeId)
       .eq('reservation_type', 'school')
       .order('starts_at', { ascending: true });
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     res.json({ reservations: data });
   },
 );

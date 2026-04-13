@@ -7,6 +7,39 @@ import { requireOrgManager, getOrgStoreIds, staffBelongsToStore } from '../auth/
 
 const router = Router();
 
+interface MultiShiftRow {
+  id: string;
+  store_id: string;
+  staff_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  break_minutes: number;
+  status: string | null;
+  note: string | null;
+  staff: { id: string; user_id: string; user: { name: string } | null } | null;
+}
+
+interface StaffRow {
+  id: string;
+  store_id: string;
+  user_id: string;
+  role: string;
+  user: { name: string } | null;
+}
+
+interface ShiftRequestRow {
+  id: string;
+  store_id: string;
+  staff_id: string;
+  date: string;
+  request_type: string;
+  start_time: string | null;
+  end_time: string | null;
+  note: string | null;
+  staff: { user_id: string; user: { name: string } | null } | null;
+}
+
 // ============================================================
 // ユーティリティ: 時間帯の重複判定
 // ============================================================
@@ -50,7 +83,8 @@ router.get('/:orgId/weekly', requireAuth, async (req: Request, res: Response) =>
       .from('stores')
       .select('id, name')
       .in('id', storeIds);
-    const stores = (storesData || []).map((s: any) => ({ id: s.id, name: s.name }));
+    interface StoreRow { id: string; name: string }
+    const stores = (storesData || []).map((s: StoreRow) => ({ id: s.id, name: s.name }));
 
     // シフト取得（store_staff → profiles を JOIN して user_id と名前を取得）
     const { data: shiftsData, error: shiftsErr } = await supabaseAdmin
@@ -63,14 +97,14 @@ router.get('/:orgId/weekly', requireAuth, async (req: Request, res: Response) =>
       .order('start_time');
 
     if (shiftsErr) {
-      res.status(500).json({ error: shiftsErr.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
-    const shifts = (shiftsData || []).map((s: any) => ({
+    const shifts = (shiftsData || []).map((s: MultiShiftRow) => ({
       id: s.id,
       storeId: s.store_id,
-      storeName: stores.find((st: any) => st.id === s.store_id)?.name || '',
+      storeName: stores.find(st => st.id === s.store_id)?.name || '',
       staffId: s.staff_id,
       userId: s.staff?.user_id || '',
       userName: s.staff?.user?.name || '',
@@ -91,10 +125,10 @@ router.get('/:orgId/weekly', requireAuth, async (req: Request, res: Response) =>
       .lte('date', endDate)
       .order('date');
 
-    const requests = (requestsData || []).map((r: any) => ({
+    const requests = (requestsData || []).map((r: ShiftRequestRow) => ({
       id: r.id,
       storeId: r.store_id,
-      storeName: stores.find((st: any) => st.id === r.store_id)?.name || '',
+      storeName: stores.find(st => st.id === r.store_id)?.name || '',
       staffId: r.staff_id,
       userId: r.staff?.user_id || '',
       userName: r.staff?.user?.name || '',
@@ -106,9 +140,9 @@ router.get('/:orgId/weekly', requireAuth, async (req: Request, res: Response) =>
     }));
 
     res.json({ stores, shifts, requests, startDate, endDate });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift_multi GET /:orgId/weekly] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -131,7 +165,7 @@ router.get('/:orgId/staff', requireAuth, async (req: Request, res: Response) => 
       .from('stores')
       .select('id, name')
       .in('id', storeIds);
-    const storeMap = new Map((storesData || []).map((s: any) => [s.id, s.name]));
+    const storeMap = new Map((storesData || []).map((s: { id: string; name: string }) => [s.id, s.name]));
 
     const { data, error } = await supabaseAdmin
       .from('store_staff')
@@ -140,7 +174,7 @@ router.get('/:orgId/staff', requireAuth, async (req: Request, res: Response) => 
       .order('user_id');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -151,7 +185,7 @@ router.get('/:orgId/staff', requireAuth, async (req: Request, res: Response) => 
       stores: Array<{ storeId: string; storeName: string; staffId: string; role: string }>;
     }>();
 
-    for (const row of (data || []) as any[]) {
+    for (const row of (data || []) as StaffRow[]) {
       const userId = row.user_id;
       if (!grouped.has(userId)) {
         grouped.set(userId, {
@@ -169,9 +203,9 @@ router.get('/:orgId/staff', requireAuth, async (req: Request, res: Response) => 
     }
 
     res.json({ employees: Array.from(grouped.values()) });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift_multi GET /:orgId/staff] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -207,7 +241,16 @@ router.get('/:orgId/conflicts', requireAuth, async (req: Request, res: Response)
       .from('stores')
       .select('id, name')
       .in('id', storeIds);
-    const storeMap = new Map((storesData || []).map((s: any) => [s.id, s.name]));
+    const storeMap = new Map((storesData || []).map((s: { id: string; name: string }) => [s.id, s.name]));
+
+    interface ConflictShiftRow {
+      id: string;
+      store_id: string;
+      date: string;
+      start_time: string;
+      end_time: string;
+      staff: { user_id: string; user: { name: string } | null } | null;
+    }
 
     const { data: shiftsData, error } = await supabaseAdmin
       .from('shifts')
@@ -217,16 +260,16 @@ router.get('/:orgId/conflicts', requireAuth, async (req: Request, res: Response)
       .lte('date', endDate);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     // user_id + date でグループ化して重複検出
     const groupKey = (userId: string, date: string) => `${userId}:${date}`;
-    const groups = new Map<string, any[]>();
+    const groups = new Map<string, ConflictShiftRow[]>();
 
-    for (const s of (shiftsData || []) as any[]) {
-      const key = groupKey(s.staff?.user_id, s.date);
+    for (const s of (shiftsData || []) as ConflictShiftRow[]) {
+      const key = groupKey(s.staff?.user_id ?? '', s.date);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(s);
     }
@@ -243,10 +286,10 @@ router.get('/:orgId/conflicts', requireAuth, async (req: Request, res: Response)
       if (group.length < 2) continue;
 
       // 異なる店舗のシフトがあるか確認
-      const uniqueStores = new Set(group.map((s: any) => s.store_id));
+      const uniqueStores = new Set(group.map(s => s.store_id));
       if (uniqueStores.size < 2) continue;
 
-      const shiftEntries = group.map((s: any) => ({
+      const shiftEntries = group.map(s => ({
         storeId: s.store_id,
         storeName: storeMap.get(s.store_id) || '',
         startTime: s.start_time,
@@ -273,9 +316,9 @@ router.get('/:orgId/conflicts', requireAuth, async (req: Request, res: Response)
     }
 
     res.json({ conflicts });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift_multi GET /:orgId/conflicts] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -329,7 +372,7 @@ router.post('/:orgId/shifts', requireAuth, async (req: Request, res: Response) =
       .eq('id', staffId)
       .single();
 
-    const userId = (staffData as any)?.user_id;
+    const userId = (staffData as { user_id: string } | null)?.user_id;
     let conflicts: Array<{ storeId: string; storeName: string; startTime: string; endTime: string }> = [];
 
     if (userId) {
@@ -341,7 +384,7 @@ router.post('/:orgId/shifts', requireAuth, async (req: Request, res: Response) =
         .in('store_id', storeIds.filter(id => id !== storeId));
 
       if (otherStaffData && otherStaffData.length > 0) {
-        const otherStaffIds = (otherStaffData as any[]).map(s => s.id);
+        const otherStaffIds = otherStaffData.map(s => s.id);
         const { data: otherShifts } = await supabaseAdmin
           .from('shifts')
           .select('store_id, start_time, end_time')
@@ -353,9 +396,9 @@ router.post('/:orgId/shifts', requireAuth, async (req: Request, res: Response) =
             .from('stores')
             .select('id, name')
             .in('id', storeIds);
-          const storeMap = new Map((storesData || []).map((s: any) => [s.id, s.name]));
+          const storeMap = new Map((storesData || []).map((s: { id: string; name: string }) => [s.id, s.name]));
 
-          for (const os of otherShifts as any[]) {
+          for (const os of otherShifts) {
             if (hasTimeOverlap(
               { startTime, endTime },
               { startTime: os.start_time, endTime: os.end_time },
@@ -390,14 +433,14 @@ router.post('/:orgId/shifts', requireAuth, async (req: Request, res: Response) =
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.status(201).json({ shift: data, conflicts });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift_multi POST /:orgId/shifts] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -442,14 +485,14 @@ router.post('/:orgId/publish', requireAuth, async (req: Request, res: Response) 
       .select();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ published: (data || []).length });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift_multi POST /:orgId/publish] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -476,7 +519,7 @@ router.delete('/:orgId/shifts/:shiftId', requireAuth, async (req: Request, res: 
     }
 
     const storeIds = await getOrgStoreIds(orgId);
-    if (!storeIds.includes((shiftData as any).store_id)) {
+    if (!storeIds.includes((shiftData as { store_id: string }).store_id)) {
       res.status(403).json({ error: 'この組織に属さない店舗のシフトは削除できません' });
       return;
     }
@@ -487,14 +530,14 @@ router.delete('/:orgId/shifts/:shiftId', requireAuth, async (req: Request, res: 
       .eq('id', shiftId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift_multi DELETE /:orgId/shifts/:shiftId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

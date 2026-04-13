@@ -29,7 +29,7 @@ router.get('/:storeId/receipts', requireAuth, async (req: Request, res: Response
     const { data, error } = await query.limit(100);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -62,9 +62,9 @@ router.get('/:storeId/receipts', requireAuth, async (req: Request, res: Response
     }));
 
     res.json({ receipts });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[sales_capture GET /:storeId/receipts] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -92,14 +92,14 @@ router.post('/:storeId/upload-url', requireAuth, async (req: Request, res: Respo
       .createSignedUploadUrl(path);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ signedUrl: data.signedUrl, token: data.token, path });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[sales_capture POST /:storeId/upload-url] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -133,7 +133,7 @@ router.post('/:storeId/receipts', requireAuth, async (req: Request, res: Respons
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -146,9 +146,9 @@ router.post('/:storeId/receipts', requireAuth, async (req: Request, res: Respons
         status: data.status,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[sales_capture POST /:storeId/receipts] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -196,7 +196,7 @@ router.post('/:storeId/closes', requireAuth, async (req: Request, res: Response)
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -231,9 +231,9 @@ router.post('/:storeId/closes', requireAuth, async (req: Request, res: Response)
         receiptCount: data.receipt_count,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[sales_capture POST /:storeId/closes] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -255,7 +255,7 @@ router.get('/:storeId/closes/:date', requireAuth, async (req: Request, res: Resp
       .maybeSingle();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -283,9 +283,9 @@ router.get('/:storeId/closes/:date', requireAuth, async (req: Request, res: Resp
         approvedAt: data.approved_at,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[sales_capture GET /:storeId/closes/:date] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -311,14 +311,14 @@ router.post('/:storeId/closes/:date/approve', requireAuth, async (req: Request, 
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true, close: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[sales_capture POST /:storeId/closes/:date/approve] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -351,7 +351,7 @@ router.post('/:storeId/cash-close', requireAuth, async (req: Request, res: Respo
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -365,9 +365,9 @@ router.post('/:storeId/cash-close', requireAuth, async (req: Request, res: Respo
         note: data.note,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[sales_capture POST /:storeId/cash-close] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -389,7 +389,7 @@ router.get('/:storeId/cash-close/:date', requireAuth, async (req: Request, res: 
       .maybeSingle();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -403,9 +403,9 @@ router.get('/:storeId/cash-close/:date', requireAuth, async (req: Request, res: 
         note: data.note,
       } : null,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[sales_capture GET /:storeId/cash-close/:date] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

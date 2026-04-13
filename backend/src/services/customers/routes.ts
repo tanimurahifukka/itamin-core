@@ -103,13 +103,13 @@ router.get('/:storeId', requireAuth, async (req: Request, res: Response) => {
 
     const { data, error } = await dataQuery;
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ data: data ?? [], total: count ?? 0, limit, offset });
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Internal Server Error';
+    const message = 'Internal Server Error';
     console.error('[customers GET /:storeId] error:', e);
     res.status(500).json({ error: message });
   }
@@ -137,13 +137,13 @@ router.get('/:storeId/:customerId/reservations', requireAuth, async (req: Reques
       .range(offset, offset + limit - 1);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ reservations: data ?? [], total: count ?? 0, limit, offset });
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Internal Server Error';
+    const message = 'Internal Server Error';
     console.error('[customers GET /:storeId/:customerId/reservations] error:', e);
     res.status(500).json({ error: message });
   }
@@ -171,7 +171,7 @@ router.get('/:storeId/:customerId', requireAuth, async (req: Request, res: Respo
 
     const { data, error } = await query.maybeSingle();
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -182,7 +182,7 @@ router.get('/:storeId/:customerId', requireAuth, async (req: Request, res: Respo
 
     res.json(data);
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Internal Server Error';
+    const message = 'Internal Server Error';
     console.error('[customers GET /:storeId/:customerId] error:', e);
     res.status(500).json({ error: message });
   }
@@ -257,13 +257,13 @@ router.post('/:storeId', requireAuth, async (req: Request, res: Response) => {
         });
         return;
       }
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.status(201).json(data);
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Internal Server Error';
+    const message = 'Internal Server Error';
     console.error('[customers POST /:storeId] error:', e);
     res.status(500).json({ error: message });
   }
@@ -299,13 +299,13 @@ router.post('/:storeId/check-duplicate', requireAuth, async (req: Request, res: 
       .maybeSingle();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ exists: !!data, customer: data ?? null });
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Internal Server Error';
+    const message = 'Internal Server Error';
     console.error('[customers POST /:storeId/check-duplicate] error:', e);
     res.status(500).json({ error: message });
   }
@@ -381,7 +381,7 @@ router.put('/:storeId/:customerId', requireAuth, async (req: Request, res: Respo
         });
         return;
       }
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -392,7 +392,7 @@ router.put('/:storeId/:customerId', requireAuth, async (req: Request, res: Respo
 
     res.json(data);
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Internal Server Error';
+    const message = 'Internal Server Error';
     console.error('[customers PUT /:storeId/:customerId] error:', e);
     res.status(500).json({ error: message });
   }
@@ -423,13 +423,13 @@ router.delete('/:storeId/:customerId', requireAuth, async (req: Request, res: Re
       .is('deleted_at', null);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Internal Server Error';
+    const message = 'Internal Server Error';
     console.error('[customers DELETE /:storeId/:customerId] error:', e);
     res.status(500).json({ error: message });
   }

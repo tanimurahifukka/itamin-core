@@ -33,7 +33,7 @@ measurementsRouter.get('/:storeId/measurements/daily-summary', requireAuth, asyn
     if (itemKey) query = query.eq('item_key', itemKey);
 
     const { data, error } = await query;
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     const rows = data || [];
     const numericRows = rows.filter((r: any) => r.numeric_value != null);
@@ -51,9 +51,9 @@ measurementsRouter.get('/:storeId/measurements/daily-summary', requireAuth, asyn
     };
 
     res.json({ summary });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/measurements/daily-summary] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -75,12 +75,12 @@ measurementsRouter.get('/:storeId/measurements', requireAuth, async (req: Reques
     if (req.query.to) query = query.lte('measured_at', `${req.query.to}T23:59:59`);
 
     const { data, error } = await query;
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.json({ measurements: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/measurements] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -129,11 +129,11 @@ measurementsRouter.post('/:storeId/measurements', requireAuth, async (req: Reque
       .select('*')
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.status(201).json({ measurement: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp POST /:storeId/measurements] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });

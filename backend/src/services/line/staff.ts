@@ -10,6 +10,71 @@ import { isValidTiming } from '../haccp/helpers';
 
 const router = Router();
 
+/** shifts table row selected for LINE staff shift view */
+interface ShiftRow {
+  id: string;
+  staff_id: string;
+  date: string;
+  start_time: string | null;
+  end_time: string | null;
+  break_minutes: number | null;
+  status: string | null;
+  note: string | null;
+}
+
+/** shift_requests table row */
+interface ShiftRequestRow {
+  id: string;
+  staff_id: string;
+  date: string;
+  request_type: string;
+  start_time: string | null;
+  end_time: string | null;
+  note: string | null;
+}
+
+/** attendance_breaks table row (nested via *, used in history) */
+interface AttendanceBreakRow {
+  started_at: string | null;
+  ended_at: string | null;
+}
+
+/** attendance_records table row (selected via *, with breaks relation) */
+interface AttendanceRecordRow {
+  id: string;
+  business_date: string;
+  status: string;
+  clock_in_at: string | null;
+  clock_out_at: string | null;
+  breaks: AttendanceBreakRow[];
+}
+
+/** Mapped attendance history entry (camelCase, after transformation) */
+interface AttendanceHistoryEntry {
+  id: string;
+  businessDate: string;
+  status: string;
+  clockInAt: string | null;
+  clockOutAt: string | null;
+  breakMinutes: number;
+}
+
+/** notices table row */
+interface NoticeRow {
+  id: string;
+  title: string | null;
+  body: string | null;
+  pinned: boolean;
+  author_name: string | null;
+  created_at: string;
+}
+
+/** notice_reads table row */
+interface NoticeReadRow {
+  notice_id: string;
+  read_at: string;
+}
+
 // ================================================================
 // LINE userId → ITAMIN ユーザー解決（punch.ts と同パターン）
 // ================================================================
@@ -87,11 +152,11 @@ router.post('/shifts', async (req: Request, res: Response) => {
       .order('start_time');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
-    const shifts = (data || []).map((s: any) => ({
+    const shifts = (data || []).map((s: ShiftRow) => ({
       id: s.id,
       date: s.date,
       startTime: s.start_time,
@@ -102,8 +167,8 @@ router.post('/shifts', async (req: Request, res: Response) => {
     }));
 
     res.json({ startDate, endDate, shifts });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -121,10 +186,10 @@ router.post('/shift-templates', async (req: Request, res: Response) => {
       .eq('store_id', auth.storeId)
       .order('name');
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     res.json({ templates: data || [] });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -156,7 +221,7 @@ router.post('/shift-requests', async (req: Request, res: Response) => {
       .order('date');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -170,8 +235,8 @@ router.post('/shift-requests', async (req: Request, res: Response) => {
     }));
 
     res.json({ startDate, endDate, requests });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -211,13 +276,13 @@ router.post('/shift-requests/save', async (req: Request, res: Response) => {
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.status(201).json({ request: data, message: '希望を保存しました' });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -248,7 +313,7 @@ router.post('/history', async (req: Request, res: Response) => {
       .order('clock_in_at', { ascending: false });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -285,8 +350,8 @@ router.post('/history', async (req: Request, res: Response) => {
         totalMinutes,
       },
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -349,8 +414,8 @@ router.post('/checklist', async (req: Request, res: Response) => {
         checkedAt: latest.submitted_at,
       } : null,
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -414,14 +479,14 @@ router.post('/checklist/submit', async (req: Request, res: Response) => {
         },
         message: 'チェックリストを提出しました',
       });
-    } catch (err: any) {
-      const msg = err?.message || '提出に失敗しました';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '提出に失敗しました';
       if (msg.includes('見つかりません')) res.status(404).json({ error: msg });
       else if (msg.includes('必須')) res.status(400).json({ error: msg });
-      else res.status(500).json({ error: msg });
+      else res.status(500).json({ error: '提出に失敗しました' });
     }
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -441,7 +506,7 @@ router.post('/notices', async (req: Request, res: Response) => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -469,8 +534,8 @@ router.post('/notices', async (req: Request, res: Response) => {
     }));
 
     res.json({ notices });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -497,13 +562,13 @@ router.post('/notices/read', async (req: Request, res: Response) => {
       }, { onConflict: 'notice_id,user_id' });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -525,7 +590,7 @@ router.post('/daily-report', async (req: Request, res: Response) => {
       .maybeSingle();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -539,8 +604,8 @@ router.post('/daily-report', async (req: Request, res: Response) => {
         memo: data.memo,
       } : null,
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -574,7 +639,7 @@ router.post('/daily-report/save', async (req: Request, res: Response) => {
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -589,8 +654,8 @@ router.post('/daily-report/save', async (req: Request, res: Response) => {
       },
       message: '日報を保存しました',
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

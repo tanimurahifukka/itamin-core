@@ -207,9 +207,9 @@ templatesRouter.get('/system-templates', requireAuth, async (req: Request, res: 
     }));
 
     res.json({ system_templates: result });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /system-templates] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -242,14 +242,14 @@ templatesRouter.get('/:storeId/templates', requireAuth, async (req: Request, res
 
     const { data, error } = await query;
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ templates: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/templates] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -266,9 +266,9 @@ templatesRouter.post('/:storeId/templates/provision-all', requireAuth, async (re
     // when multi-industry support is added
     const provisioned = await provisionSystemTemplates(storeId, 'cafe', req.user!.id);
     res.json({ ok: true, provisioned });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp POST /:storeId/templates/provision-all] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -366,9 +366,9 @@ templatesRouter.post('/:storeId/templates/from-system', requireAuth, async (req:
       .order('sort_order', { ascending: true });
 
     res.status(201).json({ template: { ...tpl, items: createdItems || [] } });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp POST /:storeId/templates/from-system] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -405,12 +405,12 @@ templatesRouter.post('/:storeId/templates', requireAuth, async (req: Request, re
       .select('*')
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.status(201).json({ template: { ...data, items: [] } });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp POST /:storeId/templates] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -429,7 +429,7 @@ templatesRouter.get('/:storeId/templates/:templateId', requireAuth, async (req: 
       .eq('store_id', storeId)
       .maybeSingle();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     if (!tpl) { res.status(404).json({ error: 'テンプレートが見つかりません' }); return; }
 
     const { data: items } = await supabaseAdmin
@@ -439,9 +439,9 @@ templatesRouter.get('/:storeId/templates/:templateId', requireAuth, async (req: 
       .order('sort_order', { ascending: true });
 
     res.json({ template: { ...tpl, items: items || [] } });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/templates/:templateId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -498,13 +498,13 @@ templatesRouter.put('/:storeId/templates/:templateId', requireAuth, async (req: 
       .select('*')
       .maybeSingle();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     if (!data) { res.status(404).json({ error: 'テンプレートが見つかりません' }); return; }
 
     res.json({ template: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp PUT /:storeId/templates/:templateId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -522,12 +522,12 @@ templatesRouter.delete('/:storeId/templates/:templateId', requireAuth, async (re
       .eq('id', templateId)
       .eq('store_id', storeId);
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp DELETE /:storeId/templates/:templateId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -580,7 +580,7 @@ templatesRouter.post('/:storeId/templates/:templateId/items', requireAuth, async
       .select('*')
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     await supabaseAdmin
       .from('checklist_templates')
@@ -588,9 +588,9 @@ templatesRouter.post('/:storeId/templates/:templateId/items', requireAuth, async
       .eq('id', templateId);
 
     res.status(201).json({ item });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp POST /:storeId/templates/:templateId/items] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -620,7 +620,7 @@ templatesRouter.put('/:storeId/template-items/:itemId', requireAuth, async (req:
       .select('*')
       .maybeSingle();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     if (!data) { res.status(404).json({ error: '項目が見つかりません' }); return; }
 
     const { data: tpl } = await supabaseAdmin
@@ -636,9 +636,9 @@ templatesRouter.put('/:storeId/template-items/:itemId', requireAuth, async (req:
     }
 
     res.json({ item: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp PUT /:storeId/template-items/:itemId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -663,7 +663,7 @@ templatesRouter.delete('/:storeId/template-items/:itemId', requireAuth, async (r
       .eq('id', itemId)
       .eq('store_id', storeId);
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     if (item?.template_id) {
       const { data: tpl } = await supabaseAdmin
@@ -680,9 +680,9 @@ templatesRouter.delete('/:storeId/template-items/:itemId', requireAuth, async (r
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp DELETE /:storeId/template-items/:itemId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -701,12 +701,12 @@ templatesRouter.get('/:storeId/assignments', requireAuth, async (req: Request, r
       .eq('store_id', storeId)
       .order('timing', { ascending: true });
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.json({ assignments: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/assignments] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -763,11 +763,11 @@ templatesRouter.put('/:storeId/assignments', requireAuth, async (req: Request, r
       .insert(toInsert)
       .select('*');
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.json({ assignments: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp PUT /:storeId/assignments] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });

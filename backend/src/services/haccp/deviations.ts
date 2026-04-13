@@ -30,12 +30,12 @@ deviationsRouter.get('/:storeId/deviations', requireAuth, async (req: Request, r
     if (req.query.severity) query = query.eq('severity', String(req.query.severity));
 
     const { data, error } = await query;
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.json({ deviations: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/deviations] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -73,12 +73,12 @@ deviationsRouter.post('/:storeId/deviations', requireAuth, async (req: Request, 
       .select('*')
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.status(201).json({ deviation: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp POST /:storeId/deviations] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -116,12 +116,12 @@ deviationsRouter.put('/:storeId/deviations/:deviationId', requireAuth, async (re
       .select('*')
       .maybeSingle();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     if (!data) { res.status(404).json({ error: '逸脱記録が見つかりません' }); return; }
 
     res.json({ deviation: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp PUT /:storeId/deviations/:deviationId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });

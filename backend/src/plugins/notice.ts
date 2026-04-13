@@ -26,7 +26,7 @@ router.get('/:storeId/posts', requireAuth, async (req: Request, res: Response) =
       .order('created_at', { ascending: false });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -71,9 +71,9 @@ router.get('/:storeId/posts', requireAuth, async (req: Request, res: Response) =
     }));
 
     res.json({ notices });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:get] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -141,9 +141,9 @@ router.post('/:storeId/posts', requireAuth, async (req: Request, res: Response) 
     }
 
     res.status(201).json({ notice: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:post] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -168,14 +168,14 @@ router.post('/:storeId/posts/:noticeId/read', requireAuth, async (req: Request, 
       }, { onConflict: 'notice_id,user_id' });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:read] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -233,14 +233,14 @@ router.put('/:storeId/posts/:noticeId', requireAuth, async (req: Request, res: R
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ notice: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:edit] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -263,14 +263,14 @@ router.put('/:storeId/posts/:noticeId/pin', requireAuth, async (req: Request, re
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:pin] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -302,14 +302,14 @@ router.patch('/:storeId/posts/:noticeId/images', requireAuth, async (req: Reques
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:images] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -331,7 +331,7 @@ router.get('/:storeId/posts/:noticeId/comments', requireAuth, async (req: Reques
       .order('created_at', { ascending: true });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -346,9 +346,9 @@ router.get('/:storeId/posts/:noticeId/comments', requireAuth, async (req: Reques
     }));
 
     res.json({ comments });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:comments:get] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -390,7 +390,7 @@ router.post('/:storeId/posts/:noticeId/comments', requireAuth, async (req: Reque
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -404,9 +404,9 @@ router.post('/:storeId/posts/:noticeId/comments', requireAuth, async (req: Reque
         createdAt: data.created_at,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:comments:post] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -449,14 +449,14 @@ router.delete('/:storeId/posts/:noticeId/comments/:commentId', requireAuth, asyn
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:comments:delete] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -477,14 +477,14 @@ router.delete('/:storeId/posts/:noticeId', requireAuth, async (req: Request, res
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:delete] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

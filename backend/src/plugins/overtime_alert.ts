@@ -45,7 +45,7 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
       .not('clock_out', 'is', null);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -97,9 +97,9 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
       year,
       month,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[overtime_alert GET /:storeId/monthly] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

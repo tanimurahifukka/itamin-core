@@ -42,11 +42,22 @@ router.get('/:storeId/weekly', requireAuth, async (req: Request, res: Response) 
       .order('start_time');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
-    const shifts = (data || []).map((s: any) => ({
+    interface ShiftRow {
+      id: string;
+      staff_id: string;
+      staff: { user: { name: string } | null } | null;
+      date: string;
+      start_time: string;
+      end_time: string;
+      break_minutes: number;
+      note: string | null;
+      status: string | null;
+    }
+    const shifts = (data || []).map((s: ShiftRow) => ({
       id: s.id,
       staffId: s.staff_id,
       staffName: s.staff?.user?.name || '',
@@ -59,9 +70,9 @@ router.get('/:storeId/weekly', requireAuth, async (req: Request, res: Response) 
     }));
 
     res.json({ startDate, endDate, shifts });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift GET /:storeId/weekly] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -85,6 +96,12 @@ router.post('/:storeId', requireAuth, async (req: Request, res: Response) => {
 
     if (!staffId || !date || !startTime || !endTime) {
       res.status(400).json({ error: 'staffId, date, startTime, endTime は必須です' });
+      return;
+    }
+
+    const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!TIME_RE.test(startTime) || !TIME_RE.test(endTime)) {
+      res.status(400).json({ error: '時刻は HH:MM 形式で入力してください' });
       return;
     }
 
@@ -115,14 +132,14 @@ router.post('/:storeId', requireAuth, async (req: Request, res: Response) => {
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.status(201).json({ shift: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift POST /:storeId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -154,14 +171,14 @@ router.post('/:storeId/publish', requireAuth, async (req: Request, res: Response
       .select();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ published: (data || []).length });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift POST /:storeId/publish] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -184,14 +201,14 @@ router.delete('/:storeId/:shiftId', requireAuth, async (req: Request, res: Respo
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift DELETE /:storeId/:shiftId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -218,11 +235,19 @@ router.get('/:storeId/templates', requireAuth, async (req: Request, res: Respons
       .order('name');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
-    const templates = (data || []).map((t: any) => ({
+    interface TemplateRow {
+      id: string;
+      name: string;
+      start_time: string;
+      end_time: string;
+      break_minutes: number;
+      color: string | null;
+    }
+    const templates = (data || []).map((t: TemplateRow) => ({
       id: t.id,
       name: t.name,
       startTime: t.start_time,
@@ -232,9 +257,9 @@ router.get('/:storeId/templates', requireAuth, async (req: Request, res: Respons
     }));
 
     res.json({ templates });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift GET /:storeId/templates] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -271,14 +296,14 @@ router.post('/:storeId/templates', requireAuth, async (req: Request, res: Respon
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.status(201).json({ template: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift POST /:storeId/templates] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -299,14 +324,14 @@ router.delete('/:storeId/templates/:templateId', requireAuth, async (req: Reques
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift DELETE /:storeId/templates/:templateId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

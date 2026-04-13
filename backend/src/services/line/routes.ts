@@ -18,6 +18,50 @@ import crypto from 'crypto';
 
 const router = Router();
 
+interface LineTokenResponse {
+  access_token: string;
+  token_type: string;
+  refresh_token?: string;
+  expires_in: number;
+  scope?: string;
+  id_token?: string;
+  error?: string;
+  error_description?: string;
+}
+
+interface LineProfile {
+  userId: string;
+  displayName: string;
+  pictureUrl?: string;
+  statusMessage?: string;
+}
+
+/** store_staff row joined with profiles (name, picture) */
+interface StaffWithProfileRow {
+  id: string;
+  user_id: string;
+  role: string;
+  user: { name: string | null; picture: string | null } | null;
+}
+
+/** line_user_links row selected for admin links view */
+interface LineLinkRow {
+  user_id: string;
+  line_user_id: string;
+  display_name: string | null;
+  status: string;
+  linked_at: string | null;
+  last_login_at: string | null;
+}
+
+/** line_link_tokens row selected for admin links view */
+interface LinkTokenRow {
+  user_id: string;
+  code: string;
+  expires_at: string;
+  status: string;
+}
+
 // 連携コードは 6 桁数字。形式外は DB を叩くまでもなく弾く。
 const LINK_CODE_PATTERN = /^[0-9]{6}$/;
 
@@ -80,7 +124,7 @@ router.post('/callback', async (req: Request, res: Response) => {
         client_secret: lineCfg.channelSecret!,
       }),
     });
-    const tokenData: any = await tokenRes.json();
+    const tokenData = await tokenRes.json() as LineTokenResponse;
     if (!tokenRes.ok) {
       console.error('[line callback] token error:', tokenData);
       res.status(400).json({ error: 'LINEトークン取得に失敗しました' });
@@ -91,7 +135,7 @@ router.post('/callback', async (req: Request, res: Response) => {
     const profileRes = await fetch('https://api.line.me/v2/profile', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
-    const profile: any = await profileRes.json();
+    const profile = await profileRes.json() as LineProfile;
     if (!profileRes.ok) {
       res.status(400).json({ error: 'LINEプロフィール取得に失敗しました' });
       return;
@@ -111,9 +155,9 @@ router.post('/callback', async (req: Request, res: Response) => {
       linked: !!existingLink && existingLink.status === 'active',
       linkedUserId: existingLink?.user_id || null,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[line POST /callback]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -232,9 +276,9 @@ router.post('/link-with-code', async (req: Request, res: Response) => {
       message: 'LINE連携が完了しました',
       userId: token.user_id,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[line POST /link-with-code]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -264,8 +308,8 @@ router.post('/resolve', async (req: Request, res: Response) => {
       .eq('line_user_id', lineUserId);
 
     res.json({ linked: true, displayName: link.display_name });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -304,15 +348,15 @@ router.post('/admin/link-tokens', requireAuth, async (req: Request, res: Respons
       .select()
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.status(201).json({
       token: { id: data.id, code, expiresAt, userId },
       message: '連携コードを発行しました',
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[line POST /admin/link-tokens]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -333,7 +377,7 @@ router.get('/admin/links', requireAuth, async (req: Request, res: Response) => {
       .select('id, user_id, role, user:profiles(name, picture)')
       .eq('store_id', storeId);
 
-    const userIds = (staff || []).map((s: any) => s.user_id);
+    const userIds = (staff || []).map((s: StaffWithProfileRow) => s.user_id);
 
     // LINE連携情報
     const { data: links } = userIds.length > 0
@@ -353,12 +397,12 @@ router.get('/admin/links', requireAuth, async (req: Request, res: Response) => {
           .eq('status', 'active')
       : { data: [] };
 
-    const linkMap = new Map<string, any>();
-    for (const l of links || []) linkMap.set(l.user_id, l);
-    const tokenMap = new Map<string, any>();
-    for (const t of tokens || []) tokenMap.set(t.user_id, t);
+    const linkMap = new Map<string, LineLinkRow>();
+    for (const l of (links || []) as LineLinkRow[]) linkMap.set(l.user_id, l);
+    const tokenMap = new Map<string, LinkTokenRow>();
+    for (const t of (tokens || []) as LinkTokenRow[]) tokenMap.set(t.user_id, t);
 
-    const result = (staff || []).map((s: any) => {
+    const result = (staff || []).map((s: StaffWithProfileRow) => {
       const link = linkMap.get(s.user_id);
       const activeToken = tokenMap.get(s.user_id);
       return {
@@ -381,9 +425,9 @@ router.get('/admin/links', requireAuth, async (req: Request, res: Response) => {
     });
 
     res.json({ staff: result });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[line GET /admin/links]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -415,8 +459,8 @@ router.get('/me', requireAuth, async (req: Request, res: Response) => {
         linkedAt: link.linked_at,
       } : null,
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

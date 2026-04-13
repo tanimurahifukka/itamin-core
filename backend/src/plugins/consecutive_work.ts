@@ -34,7 +34,7 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
       .order('clock_in', { ascending: true });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -83,9 +83,9 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
     staffStatus.sort((a: any, b: any) => b.consecutiveDays - a.consecutiveDays);
 
     res.json({ staffStatus });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[consecutive_work GET /:storeId/status] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

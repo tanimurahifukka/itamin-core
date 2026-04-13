@@ -149,8 +149,8 @@ router.get('/:storeId/devices', requireAuth, async (req: Request, res: Response)
     );
 
     res.json({ devices: meters.length > 0 ? meters : allDevices });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -173,8 +173,8 @@ router.get('/:storeId/devices/monitored', requireAuth, async (req: Request, res:
       : [];
 
     res.json({ monitoredDevices });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -211,8 +211,8 @@ router.put('/:storeId/devices/monitored', requireAuth, async (req: Request, res:
     if (error) throw error;
 
     res.json({ ok: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -247,8 +247,8 @@ router.get('/:storeId/devices/:deviceId/status', requireAuth, async (req: Reques
       battery: body.battery ?? null,
       deviceType: body.deviceType ?? null,
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -275,8 +275,8 @@ router.get('/:storeId/readings', requireAuth, async (req: Request, res: Response
     if (error) throw error;
 
     res.json({ readings: data || [] });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
