@@ -13,7 +13,7 @@ const roleLabels: Record<string, string> = {
 type Mode = 'select' | 'create' | 'join';
 
 export default function StoreSelectPage() {
-  const { stores, selectStore, refreshStores } = useAuth();
+  const { stores, selectStore, refreshStores, storesLoading } = useAuth();
   const [mode, setMode] = useState<Mode>('select');
 
   // Create store form
@@ -78,7 +78,9 @@ export default function StoreSelectPage() {
 
       {mode === 'select' && (
         <>
-          {stores.length > 0 ? (
+          {storesLoading ? (
+            <div className="loading">読み込み中...</div>
+          ) : stores.length > 0 ? (
             <div className="store-list">
               {stores.map(store => (
                 <div
