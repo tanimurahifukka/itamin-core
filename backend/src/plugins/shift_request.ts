@@ -17,6 +17,18 @@ import {
   staffBelongsToStore,
 } from '../auth/authorization';
 
+/** Row from shift_requests with joined staff/profile */
+interface ShiftRequestRow {
+  id: string;
+  staff_id: string;
+  date: string;
+  request_type: string;
+  start_time: string | null;
+  end_time: string | null;
+  note: string | null;
+  staff: { id: string; user: { name: string } | null } | null;
+}
+
 const router = Router();
 
 // 週間の希望取得
@@ -48,11 +60,11 @@ router.get('/:storeId/requests', requireAuth, async (req: Request, res: Response
       .order('date');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
-    const requests = (data || []).map((r: any) => ({
+    const requests = ((data || []) as ShiftRequestRow[]).map((r: ShiftRequestRow) => ({
       id: r.id,
       staffId: r.staff_id,
       staffName: r.staff?.user?.name || '',
@@ -64,9 +76,9 @@ router.get('/:storeId/requests', requireAuth, async (req: Request, res: Response
     }));
 
     res.json({ startDate, endDate, requests });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift_request GET /:storeId/requests] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -123,14 +135,14 @@ router.post('/:storeId/requests', requireAuth, async (req: Request, res: Respons
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.status(201).json({ request: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift_request POST /:storeId/requests] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -165,14 +177,14 @@ router.delete('/:storeId/requests/:requestId', requireAuth, async (req: Request,
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[shift_request DELETE /:storeId/requests/:requestId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

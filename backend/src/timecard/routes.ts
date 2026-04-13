@@ -130,7 +130,7 @@ router.post('/:storeId/clock-in', requireAuth, async (req: Request, res: Respons
         res.status(409).json({ error: '既に出勤中です（同時打刻検知）' });
         return;
       }
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -140,9 +140,9 @@ router.post('/:storeId/clock-in', requireAuth, async (req: Request, res: Respons
       clockOut: record.clock_out,
       breakMinutes: record.break_minutes,
     }});
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard POST /:storeId/clock-in] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -170,7 +170,7 @@ router.post('/:storeId/clock-out', requireAuth, async (req: Request, res: Respon
       return;
     }
 
-    const update: any = { clock_out: new Date().toISOString() };
+    const update: { clock_out: string; break_minutes?: number } = { clock_out: new Date().toISOString() };
     if (breakMinutes !== undefined) update.break_minutes = breakMinutes;
 
     const { data: record, error } = await supabaseAdmin
@@ -181,7 +181,7 @@ router.post('/:storeId/clock-out', requireAuth, async (req: Request, res: Respon
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -191,9 +191,9 @@ router.post('/:storeId/clock-out', requireAuth, async (req: Request, res: Respon
       clockOut: record.clock_out,
       breakMinutes: record.break_minutes,
     }});
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard POST /:storeId/clock-out] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -231,9 +231,9 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
       } : null,
       staffId,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard GET /:storeId/status] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -252,11 +252,26 @@ router.get('/:storeId/daily', requireAuth, async (req: Request, res: Response) =
       .order('clock_in');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
-    const records = (data || []).map((r: any) => ({
+    interface DailyTimeRecordRow {
+      id: string;
+      store_id: string;
+      staff_id: string;
+      clock_in: string;
+      clock_out: string | null;
+      break_minutes: number;
+      staff: {
+        id: string;
+        hourly_wage: number;
+        transport_fee: number;
+        user: { name: string; picture: string | null } | null;
+      } | null;
+    }
+
+    const records = (data as DailyTimeRecordRow[] || []).map((r) => ({
       id: r.id,
       storeId: r.store_id,
       staffId: r.staff_id,
@@ -270,9 +285,9 @@ router.get('/:storeId/daily', requireAuth, async (req: Request, res: Response) =
     }));
 
     res.json({ date, records });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard GET /:storeId/daily] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -304,14 +319,27 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
       .order('clock_in');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     // スタッフごとに集計（aggregateSummary を使用して /export との重複解消）
     // 交通費計算に必要な transportFee は aggregateSummary の対象外のため別途保持する
+    interface MonthlyTimeRecordRow {
+      staff_id: string;
+      clock_in: string;
+      clock_out: string | null;
+      break_minutes: number;
+      staff: {
+        id: string;
+        hourly_wage: number;
+        transport_fee: number;
+        user: { name: string } | null;
+      } | null;
+    }
+
     const transportFeeMap = new Map<string, number>();
-    const rawRecords: RawRecord[] = (data || []).map((r: any) => {
+    const rawRecords: RawRecord[] = (data as MonthlyTimeRecordRow[] || []).map((r) => {
       const sid: string = r.staff_id;
       if (!transportFeeMap.has(sid)) {
         transportFeeMap.set(sid, r.staff?.transport_fee || 0);
@@ -355,9 +383,9 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
       records: data,
       summary,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard GET /:storeId/monthly] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -398,7 +426,7 @@ router.post('/:storeId/correct-and-clockin', requireAuth, async (req: Request, r
     }
 
     // 未退勤レコードをクローズ
-    const update: any = { clock_out: clockOut };
+    const update: { clock_out: string; break_minutes?: number } = { clock_out: clockOut };
     if (breakMinutes !== undefined) update.break_minutes = breakMinutes;
 
     const { error: updateErr } = await supabaseAdmin
@@ -433,9 +461,9 @@ router.post('/:storeId/correct-and-clockin', requireAuth, async (req: Request, r
       clockOut: record.clock_out,
       breakMinutes: record.break_minutes,
     }});
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard POST /:storeId/correct-and-clockin] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -462,7 +490,7 @@ router.put('/:storeId/records/:recordId', requireAuth, async (req: Request, res:
       return;
     }
 
-    const update: any = {};
+    const update: { clock_in?: string; clock_out?: string; break_minutes?: number } = {};
     if (clockIn !== undefined) update.clock_in = clockIn;
     if (clockOut !== undefined) update.clock_out = clockOut;
     if (breakMinutes !== undefined) update.break_minutes = breakMinutes;
@@ -488,7 +516,7 @@ router.put('/:storeId/records/:recordId', requireAuth, async (req: Request, res:
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -498,9 +526,9 @@ router.put('/:storeId/records/:recordId', requireAuth, async (req: Request, res:
       clockOut: record.clock_out,
       breakMinutes: record.break_minutes,
     }});
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard PUT /:storeId/records/:recordId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -532,14 +560,14 @@ router.delete('/:storeId/records/:recordId', requireAuth, async (req: Request, r
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard DELETE /:storeId/records/:recordId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -605,7 +633,7 @@ router.post('/:storeId/records', requireAuth, async (req: Request, res: Response
         res.status(409).json({ error: '既に出勤中のレコードがあります（同時存在検知）' });
         return;
       }
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -617,9 +645,9 @@ router.post('/:storeId/records', requireAuth, async (req: Request, res: Response
         breakMinutes: record.break_minutes,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard POST /:storeId/records] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -699,7 +727,7 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
       .order('clock_in');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -715,15 +743,29 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
       `attachment; filename="${asciiFilename}"; filename*=UTF-8''${utf8Filename}`,
     );
 
+    interface ExportTimeRecordRow {
+      staff_id: string;
+      clock_in: string;
+      clock_out: string | null;
+      break_minutes: number;
+      staff: {
+        id: string;
+        hourly_wage: number;
+        user: { name: string } | null;
+      } | null;
+    }
+
+    const typedData = (data as ExportTimeRecordRow[]) || [];
+
     if (mode === 'detail') {
       // High 5: clock_out != null のレコードのみ集計
-      const records: DetailRecord[] = (data || [])
-        .filter((r: any) => r.clock_out != null)
-        .map((r: any) => {
+      const records: DetailRecord[] = typedData
+        .filter((r) => r.clock_out != null)
+        .map((r) => {
           const clockInDate = new Date(r.clock_in);
-          const clockOutDate = new Date(r.clock_out);
+          const clockOutDate = new Date(r.clock_out!);
           const breakMins = r.break_minutes || 0;
-          const workMinutes = computeWorkMinutes(r.clock_in, r.clock_out, breakMins);
+          const workMinutes = computeWorkMinutes(r.clock_in, r.clock_out!, breakMins);
           const hourlyWage: number = r.staff?.hourly_wage || 0;
           const estimatedSalary = Math.round(workMinutes / 60 * hourlyWage);
           const dateStr = clockInDate.toISOString().split('T')[0];
@@ -744,7 +786,7 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
     } else {
       // summary モード: aggregateSummary で集計（High 5, High 7）
       // aggregateSummary は clock_out != null のレコードのみ集計し、detail と一致する
-      const rawRecords: RawRecord[] = (data || []).map((r: any) => ({
+      const rawRecords: RawRecord[] = typedData.map((r) => ({
         staff_id: r.staff_id,
         clock_in: r.clock_in,
         clock_out: r.clock_out,
@@ -766,9 +808,9 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
       // High 6: Buffer.from で堅牢化
       res.send(Buffer.from(buildSummaryCsv(summaryRecords), 'utf8'));
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[timecard GET /:storeId/export] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

@@ -11,6 +11,7 @@ const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,62}$/;
 
 const INVITE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DEFAULT_INVITE_TTL_HOURS = 72;
 
 function constantTimeEquals(a: string, b: string): boolean {
@@ -231,7 +232,7 @@ router.post('/:storeId/invitations', requireAuth, async (req: Request, res: Resp
     });
   } catch (e: unknown) {
     console.error('[stores POST /:storeId/invitations] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -249,14 +250,14 @@ router.get('/:storeId/invitations', requireAuth, async (req: Request, res: Respo
       .order('created_at', { ascending: false });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ invitations: data || [] });
   } catch (e: unknown) {
     console.error('[stores GET /:storeId/invitations] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -276,7 +277,7 @@ router.delete('/:storeId/invitations/:invitationId', requireAuth, async (req: Re
       .is('revoked_at', null);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -291,7 +292,7 @@ router.delete('/:storeId/invitations/:invitationId', requireAuth, async (req: Re
     res.json({ ok: true });
   } catch (e: unknown) {
     console.error('[stores DELETE /:storeId/invitations/:invitationId] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -313,6 +314,7 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
     }
     if (!name) { res.status(400).json({ error: '名前は必須です' }); return; }
     if (!email) { res.status(400).json({ error: 'メールアドレスは必須です' }); return; }
+    if (!EMAIL_PATTERN.test(email)) { res.status(400).json({ error: 'メールアドレスの形式が正しくありません' }); return; }
     if (password.length < 8) { res.status(400).json({ error: 'パスワードは8文字以上で入力してください' }); return; }
 
     // 招待トークン検証
@@ -477,7 +479,7 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
     });
   } catch (e: unknown) {
     console.error('[stores POST /:storeId/join] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -628,7 +630,7 @@ router.post('/:storeId/join-member', requireAuth, async (req: Request, res: Resp
     });
   } catch (e: unknown) {
     console.error('[stores POST /:storeId/join-member] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -649,7 +651,7 @@ router.get('/:storeId/info', async (_req: Request, res: Response) => {
 
     res.json({ store: { id: data.id, name: data.name } });
   } catch (e: unknown) {
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -667,7 +669,7 @@ router.get('/:storeId/account', requireAuth, async (req: Request, res: Response)
       .maybeSingle();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -679,7 +681,7 @@ router.get('/:storeId/account', requireAuth, async (req: Request, res: Response)
     res.json({ account: serializeStoreAccount(store) });
   } catch (e: unknown) {
     console.error('[stores GET /:storeId/account] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -799,7 +801,7 @@ router.put('/:storeId/account', requireAuth, async (req: Request, res: Response)
     });
   } catch (e: unknown) {
     console.error('[stores PUT /:storeId/account] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -844,7 +846,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     res.status(201).json({ store, staffId: staff.id });
   } catch (e: unknown) {
     console.error('[stores POST /] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -859,7 +861,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
       .eq('user_id', req.user!.id);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -877,7 +879,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
     res.json({ stores });
   } catch (e: unknown) {
     console.error('[stores GET /] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -892,7 +894,7 @@ router.get('/:storeId/initial-password', requireAuth, async (req: Request, res: 
     res.json({ initialPassword });
   } catch (e: unknown) {
     console.error('[stores GET /:storeId/initial-password] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -923,14 +925,14 @@ router.put('/:storeId/initial-password', requireAuth, async (req: Request, res: 
       .eq('id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true, message: '初期パスワードを変更しました' });
   } catch (e: unknown) {
     console.error('[stores PUT /:storeId/initial-password] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -986,7 +988,7 @@ router.post('/:storeId/staff', requireAuth, async (req: Request, res: Response) 
         if (error.code === '23505') {
           res.status(409).json({ error: '既にこの事業所に所属しています' });
         } else {
-          res.status(500).json({ error: error.message });
+          res.status(500).json({ error: 'Internal Server Error' });
         }
         return;
       }
@@ -1039,7 +1041,7 @@ router.post('/:storeId/staff', requireAuth, async (req: Request, res: Response) 
     }
   } catch (e: unknown) {
     console.error('[stores POST /:storeId/staff] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1121,7 +1123,7 @@ router.post('/:storeId/staff/assign-existing', requireAuth, async (req: Request,
     });
   } catch (e: unknown) {
     console.error('[stores POST /:storeId/staff/assign-existing] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1143,7 +1145,7 @@ router.post('/:storeId/invitations/:invitationId/resend', requireAuth, async (re
       .maybeSingle();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -1172,7 +1174,7 @@ router.post('/:storeId/invitations/:invitationId/resend', requireAuth, async (re
     res.json({ ok: true, message: '招待メールを再送しました' });
   } catch (e: unknown) {
     console.error('[stores POST /:storeId/invitations/:invitationId/resend] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1218,14 +1220,14 @@ router.put('/:storeId/staff/:staffId', requireAuth, async (req: Request, res: Re
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
   } catch (e: unknown) {
     console.error('[stores PUT /:storeId/staff/:staffId] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1277,7 +1279,7 @@ router.delete('/:storeId/staff/:staffId', requireAuth, async (req: Request, res:
     res.json({ ok: true, message: `${targetRow.user?.name || 'スタッフ'} さんを退職処理しました` });
   } catch (e: unknown) {
     console.error('[stores DELETE /:storeId/staff/:staffId] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1405,7 +1407,7 @@ router.post('/:storeId/staff/:staffId/reset-password', requireAuth, async (req: 
     });
   } catch (e: unknown) {
     console.error('[stores POST /:storeId/staff/:staffId/reset-password] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1438,14 +1440,14 @@ router.get('/:storeId/audit-log', requireAuth, async (req: Request, res: Respons
 
     if (error) {
       console.error('[stores GET audit-log] error:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ entries: data || [] });
   } catch (e: unknown) {
     console.error('[stores GET /:storeId/audit-log] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1461,7 +1463,7 @@ router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) =
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -1510,7 +1512,7 @@ router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) =
     res.json({ staff });
   } catch (e: unknown) {
     console.error('[stores GET /:storeId/staff] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1622,7 +1624,7 @@ router.post('/:storeId/staff/rehire', requireAuth, async (req: Request, res: Res
     });
   } catch (e: unknown) {
     console.error('[stores POST /:storeId/staff/rehire] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1677,7 +1679,7 @@ router.get('/:storeId/staff-pins/me', requireAuth, async (req: Request, res: Res
     res.json({ pin: fresh?.pin || null });
   } catch (e: unknown) {
     console.error('[stores GET /:storeId/staff-pins/me] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1694,7 +1696,7 @@ router.get('/:storeId/staff-pins', requireAuth, async (req: Request, res: Respon
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -1713,7 +1715,7 @@ router.get('/:storeId/staff-pins', requireAuth, async (req: Request, res: Respon
     res.json({ pins });
   } catch (e: unknown) {
     console.error('[stores GET /:storeId/staff-pins] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1780,7 +1782,7 @@ router.post('/:storeId/staff-pins/:staffId/regenerate', requireAuth, async (req:
     res.json({ ok: true, pin, staffName: targetRow.user?.name || null });
   } catch (e: unknown) {
     console.error('[stores POST /:storeId/staff-pins/:staffId/regenerate] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1800,7 +1802,7 @@ router.delete('/:storeId/staff-pins/:staffId', requireAuth, async (req: Request,
       .eq('membership_id', staffId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -1817,7 +1819,7 @@ router.delete('/:storeId/staff-pins/:staffId', requireAuth, async (req: Request,
     res.json({ ok: true });
   } catch (e: unknown) {
     console.error('[stores DELETE /:storeId/staff-pins/:staffId] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1839,7 +1841,7 @@ router.get('/:storeId/nfc-locations', requireAuth, async (req: Request, res: Res
       .order('created_at', { ascending: true });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -1883,7 +1885,7 @@ router.get('/:storeId/nfc-locations', requireAuth, async (req: Request, res: Res
     res.json({ locations });
   } catch (e: unknown) {
     console.error('[stores GET /:storeId/nfc-locations] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1929,7 +1931,7 @@ router.post('/:storeId/nfc-locations', requireAuth, async (req: Request, res: Re
         res.status(409).json({ error: '同じ slug の場所がすでに存在します' });
         return;
       }
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -1962,7 +1964,7 @@ router.post('/:storeId/nfc-locations', requireAuth, async (req: Request, res: Re
     });
   } catch (e: unknown) {
     console.error('[stores POST /:storeId/nfc-locations] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1995,7 +1997,7 @@ router.put('/:storeId/nfc-locations/:id', requireAuth, async (req: Request, res:
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -2012,7 +2014,7 @@ router.put('/:storeId/nfc-locations/:id', requireAuth, async (req: Request, res:
     res.json({ ok: true, location: data });
   } catch (e: unknown) {
     console.error('[stores PUT /:storeId/nfc-locations/:id] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -2031,7 +2033,7 @@ router.delete('/:storeId/nfc-locations/:id', requireAuth, async (req: Request, r
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -2048,7 +2050,7 @@ router.delete('/:storeId/nfc-locations/:id', requireAuth, async (req: Request, r
     res.json({ ok: true });
   } catch (e: unknown) {
     console.error('[stores DELETE /:storeId/nfc-locations/:id] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -2066,14 +2068,14 @@ router.get('/:storeId/checklist-templates', requireAuth, async (req: Request, re
       .order('name', { ascending: true });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ templates: data || [] });
   } catch (e: unknown) {
     console.error('[stores GET /:storeId/checklist-templates] error:', e);
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

@@ -13,6 +13,51 @@ import {
 
 const router = Router();
 
+/** store_staff row joined with profiles (name, picture) */
+interface StaffWithProfileRow {
+  id: string;
+  user_id: string;
+  role: string;
+  user: { name: string | null; picture: string | null } | null;
+}
+
+/** Mapped staff entry for admin today view */
+interface StaffListEntry {
+  userId: string;
+  staffId: string;
+  staffName: string;
+  staffPicture: string | null | undefined;
+  role: string;
+  currentStatus: string;
+  clockInAt: string | null;
+  clockOutAt: string | null;
+  breakMinutes: number;
+  shift: { startTime: string; endTime: string } | null;
+  sessions: ReturnType<typeof formatSession>[];
+  checklist: { clockIn: boolean; clockOut: boolean };
+}
+
+/** attendance_records row (from select *, with breaks relation) */
+interface AttendanceRecordRow {
+  id: string;
+  user_id: string;
+  business_date: string;
+  session_no: number;
+  status: string;
+  clock_in_at: string | null;
+  clock_out_at: string | null;
+  source?: string | null;
+  note?: string | null;
+  breaks?: { id: string; started_at: string; ended_at: string | null; reason?: string | null }[];
+}
+
+/** shifts row selected for today view */
+interface TodayShiftRow {
+  staff_id: string;
+  start_time: string;
+  end_time: string;
+}
+
 // ================================================================
 // スタッフ向け: 当日状態取得
 // ================================================================
@@ -100,7 +145,7 @@ router.get('/me/today', requireAuth, async (req: Request, res: Response) => {
         autoCloseBreak: policy.auto_close_break_before_clock_out,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance GET /me/today]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -162,7 +207,7 @@ router.post('/clock-in', requireAuth, async (req: Request, res: Response) => {
       .select()
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     await writeEvent(supabaseAdmin, {
       storeId, userId, recordId: record.id,
@@ -176,7 +221,7 @@ router.post('/clock-in', requireAuth, async (req: Request, res: Response) => {
       businessDate: record.business_date,
       message: '出勤しました',
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance POST /clock-in]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -243,7 +288,7 @@ router.post('/break-start', requireAuth, async (req: Request, res: Response) => 
       recordId: session.id, status: 'on_break',
       effectiveAt: now.toISOString(), message: '休憩を開始しました',
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance POST /break-start]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -304,7 +349,7 @@ router.post('/break-end', requireAuth, async (req: Request, res: Response) => {
       recordId: session.id, status: 'working',
       effectiveAt: now.toISOString(), message: '休憩を終了しました',
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance POST /break-end]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -381,7 +426,7 @@ router.post('/clock-out', requireAuth, async (req: Request, res: Response) => {
       recordId: session.id, status: 'completed',
       effectiveAt: now.toISOString(), message: '退勤しました',
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance POST /clock-out]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -420,10 +465,10 @@ router.get('/me/history', requireAuth, async (req: Request, res: Response) => {
     }
 
     const { data, error } = await query;
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     // 修正申請のステータスも取得
-    const recordIds = (data || []).map((r: any) => r.id);
+    const recordIds = (data || []).map((r: AttendanceRecordRow) => r.id);
     const { data: corrections } = recordIds.length > 0
       ? await supabaseAdmin
           .from('attendance_correction_requests')
@@ -436,13 +481,13 @@ router.get('/me/history', requireAuth, async (req: Request, res: Response) => {
       if (c.status === 'pending') correctionMap.set(c.attendance_record_id, 'pending');
     }
 
-    const records = (data || []).map((r: any) => ({
+    const records = (data || []).map((r: AttendanceRecordRow) => ({
       ...formatSession(r),
       correctionStatus: correctionMap.get(r.id) || null,
     }));
 
     res.json({ records });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance GET /me/history]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -475,7 +520,7 @@ router.post('/corrections', requireAuth, async (req: Request, res: Response) => 
       .select()
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     await writeEvent(supabaseAdmin, {
       storeId, userId, recordId: attendanceRecordId,
@@ -484,7 +529,7 @@ router.post('/corrections', requireAuth, async (req: Request, res: Response) => 
     });
 
     res.status(201).json({ correction: data, message: '修正申請を送信しました' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance POST /corrections]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -508,9 +553,9 @@ router.get('/corrections/me', requireAuth, async (req: Request, res: Response) =
       .eq('user_id', req.user!.id)
       .order('requested_at', { ascending: false });
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     res.json({ corrections: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance GET /corrections/me]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -556,13 +601,13 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
       .eq('store_id', storeId)
       .in('status', ['working', 'on_break']);
 
-    const openByUser = new Map<string, any>();
-    for (const s of openSessions || []) {
+    const openByUser = new Map<string, AttendanceRecordRow>();
+    for (const s of (openSessions || []) as AttendanceRecordRow[]) {
       openByUser.set(s.user_id, s);
     }
 
-    const recordByUser = new Map<string, any[]>();
-    for (const r of records || []) {
+    const recordByUser = new Map<string, AttendanceRecordRow[]>();
+    for (const r of (records || []) as AttendanceRecordRow[]) {
       const arr = recordByUser.get(r.user_id) || [];
       arr.push(r);
       recordByUser.set(r.user_id, arr);
@@ -576,8 +621,8 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
       .eq('date', businessDate)
       .eq('status', 'published');
 
-    const shiftByStaffId = new Map<string, any>();
-    for (const s of todayShifts || []) {
+    const shiftByStaffId = new Map<string, TodayShiftRow>();
+    for (const s of (todayShifts || []) as TodayShiftRow[]) {
       shiftByStaffId.set(s.staff_id, s);
     }
 
@@ -598,7 +643,7 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
       checkByStaffId.set(cr.staff_id, entry);
     }
 
-    let staffList = (allStaff || []).map((s: any) => {
+    let staffList: StaffListEntry[] = (allStaff || []).map((s: StaffWithProfileRow) => {
       const userRecords = recordByUser.get(s.user_id) || [];
       const openSession = openByUser.get(s.user_id);
       const shift = shiftByStaffId.get(s.id);
@@ -607,7 +652,7 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
       let currentStatus = 'not_clocked_in';
       if (openSession) {
         currentStatus = openSession.status;
-      } else if (userRecords.some((r: any) => r.status === 'completed')) {
+      } else if (userRecords.some((r: AttendanceRecordRow) => r.status === 'completed')) {
         currentStatus = 'completed';
       }
 
@@ -625,7 +670,7 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
         clockOutAt: latestRecord?.clock_out_at || null,
         breakMinutes,
         shift: shift ? { startTime: shift.start_time, endTime: shift.end_time } : null,
-        sessions: userRecords.map((r: any) => formatSession(r)),
+        sessions: userRecords.map((r: AttendanceRecordRow) => formatSession(r)),
         checklist: checkStatus,
       };
     });
@@ -633,16 +678,16 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
     // 名前検索
     if (q) {
       const lower = q.toLowerCase();
-      staffList = staffList.filter((s: any) => s.staffName.toLowerCase().includes(lower));
+      staffList = staffList.filter((s: StaffListEntry) => s.staffName.toLowerCase().includes(lower));
     }
 
     // ステータスフィルタ
     if (statusFilter) {
-      staffList = staffList.filter((s: any) => s.currentStatus === statusFilter);
+      staffList = staffList.filter((s: StaffListEntry) => s.currentStatus === statusFilter);
     }
 
     res.json({ businessDate, staff: staffList });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance GET /admin/today]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -736,7 +781,7 @@ router.get('/admin/monthly', requireAuth, async (req: Request, res: Response) =>
     }));
 
     res.json({ month: targetMonth, summary });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance GET /admin/monthly]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -799,10 +844,10 @@ router.get('/admin/staff/:userId', requireAuth, async (req: Request, res: Respon
         role: staffInfo.role,
         hourlyWage: staffInfo.hourly_wage,
       } : null,
-      records: (records || []).map((r: any) => formatSession(r)),
+      records: (records || []).map((r: AttendanceRecordRow) => formatSession(r)),
       corrections: corrections || [],
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance GET /admin/staff/:userId]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -840,7 +885,14 @@ router.patch('/admin/records/:recordId', requireAuth, async (req: Request, res: 
       note: target.note,
     };
 
-    const update: any = { updated_by: req.user!.id, updated_at: new Date().toISOString() };
+    const update: {
+      updated_by: string;
+      updated_at: string;
+      clock_in_at?: string;
+      clock_out_at?: string;
+      status?: string;
+      note?: string;
+    } = { updated_by: req.user!.id, updated_at: new Date().toISOString() };
     if (req.body.clockInAt !== undefined) update.clock_in_at = req.body.clockInAt;
     if (req.body.clockOutAt !== undefined) update.clock_out_at = req.body.clockOutAt;
     if (req.body.status !== undefined) update.status = req.body.status;
@@ -853,7 +905,7 @@ router.patch('/admin/records/:recordId', requireAuth, async (req: Request, res: 
       .select()
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     await writeEvent(supabaseAdmin, {
       storeId, userId: target.user_id, recordId,
@@ -863,7 +915,7 @@ router.patch('/admin/records/:recordId', requireAuth, async (req: Request, res: 
     });
 
     res.json({ record: formatSession({ ...updated, breaks: [] }), message: '勤怠レコードを更新しました' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance PATCH /admin/records/:recordId]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -939,7 +991,7 @@ router.delete('/admin/records/:recordId', requireAuth, async (req: Request, res:
     res.json({ ok: true, message: '勤怠レコードを削除しました' });
   } catch (e: unknown) {
     console.error('[attendance DELETE /admin/records/:recordId]', e);
-    const message = e instanceof Error ? e.message : 'Internal server error';
+    const message = 'Internal Server Error';
     res.status(500).json({ error: message });
   }
 });
@@ -972,7 +1024,7 @@ router.get('/admin/corrections', requireAuth, async (req: Request, res: Response
       return;
     }
     res.json({ corrections: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance GET /admin/corrections]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -1016,7 +1068,14 @@ router.post('/admin/corrections/:id/approve', requireAuth, async (req: Request, 
     // after_snapshot の内容を勤怠レコードに反映
     if (correction.attendance_record_id && correction.after_snapshot) {
       const snap = correction.after_snapshot;
-      const update: any = { updated_by: req.user!.id, updated_at: now };
+      const update: {
+        updated_by: string;
+        updated_at: string;
+        clock_in_at?: string;
+        clock_out_at?: string;
+        status?: string;
+        note?: string;
+      } = { updated_by: req.user!.id, updated_at: now };
       if (snap.clockInAt) update.clock_in_at = snap.clockInAt;
       if (snap.clockOutAt) update.clock_out_at = snap.clockOutAt;
       if (snap.status) update.status = snap.status;
@@ -1035,7 +1094,7 @@ router.post('/admin/corrections/:id/approve', requireAuth, async (req: Request, 
     });
 
     res.json({ message: '申請を承認しました' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance POST /admin/corrections/:id/approve]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -1084,7 +1143,7 @@ router.post('/admin/corrections/:id/reject', requireAuth, async (req: Request, r
     });
 
     res.json({ message: '申請を却下しました' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[attendance POST /admin/corrections/:id/reject]', e);
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -1103,7 +1162,7 @@ router.get('/admin/policy', requireAuth, async (req: Request, res: Response) => 
 
     const policy = await getPolicy(supabaseAdmin, storeId);
     res.json({ policy });
-  } catch (e: any) {
+  } catch (e: unknown) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -1119,7 +1178,15 @@ router.put('/admin/policy', requireAuth, async (req: Request, res: Response) => 
     const mgmt = await requireManagedStore(req, res, storeId);
     if (!mgmt) return;
 
-    const update: any = { updated_at: new Date().toISOString() };
+    const update: {
+      updated_at: string;
+      timezone?: string;
+      business_day_cutoff_hour?: number;
+      rounding_unit_minutes?: number;
+      rounding_mode?: string;
+      auto_close_break_before_clock_out?: boolean;
+      require_manager_approval?: boolean;
+    } = { updated_at: new Date().toISOString() };
     if (policyData.timezone !== undefined) update.timezone = policyData.timezone;
     if (policyData.businessDayCutoffHour !== undefined) update.business_day_cutoff_hour = policyData.businessDayCutoffHour;
     if (policyData.roundingUnitMinutes !== undefined) update.rounding_unit_minutes = policyData.roundingUnitMinutes;
@@ -1142,7 +1209,7 @@ router.put('/admin/policy', requireAuth, async (req: Request, res: Response) => 
 
     const policy = await getPolicy(supabaseAdmin, storeId);
     res.json({ policy, message: 'ポリシーを更新しました' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });

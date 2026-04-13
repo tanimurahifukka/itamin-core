@@ -11,6 +11,13 @@ import { supabaseAdmin } from '../../config/supabase';
 import { requireStoreMembership } from '../../auth/authorization';
 import { calcPassed } from './helpers';
 
+/** Row from checklist_measurements for daily summary */
+interface MeasurementSummaryRow {
+  numeric_value: number | null;
+  passed: boolean | null;
+  item_key: string;
+}
+
 export const measurementsRouter = Router();
 
 // GET /api/haccp/:storeId/measurements/daily-summary?date=&item_key=
@@ -33,11 +40,11 @@ measurementsRouter.get('/:storeId/measurements/daily-summary', requireAuth, asyn
     if (itemKey) query = query.eq('item_key', itemKey);
 
     const { data, error } = await query;
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
-    const rows = data || [];
-    const numericRows = rows.filter((r: any) => r.numeric_value != null);
-    const numericValues = numericRows.map((r: any) => Number(r.numeric_value));
+    const rows = (data || []) as MeasurementSummaryRow[];
+    const numericRows = rows.filter((r: MeasurementSummaryRow) => r.numeric_value != null);
+    const numericValues = numericRows.map((r: MeasurementSummaryRow) => Number(r.numeric_value));
 
     const summary = {
       date,
@@ -47,13 +54,13 @@ measurementsRouter.get('/:storeId/measurements/daily-summary', requireAuth, asyn
       min: numericValues.length ? Math.min(...numericValues) : null,
       max: numericValues.length ? Math.max(...numericValues) : null,
       avg: numericValues.length ? numericValues.reduce((a, b) => a + b, 0) / numericValues.length : null,
-      deviation_count: rows.filter((r: any) => r.passed === false).length,
+      deviation_count: rows.filter((r: MeasurementSummaryRow) => r.passed === false).length,
     };
 
     res.json({ summary });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/measurements/daily-summary] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -75,12 +82,12 @@ measurementsRouter.get('/:storeId/measurements', requireAuth, async (req: Reques
     if (req.query.to) query = query.lte('measured_at', `${req.query.to}T23:59:59`);
 
     const { data, error } = await query;
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.json({ measurements: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/measurements] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -129,11 +136,11 @@ measurementsRouter.post('/:storeId/measurements', requireAuth, async (req: Reque
       .select('*')
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.status(201).json({ measurement: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp POST /:storeId/measurements] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });

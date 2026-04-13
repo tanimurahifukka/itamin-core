@@ -94,8 +94,8 @@ export default function CalendarAdminPage() {
         const full = defaultHours().map(def => byDow.get(def.day_of_week) || def);
         setHours(full);
       }
-    } catch (e: any) {
-      showToast(e?.message || '営業時間の取得に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '営業時間の取得に失敗しました', 'error');
     }
   }, [selectedStore]);
 
@@ -110,8 +110,8 @@ export default function CalendarAdminPage() {
       ]);
       setEffective(eff.days);
       setOverrides(ov.overrides);
-    } catch (e: any) {
-      showToast(e?.message || 'カレンダーの取得に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'カレンダーの取得に失敗しました', 'error');
     } finally {
       setLoading(false);
     }
@@ -143,8 +143,8 @@ export default function CalendarAdminPage() {
       await api.updateBusinessHours(selectedStore.id, hours);
       showToast('営業時間を保存しました', 'success');
       await loadMonth();
-    } catch (e: any) {
-      showToast(e?.message || '保存に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '保存に失敗しました', 'error');
     } finally {
       setSavingHours(false);
     }
@@ -185,8 +185,8 @@ export default function CalendarAdminPage() {
       showToast('例外日を登録しました', 'success');
       closeModal();
       await loadMonth();
-    } catch (e: any) {
-      showToast(e?.message || '登録に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '登録に失敗しました', 'error');
     } finally {
       setModalSaving(false);
     }
@@ -203,8 +203,8 @@ export default function CalendarAdminPage() {
       showToast('例外を削除しました', 'success');
       closeModal();
       await loadMonth();
-    } catch (e: any) {
-      showToast(e?.message || '削除に失敗しました', 'error');
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : '削除に失敗しました', 'error');
     } finally {
       setModalSaving(false);
     }

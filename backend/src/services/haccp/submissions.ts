@@ -21,6 +21,99 @@ import {
   getAuditLevel,
 } from './helpers';
 
+// ── Row types for Supabase query results ─────────────────────────────────────
+
+/** checklist_templates: columns selected in listKioskActiveTemplates */
+interface KioskTemplateRow {
+  id: string;
+  name: string;
+  timing: string;
+  scope: string;
+  description: string | null;
+}
+
+/** checklist_template_items: columns selected in listKioskActiveTemplates */
+interface KioskTemplateItemRow {
+  id: string;
+  template_id: string;
+  label: string;
+  item_type: string;
+  required: boolean;
+  min_value: number | null;
+  max_value: number | null;
+  unit: string | null;
+  sort_order: number;
+  options: Record<string, unknown>;
+}
+
+/** checklist_submissions: columns selected in listKioskSubmissionsForDate */
+interface KioskSubmissionRow {
+  id: string;
+  template_id: string;
+  timing: string;
+  submitted_at: string;
+  member: { user: { name: string } | null } | null;
+}
+
+/** checklist_templates: id + name only */
+interface TplNameRow {
+  id: string;
+  name: string;
+}
+
+/** checklist_assignments: template_id only */
+interface AssignmentRow {
+  template_id: string;
+}
+
+/** checklist_templates: id only (fallback query) */
+interface TplIdRow {
+  id: string;
+}
+
+/** checklist_template_items: full row via select('*') */
+interface TemplateItemFullRow {
+  id: string;
+  store_id: string;
+  template_id: string;
+  item_key: string;
+  label: string;
+  item_type: string;
+  required: boolean;
+  min_value: number | null;
+  max_value: number | null;
+  unit: string | null;
+  options: Record<string, unknown>;
+  is_ccp: boolean;
+  tracking_mode: string;
+  frequency_per_day: number | null;
+  frequency_interval_minutes: number | null;
+  deviation_action: string | null;
+  sort_order: number;
+  switchbot_device_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** checklist_templates: full row via select('*') for active checklist */
+interface TemplateFullRow {
+  id: string;
+  store_id: string;
+  system_template_id: string | null;
+  name: string;
+  timing: string;
+  scope: string;
+  layer: string;
+  description: string | null;
+  version: number;
+  is_active: boolean;
+  sort_order: number;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const submissionsRouter = Router();
 
 // ── kiosk 向け軽量ヘルパ ──────────────────────────────────────────────────────
@@ -42,22 +135,22 @@ export async function listKioskActiveTemplates(storeId: string, timing: string |
   const { data: templates, error } = await query;
   if (error) throw new Error(error.message);
 
-  const ids = (templates || []).map((t: any) => t.id);
+  const ids = (templates || []).map((t: KioskTemplateRow) => t.id);
   const { data: items } = ids.length > 0
     ? await supabaseAdmin
         .from('checklist_template_items')
         .select('id, template_id, label, item_type, required, min_value, max_value, unit, sort_order, options')
         .in('template_id', ids)
         .order('sort_order', { ascending: true })
-    : { data: [] };
+    : { data: [] as KioskTemplateItemRow[] };
 
-  const itemsByTemplate = ((items || []) as any[]).reduce((acc: Record<string, any[]>, item: any) => {
+  const itemsByTemplate = ((items || []) as KioskTemplateItemRow[]).reduce((acc: Record<string, KioskTemplateItemRow[]>, item) => {
     if (!acc[item.template_id]) acc[item.template_id] = [];
     acc[item.template_id].push(item);
     return acc;
   }, {});
 
-  return (templates || []).map((t: any) => ({ ...t, items: itemsByTemplate[t.id] || [] }));
+  return (templates || []).map((t: KioskTemplateRow) => ({ ...t, items: itemsByTemplate[t.id] || [] }));
 }
 
 export async function listKioskSubmissionsForDate(storeId: string, date: string) {
@@ -72,13 +165,13 @@ export async function listKioskSubmissionsForDate(storeId: string, date: string)
 
   if (error) throw new Error(error.message);
 
-  const tplIds = [...new Set((data || []).map((s: any) => s.template_id))];
+  const tplIds = [...new Set((data || []).map((s: KioskSubmissionRow) => s.template_id))];
   const { data: tpls } = tplIds.length > 0
     ? await supabaseAdmin.from('checklist_templates').select('id, name').in('id', tplIds)
-    : { data: [] };
-  const tplMap = new Map(((tpls || []) as any[]).map((t: any) => [t.id, t.name]));
+    : { data: [] as TplNameRow[] };
+  const tplMap = new Map(((tpls || []) as TplNameRow[]).map(t => [t.id, t.name]));
 
-  return (data || []).map((s: any) => ({
+  return (data || []).map((s: KioskSubmissionRow) => ({
     id: s.id,
     templateId: s.template_id,
     templateName: tplMap.get(s.template_id) || '不明',
@@ -90,9 +183,20 @@ export async function listKioskSubmissionsForDate(storeId: string, date: string)
 
 // ── service 関数 (router / kiosk / LINE 共通) ─────────────────────────────────
 
+/** A template enriched with its items */
+interface EnrichedTemplate extends TemplateFullRow {
+  items: TemplateItemFullRow[];
+}
+
+/** A merged item annotated with its parent template info */
+interface MergedItem extends TemplateItemFullRow {
+  template_name: string;
+  template_layer: string;
+}
+
 export interface ActiveChecklistResult {
-  templates: Array<any>;
-  merged_items: Array<any>;
+  templates: EnrichedTemplate[];
+  merged_items: MergedItem[];
 }
 
 /**
@@ -121,7 +225,7 @@ export async function listActiveChecklist(
   const { data: assignments, error: assignErr } = await assignQuery;
   if (assignErr) throw new Error(assignErr.message);
 
-  let templateIds: string[] = (assignments || []).map((a: any) => a.template_id);
+  let templateIds: string[] = (assignments || []).map((a: AssignmentRow) => a.template_id);
 
   if (templateIds.length === 0) {
     const { data: fallback, error: fbErr } = await supabaseAdmin
@@ -134,7 +238,7 @@ export async function listActiveChecklist(
       .eq('is_active', true);
 
     if (fbErr) throw new Error(fbErr.message);
-    templateIds = (fallback || []).map((t: any) => t.id);
+    templateIds = (fallback || []).map((t: TplIdRow) => t.id);
   }
 
   if (templateIds.length === 0) {
@@ -158,13 +262,13 @@ export async function listActiveChecklist(
 
   if (itemErr) throw new Error(itemErr.message);
 
-  const itemsByTemplate = (items || []).reduce((acc: any, item: any) => {
+  const itemsByTemplate = (items || []).reduce((acc: Record<string, TemplateItemFullRow[]>, item: TemplateItemFullRow) => {
     if (!acc[item.template_id]) acc[item.template_id] = [];
     acc[item.template_id].push(item);
     return acc;
-  }, {} as Record<string, any[]>);
+  }, {} as Record<string, TemplateItemFullRow[]>);
 
-  const enriched = (templates || []).map((t: any) => ({
+  const enriched = (templates || []).map((t: TemplateFullRow) => ({
     ...t,
     items: itemsByTemplate[t.id] || [],
   }));
@@ -174,8 +278,8 @@ export async function listActiveChecklist(
     return (order[a.layer] ?? 0) - (order[b.layer] ?? 0);
   });
 
-  const mergedItems = sorted.flatMap((t: any) =>
-    (t.items || []).map((item: any) => ({
+  const mergedItems = sorted.flatMap((t) =>
+    (t.items || []).map((item: TemplateItemFullRow) => ({
       ...item,
       template_id: t.id,
       template_name: t.name,
@@ -248,14 +352,32 @@ export async function createSubmission(input: SubmissionInput): Promise<any> {
     .eq('template_id', templateId)
     .order('sort_order', { ascending: true });
 
-  const itemMap = new Map((tplItems || []).map((i: any) => [i.id, i]));
+  const itemMap = new Map<string, TemplateItemFullRow>(
+    (tplItems || []).map((i: TemplateItemFullRow) => [i.id, i]),
+  );
 
-  const processedItems: any[] = [];
+  interface ProcessedItem {
+    item_key: string;
+    template_item_id: string | null;
+    bool_value: boolean | null;
+    numeric_value: number | null;
+    text_value: string | null;
+    select_value: string | null;
+    file_path: string | null;
+    checked_by: string | null;
+    checked_at: string | null;
+    passed: boolean | null;
+    tplItem: TemplateItemFullRow | undefined;
+  }
+
+  const processedItems: ProcessedItem[] = [];
   let allPassed = true;
   let hasDeviation = false;
 
   for (const item of items) {
-    const tplItem = item.template_item_id ? itemMap.get(item.template_item_id) : null;
+    const tplItem: TemplateItemFullRow | undefined = item.template_item_id
+      ? itemMap.get(item.template_item_id)
+      : undefined;
     const passed = tplItem ? calcPassed(tplItem, item) : null;
 
     if (passed === false && tplItem?.required) {
@@ -282,7 +404,7 @@ export async function createSubmission(input: SubmissionInput): Promise<any> {
 
   const snapshot = {
     template: { id: tpl.id, name: tpl.name, version: tpl.version, timing: tpl.timing, scope: tpl.scope },
-    items: (tplItems || []).map((i: any) => ({
+    items: (tplItems || []).map((i: TemplateItemFullRow) => ({
       id: i.id, item_key: i.item_key, label: i.label, item_type: i.item_type,
       required: i.required, min_value: i.min_value, max_value: i.max_value,
       unit: i.unit, is_ccp: i.is_ccp,
@@ -314,7 +436,19 @@ export async function createSubmission(input: SubmissionInput): Promise<any> {
     throw new Error(subErr?.message || '提出に失敗しました');
   }
 
-  const deviationsToInsert: any[] = [];
+  interface DeviationInsert {
+    store_id: string;
+    submission_id: string;
+    template_item_id: string | null;
+    item_key: string;
+    severity: string;
+    status: string;
+    detected_value: string;
+    description: string | null;
+    measurement_id: string | null;
+  }
+
+  const deviationsToInsert: DeviationInsert[] = [];
 
   for (const pi of processedItems) {
     let measurementId: string | null = null;
@@ -400,9 +534,9 @@ submissionsRouter.get('/:storeId/active', requireAuth, async (req: Request, res:
 
     const result = await listActiveChecklist(storeId, timing, scope, shiftType);
     res.json(result);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/active] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -438,19 +572,19 @@ submissionsRouter.post('/:storeId/submissions', requireAuth, async (req: Request
         items,
       });
       res.status(201).json({ submission });
-    } catch (err: any) {
-      const msg = err.message || '提出に失敗しました';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '提出に失敗しました';
       if (msg.includes('必須') || msg.includes('audit_level')) {
         res.status(400).json({ error: msg });
       } else if (msg.includes('見つかりません')) {
         res.status(404).json({ error: msg });
       } else {
-        res.status(500).json({ error: msg });
+        res.status(500).json({ error: '提出に失敗しました' });
       }
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp POST /:storeId/submissions] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -483,7 +617,7 @@ submissionsRouter.get('/:storeId/nfc-location-status', requireAuth, async (req: 
       .order('submitted_at', { ascending: false })
       .limit(1);
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     if (!data || data.length === 0) {
       res.json({ done: false });
@@ -496,9 +630,9 @@ submissionsRouter.get('/:storeId/nfc-location-status', requireAuth, async (req: 
       submitted_at: row.submitted_at,
       staff_name: row.snapshot?.staff_name ?? null,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/nfc-location-status] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -526,11 +660,11 @@ submissionsRouter.get('/:storeId/submissions', requireAuth, async (req: Request,
     }
 
     const { data, error } = await query;
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.json({ submissions: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/submissions] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });

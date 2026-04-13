@@ -10,6 +10,97 @@ import { isValidTiming } from '../haccp/helpers';
 
 const router = Router();
 
+/** shifts table row selected for LINE staff shift view */
+interface ShiftRow {
+  id: string;
+  staff_id: string;
+  date: string;
+  start_time: string | null;
+  end_time: string | null;
+  break_minutes: number | null;
+  status: string | null;
+  note: string | null;
+}
+
+/** shift_requests table row */
+interface ShiftRequestRow {
+  id: string;
+  staff_id: string;
+  date: string;
+  request_type: string;
+  start_time: string | null;
+  end_time: string | null;
+  note: string | null;
+}
+
+/** attendance_breaks table row (nested via *, used in history) */
+interface AttendanceBreakRow {
+  started_at: string | null;
+  ended_at: string | null;
+}
+
+/** attendance_records table row (selected via *, with breaks relation) */
+interface AttendanceRecordRow {
+  id: string;
+  business_date: string;
+  status: string;
+  clock_in_at: string | null;
+  clock_out_at: string | null;
+  breaks: AttendanceBreakRow[];
+}
+
+/** Mapped attendance history entry (camelCase, after transformation) */
+interface AttendanceHistoryEntry {
+  id: string;
+  businessDate: string;
+  status: string;
+  clockInAt: string | null;
+  clockOutAt: string | null;
+  breakMinutes: number;
+}
+
+/** Merged checklist item from listActiveChecklist (TemplateItemFullRow + template info) */
+interface ChecklistMergedItem {
+  id: string;
+  item_key: string;
+  label: string;
+  template_id: string;
+  template_name: string;
+  item_type: string;
+  required: boolean;
+  min_value: number | null;
+  max_value: number | null;
+  unit: string | null;
+  is_ccp: boolean;
+}
+
+/** Checklist result entry from LINE bot submission */
+interface ChecklistResultEntry {
+  template_item_id?: string | null;
+  item_key?: string;
+  checked?: boolean;
+  bool_value?: boolean | null;
+  numeric_value?: number | null;
+  text_value?: string | null;
+  select_value?: string | null;
+}
+
+/** notices table row */
+interface NoticeRow {
+  id: string;
+  title: string | null;
+  body: string | null;
+  pinned: boolean;
+  author_name: string | null;
+  created_at: string;
+}
+
+/** notice_reads table row */
+interface NoticeReadRow {
+  notice_id: string;
+  read_at: string;
+}
+
 // ================================================================
 // LINE userId → ITAMIN ユーザー解決（punch.ts と同パターン）
 // ================================================================
@@ -87,11 +178,11 @@ router.post('/shifts', async (req: Request, res: Response) => {
       .order('start_time');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
-    const shifts = (data || []).map((s: any) => ({
+    const shifts = (data || []).map((s: ShiftRow) => ({
       id: s.id,
       date: s.date,
       startTime: s.start_time,
@@ -102,8 +193,8 @@ router.post('/shifts', async (req: Request, res: Response) => {
     }));
 
     res.json({ startDate, endDate, shifts });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -121,10 +212,10 @@ router.post('/shift-templates', async (req: Request, res: Response) => {
       .eq('store_id', auth.storeId)
       .order('name');
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     res.json({ templates: data || [] });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -156,11 +247,11 @@ router.post('/shift-requests', async (req: Request, res: Response) => {
       .order('date');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
-    const requests = (data || []).map((r: any) => ({
+    const requests = (data || []).map((r: ShiftRequestRow) => ({
       id: r.id,
       date: r.date,
       requestType: r.request_type,
@@ -170,8 +261,8 @@ router.post('/shift-requests', async (req: Request, res: Response) => {
     }));
 
     res.json({ startDate, endDate, requests });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -211,13 +302,13 @@ router.post('/shift-requests/save', async (req: Request, res: Response) => {
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.status(201).json({ request: data, message: '希望を保存しました' });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -248,13 +339,13 @@ router.post('/history', async (req: Request, res: Response) => {
       .order('clock_in_at', { ascending: false });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
-    const records = (data || []).map((r: any) => {
+    const records: AttendanceHistoryEntry[] = (data || []).map((r: AttendanceRecordRow) => {
       const breaks = r.breaks || [];
-      const breakMinutes = breaks.reduce((sum: number, b: any) => {
+      const breakMinutes = breaks.reduce((sum: number, b: AttendanceBreakRow) => {
         if (!b.started_at || !b.ended_at) return sum;
         return sum + Math.round((new Date(b.ended_at).getTime() - new Date(b.started_at).getTime()) / 60000);
       }, 0);
@@ -270,8 +361,8 @@ router.post('/history', async (req: Request, res: Response) => {
     });
 
     // サマリー
-    const completed = records.filter((r: any) => r.status === 'completed');
-    const totalMinutes = completed.reduce((sum: number, r: any) => {
+    const completed = records.filter((r: AttendanceHistoryEntry) => r.status === 'completed');
+    const totalMinutes = completed.reduce((sum: number, r: AttendanceHistoryEntry) => {
       if (!r.clockInAt || !r.clockOutAt) return sum;
       const worked = Math.round((new Date(r.clockOutAt).getTime() - new Date(r.clockInAt).getTime()) / 60000);
       return sum + worked - (r.breakMinutes || 0);
@@ -285,8 +376,8 @@ router.post('/history', async (req: Request, res: Response) => {
         totalMinutes,
       },
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -310,7 +401,7 @@ router.post('/checklist', async (req: Request, res: Response) => {
 
     const active = await listActiveChecklist(auth.storeId, timing, 'personal', null);
 
-    const items = active.merged_items.map((mi: any) => ({
+    const items = active.merged_items.map((mi: ChecklistMergedItem) => ({
       template_item_id: mi.id,
       item_key: mi.item_key,
       label: mi.label,
@@ -349,8 +440,8 @@ router.post('/checklist', async (req: Request, res: Response) => {
         checkedAt: latest.submitted_at,
       } : null,
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -396,7 +487,7 @@ router.post('/checklist/submit', async (req: Request, res: Response) => {
         timing,
         templateId: resolvedTemplateId,
         membershipId: auth.staffId,
-        items: results.map((r: any) => ({
+        items: results.map((r: ChecklistResultEntry) => ({
           template_item_id: r.template_item_id ?? null,
           item_key: r.item_key,
           bool_value: typeof r.checked === 'boolean' ? r.checked : (r.bool_value ?? null),
@@ -414,14 +505,14 @@ router.post('/checklist/submit', async (req: Request, res: Response) => {
         },
         message: 'チェックリストを提出しました',
       });
-    } catch (err: any) {
-      const msg = err?.message || '提出に失敗しました';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '提出に失敗しました';
       if (msg.includes('見つかりません')) res.status(404).json({ error: msg });
       else if (msg.includes('必須')) res.status(400).json({ error: msg });
-      else res.status(500).json({ error: msg });
+      else res.status(500).json({ error: '提出に失敗しました' });
     }
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -441,12 +532,12 @@ router.post('/notices', async (req: Request, res: Response) => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     // 既読情報
-    const noticeIds = (data || []).map((n: any) => n.id);
+    const noticeIds = (data || []).map((n: NoticeRow) => n.id);
     const { data: reads } = noticeIds.length > 0
       ? await supabaseAdmin
           .from('notice_reads')
@@ -455,9 +546,9 @@ router.post('/notices', async (req: Request, res: Response) => {
           .in('notice_id', noticeIds)
       : { data: [] };
 
-    const readMap = new Map((reads || []).map((r: any) => [r.notice_id, r.read_at]));
+    const readMap = new Map((reads || []).map((r: NoticeReadRow) => [r.notice_id, r.read_at]));
 
-    const notices = (data || []).map((n: any) => ({
+    const notices = (data || []).map((n: NoticeRow) => ({
       id: n.id,
       title: n.title,
       body: n.body,
@@ -469,8 +560,8 @@ router.post('/notices', async (req: Request, res: Response) => {
     }));
 
     res.json({ notices });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -497,13 +588,13 @@ router.post('/notices/read', async (req: Request, res: Response) => {
       }, { onConflict: 'notice_id,user_id' });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -525,7 +616,7 @@ router.post('/daily-report', async (req: Request, res: Response) => {
       .maybeSingle();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -539,8 +630,8 @@ router.post('/daily-report', async (req: Request, res: Response) => {
         memo: data.memo,
       } : null,
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -574,7 +665,7 @@ router.post('/daily-report/save', async (req: Request, res: Response) => {
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -589,8 +680,8 @@ router.post('/daily-report/save', async (req: Request, res: Response) => {
       },
       message: '日報を保存しました',
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

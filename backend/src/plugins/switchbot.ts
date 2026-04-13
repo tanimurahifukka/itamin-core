@@ -42,9 +42,9 @@ export const switchbotPlugin: Plugin = {
         const result = await collectSwitchBotReadings();
         console.log('[cron] switchbot-readings:', result);
         res.json({ ok: true, ...result });
-      } catch (e: any) {
-        console.error('[cron] switchbot-readings error:', e.message);
-        res.status(500).json({ error: e.message });
+      } catch (e: unknown) {
+        console.error('[cron] switchbot-readings error:', e);
+        res.status(500).json({ error: 'Internal Server Error' });
       }
     });
   },

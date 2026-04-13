@@ -47,7 +47,7 @@ timeslotAdminRouter.get(
       .order('sort_order')
       .order('start_time');
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     res.json({ timeslots: data });
   },
 );
@@ -157,7 +157,7 @@ timeslotAdminRouter.get(
     if (to) q = q.lte('starts_at', to.toISOString());
 
     const { data, error } = await q;
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     res.json({ reservations: data });
   },
 );

@@ -4,6 +4,19 @@ import { requireAuth } from '../../middleware/auth';
 import { checkOrgLimits } from '../../lib/billing';
 import { requireOrgManager } from '../../auth/authorization';
 
+/** Row from organization_members with joined organization */
+interface OrgMembershipRow {
+  role: string;
+  organizations: {
+    id: string;
+    name: string;
+    slug: string;
+    parent_id: string | null;
+    org_type: string;
+    created_at: string;
+  };
+}
+
 export const organizationsRouter = Router();
 
 organizationsRouter.use(requireAuth);
@@ -17,11 +30,11 @@ organizationsRouter.get('/', async (req: Request, res: Response) => {
     .eq('user_id', userId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
-  const organizations = (data || []).map((row: any) => ({
+  const organizations = ((data || []) as OrgMembershipRow[]).map((row: OrgMembershipRow) => ({
     ...row.organizations,
     myRole: row.role,
   }));
@@ -190,7 +203,7 @@ organizationsRouter.put('/:orgId', async (req: Request, res: Response) => {
     .single();
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -220,7 +233,7 @@ organizationsRouter.get('/:orgId/members', async (req: Request, res: Response) =
     .eq('org_id', orgId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -270,7 +283,7 @@ organizationsRouter.post('/:orgId/members', async (req: Request, res: Response) 
     .single();
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -296,7 +309,7 @@ organizationsRouter.delete('/:orgId/members/:memberId', async (req: Request, res
     .eq('org_id', orgId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -328,7 +341,7 @@ organizationsRouter.put('/:orgId/members/:memberId/role', async (req: Request, r
     .eq('org_id', orgId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -358,7 +371,7 @@ organizationsRouter.get('/:orgId/stores', async (req: Request, res: Response) =>
     .eq('org_id', orgId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -419,7 +432,7 @@ organizationsRouter.post('/:orgId/stores/:storeId/assign', async (req: Request, 
     .eq('id', storeId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 

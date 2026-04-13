@@ -4,13 +4,43 @@ import { requireAuth } from '../../middleware/auth';
 import { requireManagedStore } from '../../auth/authorization';
 import { supabaseAdmin } from '../../config/supabase';
 
+/** SwitchBot API device entry returned from GET /devices */
+interface SwitchBotDevice {
+  deviceId: string;
+  deviceType: string;
+  deviceName: string;
+  hubDeviceId: string;
+}
+
+/** SwitchBot API response for GET /devices */
+interface SwitchBotDeviceListResponse {
+  statusCode: number;
+  message?: string;
+  body: {
+    deviceList: SwitchBotDevice[];
+    infraredRemoteList?: SwitchBotDevice[];
+  };
+}
+
+/** SwitchBot API response for GET /devices/:id/status */
+interface SwitchBotDeviceStatusResponse {
+  statusCode: number;
+  message?: string;
+  body: {
+    temperature: number;
+    humidity: number;
+    battery: number;
+    deviceType?: string;
+  };
+}
+
 const router = Router();
 const SWITCHBOT_BASE = 'https://api.switch-bot.com/v1.1';
 
 // ── kiosk/LINE 再利用向けヘルパ (router 外から呼ぶ) ─────────────────────────
 
 /** 指定店舗のメーター一覧を SwitchBot API から取得する。認証情報が無い場合は空配列。 */
-export async function fetchStoreMeters(storeId: string): Promise<any[]> {
+export async function fetchStoreMeters(storeId: string): Promise<SwitchBotDevice[]> {
   const creds = await getCredentials(storeId);
   if (!creds) return [];
 
@@ -18,10 +48,10 @@ export async function fetchStoreMeters(storeId: string): Promise<any[]> {
     const r = await fetch(`${SWITCHBOT_BASE}/devices`, {
       headers: makeSwitchBotHeaders(creds.token, creds.secret),
     });
-    const json: any = await r.json();
+    const json: SwitchBotDeviceListResponse = await r.json();
     if (!r.ok || json.statusCode !== 100) return [];
 
-    return (json.body?.deviceList || []).filter((d: any) => /meter/i.test(d.deviceType || ''));
+    return (json.body?.deviceList || []).filter((d: SwitchBotDevice) => /meter/i.test(d.deviceType || ''));
   } catch {
     return [];
   }
@@ -35,10 +65,10 @@ export async function fetchDeviceStatus(storeId: string, deviceId: string) {
   const r = await fetch(`${SWITCHBOT_BASE}/devices/${deviceId}/status`, {
     headers: makeSwitchBotHeaders(creds.token, creds.secret),
   });
-  const json: any = await r.json();
+  const json: SwitchBotDeviceStatusResponse = await r.json();
   if (!r.ok || json.statusCode !== 100) return { error: json.message || `HTTP ${r.status}` };
 
-  const body = json.body || {};
+  const body = json.body || {} as SwitchBotDeviceStatusResponse['body'];
   return {
     temperature: body.temperature ?? null,
     humidity: body.humidity ?? null,
@@ -133,24 +163,24 @@ router.get('/:storeId/devices', requireAuth, async (req: Request, res: Response)
     const r = await fetch(`${SWITCHBOT_BASE}/devices`, {
       headers: makeSwitchBotHeaders(creds.token, creds.secret),
     });
-    const json: any = await r.json();
+    const json: SwitchBotDeviceListResponse = await r.json();
     if (!r.ok || json.statusCode !== 100) {
       res.status(502).json({ error: `SwitchBot API error: ${json.message || r.status}` });
       return;
     }
 
     // 温度計・温湿度計のみフィルタ
-    const allDevices = [
+    const allDevices: SwitchBotDevice[] = [
       ...(json.body?.deviceList || []),
       ...(json.body?.infraredRemoteList || []),
     ];
-    const meters = allDevices.filter((d: any) =>
+    const meters = allDevices.filter((d: SwitchBotDevice) =>
       /meter|temperature|hub.*mini/i.test(d.deviceType || '')
     );
 
     res.json({ devices: meters.length > 0 ? meters : allDevices });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -173,8 +203,8 @@ router.get('/:storeId/devices/monitored', requireAuth, async (req: Request, res:
       : [];
 
     res.json({ monitoredDevices });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -211,8 +241,8 @@ router.put('/:storeId/devices/monitored', requireAuth, async (req: Request, res:
     if (error) throw error;
 
     res.json({ ok: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -233,13 +263,13 @@ router.get('/:storeId/devices/:deviceId/status', requireAuth, async (req: Reques
     const r = await fetch(`${SWITCHBOT_BASE}/devices/${deviceId}/status`, {
       headers: makeSwitchBotHeaders(creds.token, creds.secret),
     });
-    const json: any = await r.json();
+    const json: SwitchBotDeviceStatusResponse = await r.json();
     if (!r.ok || json.statusCode !== 100) {
       res.status(502).json({ error: `SwitchBot API error: ${json.message || r.status}` });
       return;
     }
 
-    const body = json.body || {};
+    const body = json.body || {} as SwitchBotDeviceStatusResponse['body'];
     res.json({
       deviceId,
       temperature: body.temperature ?? null,
@@ -247,8 +277,8 @@ router.get('/:storeId/devices/:deviceId/status', requireAuth, async (req: Reques
       battery: body.battery ?? null,
       deviceType: body.deviceType ?? null,
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -275,8 +305,8 @@ router.get('/:storeId/readings', requireAuth, async (req: Request, res: Response
     if (error) throw error;
 
     res.json({ readings: data || [] });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

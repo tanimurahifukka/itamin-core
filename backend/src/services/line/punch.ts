@@ -143,8 +143,8 @@ router.post('/today', async (req: Request, res: Response) => {
       completedSessions: (completedToday || []).map(formatSession),
       recentEvents: events || [],
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -185,7 +185,7 @@ router.post('/clock-in', async (req: Request, res: Response) => {
       })
       .select().single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     await writeEvent(supabaseAdmin, {
       storeId: auth.storeId, userId: auth.userId, recordId: record.id,
@@ -193,7 +193,7 @@ router.post('/clock-in', async (req: Request, res: Response) => {
     });
 
     res.status(201).json({ recordId: record.id, status: 'working', effectiveAt: record.clock_in_at, businessDate, message: '出勤しました' });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: unknown) { res.status(500).json({ error: 'Internal Server Error' }); }
 });
 
 // ================================================================
@@ -224,7 +224,7 @@ router.post('/break-start', async (req: Request, res: Response) => {
     await writeEvent(supabaseAdmin, { storeId: auth.storeId, userId: auth.userId, recordId: session.id, eventType: 'break_start', source: 'line', idempotencyKey });
 
     res.json({ recordId: session.id, status: 'on_break', effectiveAt: now.toISOString(), message: '休憩を開始しました' });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: unknown) { res.status(500).json({ error: 'Internal Server Error' }); }
 });
 
 // ================================================================
@@ -253,7 +253,7 @@ router.post('/break-end', async (req: Request, res: Response) => {
     await writeEvent(supabaseAdmin, { storeId: auth.storeId, userId: auth.userId, recordId: session.id, eventType: 'break_end', source: 'line', idempotencyKey });
 
     res.json({ recordId: session.id, status: 'working', effectiveAt: now.toISOString(), message: '休憩を終了しました' });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: unknown) { res.status(500).json({ error: 'Internal Server Error' }); }
 });
 
 // ================================================================
@@ -294,7 +294,7 @@ router.post('/clock-out', async (req: Request, res: Response) => {
     await writeEvent(supabaseAdmin, { storeId: auth.storeId, userId: auth.userId, recordId: session.id, eventType: 'clock_out', source: 'line', idempotencyKey });
 
     res.json({ recordId: session.id, status: 'completed', effectiveAt: now.toISOString(), message: '退勤しました' });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: unknown) { res.status(500).json({ error: 'Internal Server Error' }); }
 });
 
 export const linePunchRouter = router;

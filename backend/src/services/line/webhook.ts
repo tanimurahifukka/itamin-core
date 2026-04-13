@@ -345,7 +345,7 @@ router.post('/', async (req: Request, res: Response) => {
     try {
       const result = await executePunch(action, user.userId, user.storeId);
       await replyMessage(replyToken, result, accessToken);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('[webhook] punch error:', e);
       await replyMessage(replyToken, 'エラーが発生しました。しばらく待ってから再度お試しください。', accessToken);
     }

@@ -19,6 +19,50 @@ import {
   isValidLayer,
 } from './helpers';
 
+// ── Row types for Supabase query results ─────────────────────────────────────
+
+/** checklist_system_templates: full row via select('*') */
+interface SystemTemplateRow {
+  id: string;
+  business_type: string;
+  name: string;
+  timing: string;
+  scope: string;
+  layer: string;
+  description: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** checklist_system_template_items: full row via select('*') */
+interface SystemTemplateItemRow {
+  id: string;
+  system_template_id: string;
+  item_key: string;
+  label: string;
+  item_type: string;
+  required: boolean;
+  min_value: number | null;
+  max_value: number | null;
+  unit: string | null;
+  options: Record<string, unknown>;
+  is_ccp: boolean;
+  tracking_mode: string;
+  frequency_per_day: number | null;
+  frequency_interval_minutes: number | null;
+  deviation_action: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** checklist_templates: system_template_id only (existing provisioned check) */
+interface ExistingProvisionRow {
+  system_template_id: string | null;
+}
+
 export const templatesRouter = Router();
 
 // ── プロビジョニング ───────────────────────────────────────────────────────────
@@ -57,7 +101,7 @@ export async function provisionSystemTemplates(
   }
 
   // 2. Fetch system template items in one batch
-  const sysTemplateIds = systemTemplates.map((t: any) => t.id);
+  const sysTemplateIds = systemTemplates.map((t: SystemTemplateRow) => t.id);
   const { data: systemItems, error: siErr } = await supabaseAdmin
     .from('checklist_system_template_items')
     .select('*')
@@ -68,8 +112,8 @@ export async function provisionSystemTemplates(
     throw new Error(`Failed to fetch system template items: ${siErr.message}`);
   }
 
-  const itemsBySystemTemplate = ((systemItems || []) as any[]).reduce(
-    (acc: Record<string, any[]>, item: any) => {
+  const itemsBySystemTemplate = ((systemItems || []) as SystemTemplateItemRow[]).reduce(
+    (acc: Record<string, SystemTemplateItemRow[]>, item) => {
       if (!acc[item.system_template_id]) acc[item.system_template_id] = [];
       acc[item.system_template_id].push(item);
       return acc;
@@ -89,14 +133,14 @@ export async function provisionSystemTemplates(
   }
 
   const alreadyProvisioned = new Set(
-    ((existing || []) as any[])
-      .map((t: any) => t.system_template_id)
+    ((existing || []) as ExistingProvisionRow[])
+      .map(t => t.system_template_id)
       .filter(Boolean),
   );
 
   // 4. Insert missing templates and their items
   let created = 0;
-  for (const sys of systemTemplates as any[]) {
+  for (const sys of systemTemplates as SystemTemplateRow[]) {
     if (alreadyProvisioned.has(sys.id)) continue;
 
     const { data: tpl, error: tplErr } = await supabaseAdmin
@@ -120,10 +164,10 @@ export async function provisionSystemTemplates(
       throw new Error(`Failed to create template for system_template_id ${sys.id}: ${tplErr?.message}`);
     }
 
-    const tplId = (tpl as any).id;
-    const sysItems: any[] = itemsBySystemTemplate[sys.id] || [];
+    const tplId = tpl.id;
+    const sysItems: SystemTemplateItemRow[] = itemsBySystemTemplate[sys.id] || [];
     if (sysItems.length > 0) {
-      const itemsToInsert = sysItems.map((si: any) => ({
+      const itemsToInsert = sysItems.map((si) => ({
         store_id: storeId,
         template_id: tplId,
         item_key: si.item_key,
@@ -183,7 +227,7 @@ templatesRouter.get('/system-templates', requireAuth, async (req: Request, res: 
       return;
     }
 
-    const tplIds = templates.map((t: any) => t.id);
+    const tplIds = templates.map((t: SystemTemplateRow) => t.id);
     const { data: items, error: itemErr } = await supabaseAdmin
       .from('checklist_system_template_items')
       .select('*')
@@ -195,21 +239,21 @@ templatesRouter.get('/system-templates', requireAuth, async (req: Request, res: 
       return;
     }
 
-    const itemsByTemplate = (items || []).reduce((acc: any, item: any) => {
+    const itemsByTemplate = (items || []).reduce((acc: Record<string, SystemTemplateItemRow[]>, item: SystemTemplateItemRow) => {
       if (!acc[item.system_template_id]) acc[item.system_template_id] = [];
       acc[item.system_template_id].push(item);
       return acc;
-    }, {} as Record<string, any[]>);
+    }, {} as Record<string, SystemTemplateItemRow[]>);
 
-    const result = templates.map((t: any) => ({
+    const result = templates.map((t: SystemTemplateRow) => ({
       ...t,
       items: itemsByTemplate[t.id] || [],
     }));
 
     res.json({ system_templates: result });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /system-templates] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -242,14 +286,14 @@ templatesRouter.get('/:storeId/templates', requireAuth, async (req: Request, res
 
     const { data, error } = await query;
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ templates: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/templates] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -266,9 +310,9 @@ templatesRouter.post('/:storeId/templates/provision-all', requireAuth, async (re
     // when multi-industry support is added
     const provisioned = await provisionSystemTemplates(storeId, 'cafe', req.user!.id);
     res.json({ ok: true, provisioned });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp POST /:storeId/templates/provision-all] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -330,7 +374,7 @@ templatesRouter.post('/:storeId/templates/from-system', requireAuth, async (req:
     }
 
     if (sysItems && sysItems.length > 0) {
-      const itemsToInsert = sysItems.map((si: any) => ({
+      const itemsToInsert = sysItems.map((si: SystemTemplateItemRow) => ({
         store_id: storeId,
         template_id: tpl.id,
         item_key: si.item_key,
@@ -366,9 +410,9 @@ templatesRouter.post('/:storeId/templates/from-system', requireAuth, async (req:
       .order('sort_order', { ascending: true });
 
     res.status(201).json({ template: { ...tpl, items: createdItems || [] } });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp POST /:storeId/templates/from-system] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -405,12 +449,12 @@ templatesRouter.post('/:storeId/templates', requireAuth, async (req: Request, re
       .select('*')
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.status(201).json({ template: { ...data, items: [] } });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp POST /:storeId/templates] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -429,7 +473,7 @@ templatesRouter.get('/:storeId/templates/:templateId', requireAuth, async (req: 
       .eq('store_id', storeId)
       .maybeSingle();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     if (!tpl) { res.status(404).json({ error: 'テンプレートが見つかりません' }); return; }
 
     const { data: items } = await supabaseAdmin
@@ -439,9 +483,9 @@ templatesRouter.get('/:storeId/templates/:templateId', requireAuth, async (req: 
       .order('sort_order', { ascending: true });
 
     res.json({ template: { ...tpl, items: items || [] } });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/templates/:templateId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -498,13 +542,13 @@ templatesRouter.put('/:storeId/templates/:templateId', requireAuth, async (req: 
       .select('*')
       .maybeSingle();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     if (!data) { res.status(404).json({ error: 'テンプレートが見つかりません' }); return; }
 
     res.json({ template: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp PUT /:storeId/templates/:templateId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -522,12 +566,12 @@ templatesRouter.delete('/:storeId/templates/:templateId', requireAuth, async (re
       .eq('id', templateId)
       .eq('store_id', storeId);
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp DELETE /:storeId/templates/:templateId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -580,7 +624,7 @@ templatesRouter.post('/:storeId/templates/:templateId/items', requireAuth, async
       .select('*')
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     await supabaseAdmin
       .from('checklist_templates')
@@ -588,9 +632,9 @@ templatesRouter.post('/:storeId/templates/:templateId/items', requireAuth, async
       .eq('id', templateId);
 
     res.status(201).json({ item });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp POST /:storeId/templates/:templateId/items] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -620,7 +664,7 @@ templatesRouter.put('/:storeId/template-items/:itemId', requireAuth, async (req:
       .select('*')
       .maybeSingle();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     if (!data) { res.status(404).json({ error: '項目が見つかりません' }); return; }
 
     const { data: tpl } = await supabaseAdmin
@@ -636,9 +680,9 @@ templatesRouter.put('/:storeId/template-items/:itemId', requireAuth, async (req:
     }
 
     res.json({ item: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp PUT /:storeId/template-items/:itemId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -663,7 +707,7 @@ templatesRouter.delete('/:storeId/template-items/:itemId', requireAuth, async (r
       .eq('id', itemId)
       .eq('store_id', storeId);
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     if (item?.template_id) {
       const { data: tpl } = await supabaseAdmin
@@ -680,9 +724,9 @@ templatesRouter.delete('/:storeId/template-items/:itemId', requireAuth, async (r
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp DELETE /:storeId/template-items/:itemId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -701,12 +745,12 @@ templatesRouter.get('/:storeId/assignments', requireAuth, async (req: Request, r
       .eq('store_id', storeId)
       .order('timing', { ascending: true });
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.json({ assignments: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp GET /:storeId/assignments] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -750,7 +794,7 @@ templatesRouter.put('/:storeId/assignments', requireAuth, async (req: Request, r
       return;
     }
 
-    const toInsert = mappings.map((m: any) => ({
+    const toInsert = mappings.map((m: { timing: string; scope: string; shift_type?: string | null; template_id: string }) => ({
       store_id: storeId,
       timing: m.timing,
       scope: m.scope,
@@ -763,11 +807,11 @@ templatesRouter.put('/:storeId/assignments', requireAuth, async (req: Request, r
       .insert(toInsert)
       .select('*');
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.json({ assignments: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[haccp PUT /:storeId/assignments] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });

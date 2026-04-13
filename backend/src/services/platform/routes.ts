@@ -42,7 +42,7 @@ platformRouter.get('/organizations', async (_req: Request, res: Response) => {
     .order('created_at', { ascending: false });
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -103,7 +103,7 @@ platformRouter.put('/organizations/:orgId/subscription', async (req: Request, re
       .update({ plan_id: planId, status: status || 'active' })
       .eq('id', (existing as { id: string }).id);
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
   } else {
@@ -111,7 +111,7 @@ platformRouter.put('/organizations/:orgId/subscription', async (req: Request, re
       .from('organization_subscriptions')
       .insert({ org_id: orgId, plan_id: planId, status: status || 'active' });
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
   }
@@ -126,7 +126,7 @@ platformRouter.get('/team', async (_req: Request, res: Response) => {
     .select('id, user_id, role, joined_at, profiles:user_id(id, email, full_name)');
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -172,7 +172,7 @@ platformRouter.post('/team', async (req: Request, res: Response) => {
     .single();
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -228,7 +228,7 @@ platformRouter.delete('/team/:memberId', async (req: Request, res: Response) => 
     .eq('id', memberId);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -243,7 +243,7 @@ platformRouter.get('/plans', async (_req: Request, res: Response) => {
     .order('price_monthly_jpy', { ascending: true });
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -283,7 +283,7 @@ platformRouter.post('/plans', async (req: Request, res: Response) => {
     .single();
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 
@@ -314,7 +314,7 @@ platformRouter.put('/plans/:planId', async (req: Request, res: Response) => {
     .single();
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Internal Server Error' });
     return;
   }
 

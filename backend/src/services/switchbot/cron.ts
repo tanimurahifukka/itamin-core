@@ -10,6 +10,45 @@ import * as crypto from 'crypto';
 import { supabaseAdmin } from '../../config/supabase';
 import { autoFillFromSwitchBot } from '../haccp';
 
+/** SwitchBot API device entry returned from GET /devices */
+interface SwitchBotDevice {
+  deviceId: string;
+  deviceType: string;
+  deviceName: string;
+  hubDeviceId: string;
+}
+
+/** SwitchBot API response for GET /devices */
+interface SwitchBotDeviceListResponse {
+  statusCode: number;
+  message?: string;
+  body: {
+    deviceList: SwitchBotDevice[];
+    infraredRemoteList?: SwitchBotDevice[];
+  };
+}
+
+/** SwitchBot API response for GET /devices/:id/status */
+interface SwitchBotDeviceStatusResponse {
+  statusCode: number;
+  message?: string;
+  body: {
+    temperature: number;
+    humidity: number;
+    battery: number;
+  };
+}
+
+/** Row returned from store_plugins select('store_id, config') */
+interface StorePluginRow {
+  store_id: string;
+  config: {
+    token?: string;
+    secret?: string;
+    monitoredDevices?: string[];
+  } | null;
+}
+
 const SWITCHBOT_BASE = 'https://api.switch-bot.com/v1.1';
 
 function makeSwitchBotHeaders(token: string, secret: string) {
@@ -45,12 +84,12 @@ async function getAllEnabledStores(): Promise<StoreCredentials[]> {
 
   if (error || !data) return [];
 
-  return data
-    .filter((row: any) => row.config?.token && row.config?.secret)
-    .map((row: any) => ({
+  return (data as StorePluginRow[])
+    .filter((row: StorePluginRow) => row.config?.token && row.config?.secret)
+    .map((row: StorePluginRow) => ({
       storeId: row.store_id,
-      token: row.config.token,
-      secret: row.config.secret,
+      token: row.config!.token!,
+      secret: row.config!.secret!,
       monitoredDevices: Array.isArray(row.config?.monitoredDevices) ? row.config.monitoredDevices : undefined,
     }));
 }
@@ -61,17 +100,17 @@ async function fetchDevices(creds: StoreCredentials): Promise<Array<{ deviceId: 
     const r = await fetch(`${SWITCHBOT_BASE}/devices`, {
       headers: makeSwitchBotHeaders(creds.token, creds.secret),
     });
-    const json: any = await r.json();
+    const json: SwitchBotDeviceListResponse = await r.json();
     if (!r.ok || json.statusCode !== 100) return [];
 
-    const allDevices = [
+    const allDevices: SwitchBotDevice[] = [
       ...(json.body?.deviceList || []),
       ...(json.body?.infraredRemoteList || []),
     ];
-    const meters = allDevices.filter((d: any) =>
+    const meters = allDevices.filter((d: SwitchBotDevice) =>
       /meter|temperature|hub.*mini/i.test(d.deviceType || '')
     );
-    return (meters.length > 0 ? meters : allDevices).map((d: any) => ({
+    return (meters.length > 0 ? meters : allDevices).map((d: SwitchBotDevice) => ({
       deviceId: d.deviceId,
       deviceName: d.deviceName,
       deviceType: d.deviceType,
@@ -87,7 +126,7 @@ async function fetchDeviceStatus(creds: StoreCredentials, deviceId: string) {
     const r = await fetch(`${SWITCHBOT_BASE}/devices/${deviceId}/status`, {
       headers: makeSwitchBotHeaders(creds.token, creds.secret),
     });
-    const json: any = await r.json();
+    const json: SwitchBotDeviceStatusResponse = await r.json();
     if (!r.ok || json.statusCode !== 100) return null;
 
     const body = json.body || {};

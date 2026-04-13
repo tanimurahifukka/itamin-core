@@ -5,6 +5,15 @@ import type { Express } from 'express';
 import type { Plugin } from '../types';
 import { requireManagedStore, requireStoreMembership, staffBelongsToStore } from '../auth/authorization';
 
+/** Row from paid_leaves table */
+interface PaidLeaveRow {
+  id: string;
+  staff_id: string;
+  total_days: number;
+  used_days: number;
+  fiscal_year: number;
+}
+
 const router = Router();
 
 // ============================================================
@@ -34,12 +43,12 @@ router.get('/:storeId/summary', requireAuth, async (req: Request, res: Response)
     const { data, error } = await query;
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     // スタッフ名を取得
-    const staffIds = [...new Set((data || []).map((d: any) => d.staff_id))];
+    const staffIds = [...new Set(((data || []) as PaidLeaveRow[]).map((d: PaidLeaveRow) => d.staff_id))];
     const { data: members } = staffIds.length > 0
       ? await supabaseAdmin
           .from('store_staff')
@@ -68,9 +77,9 @@ router.get('/:storeId/summary', requireAuth, async (req: Request, res: Response)
     });
 
     res.json({ summary, fiscalYear });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[paid_leave GET /:storeId/summary] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -132,14 +141,14 @@ router.post('/:storeId/grant', requireAuth, async (req: Request, res: Response) 
     }
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.status(201).json({ leave: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[paid_leave POST /:storeId/grant] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -171,14 +180,14 @@ router.get('/:storeId/records', requireAuth, async (req: Request, res: Response)
     const { data, error } = await query;
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ records: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[paid_leave GET /:storeId/records] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -219,7 +228,7 @@ router.post('/:storeId/records', requireAuth, async (req: Request, res: Response
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -235,9 +244,9 @@ router.post('/:storeId/records', requireAuth, async (req: Request, res: Response
     });
 
     res.status(201).json({ record: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[paid_leave POST /:storeId/records] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -294,9 +303,9 @@ router.delete('/:storeId/records/:recordId', requireAuth, async (req: Request, r
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[paid_leave DELETE /:storeId/records/:recordId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

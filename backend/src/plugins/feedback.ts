@@ -35,11 +35,22 @@ router.get('/:storeId/items', requireAuth, async (req: Request, res: Response) =
     const { data, error } = await query;
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
-    const items = (data || []).map((f: any) => ({
+    interface FeedbackRow {
+      id: string;
+      store_id: string;
+      date: string;
+      type: string;
+      content: string;
+      response: string;
+      status: string;
+      created_by: string;
+      created_at: string;
+    }
+    const items = (data || []).map((f: FeedbackRow) => ({
       id: f.id,
       storeId: f.store_id,
       date: f.date,
@@ -52,9 +63,9 @@ router.get('/:storeId/items', requireAuth, async (req: Request, res: Response) =
     }));
 
     res.json({ items });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[feedback GET /:storeId/items] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -93,14 +104,14 @@ router.post('/:storeId/items', requireAuth, async (req: Request, res: Response) 
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.status(201).json({ item: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[feedback POST /:storeId/items] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -114,7 +125,7 @@ router.put('/:storeId/items/:itemId', requireAuth, async (req: Request, res: Res
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
-    const updates: any = {};
+    const updates: { type?: string; content?: string; response?: string; status?: string; date?: string } = {};
     if (req.body.type !== undefined) updates.type = req.body.type;
     if (req.body.content !== undefined) updates.content = req.body.content;
     if (req.body.response !== undefined) updates.response = req.body.response;
@@ -130,14 +141,14 @@ router.put('/:storeId/items/:itemId', requireAuth, async (req: Request, res: Res
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ item: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[feedback PUT /:storeId/items/:itemId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -158,14 +169,14 @@ router.delete('/:storeId/items/:itemId', requireAuth, async (req: Request, res: 
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[feedback DELETE /:storeId/items/:itemId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

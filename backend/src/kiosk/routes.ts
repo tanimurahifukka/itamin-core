@@ -53,13 +53,13 @@ router.put('/:storeId/pin', requireAuth, async (req: Request, res: Response) => 
       .eq('id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true, message: 'キオスクPINを設定しました' });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -130,8 +130,8 @@ router.post('/:storeId/login', async (req: Request, res: Response) => {
     );
 
     res.json({ token, storeName: store.name, storeId });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -155,7 +155,7 @@ router.get('/:storeId/staff', requireKiosk, async (req: Request, res: Response) 
       .order('id');
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -168,9 +168,11 @@ router.get('/:storeId/staff', requireKiosk, async (req: Request, res: Response) 
       .gte('clock_in', `${today}T00:00:00`)
       .is('clock_out', null);
 
-    const openMap = new Map((openRecords || []).map((r: any) => [r.staff_id, r]));
+    interface OpenTimeRecord { staff_id: string; id: string; clock_in: string }
+    const openMap = new Map(((openRecords || []) as OpenTimeRecord[]).map((r) => [r.staff_id, r]));
 
-    const staff = (data || []).map((s: any) => ({
+    interface StaffRow { id: string; role: string; user: { id: string; name: string } | null }
+    const staff = (data || []).map((s: StaffRow) => ({
       id: s.id,
       name: s.user?.name || '',
       role: s.role,
@@ -180,8 +182,8 @@ router.get('/:storeId/staff', requireKiosk, async (req: Request, res: Response) 
     }));
 
     res.json({ staff });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -215,9 +217,10 @@ router.get('/:storeId/shifts', requireKiosk, async (req: Request, res: Response)
         .order('date')
         .order('start_time');
 
-      if (error) { res.status(500).json({ error: error.message }); return; }
+      if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
-      const shifts = (data || []).map((s: any) => ({
+      interface ShiftRow { id: string; start_time: string; end_time: string; staff_id: string; date: string; break_minutes: number | null; staff: { id: string; user: { name: string } | null } | null }
+      const shifts = (data || []).map((s: ShiftRow) => ({
         id: s.id,
         staffId: s.staff_id,
         date: s.date,
@@ -239,9 +242,10 @@ router.get('/:storeId/shifts', requireKiosk, async (req: Request, res: Response)
         .eq('date', date)
         .order('start_time');
 
-      if (error) { res.status(500).json({ error: error.message }); return; }
+      if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
-      const shifts = (data || []).map((s: any) => ({
+      interface ShiftRow { id: string; start_time: string; end_time: string; staff_id: string; date: string; break_minutes: number | null; staff: { id: string; user: { name: string } | null } | null }
+      const shifts = (data || []).map((s: ShiftRow) => ({
         id: s.id,
         staffId: s.staff_id,
         date: s.date,
@@ -253,8 +257,8 @@ router.get('/:storeId/shifts', requireKiosk, async (req: Request, res: Response)
 
       res.json({ shifts, date });
     }
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -281,9 +285,10 @@ router.get('/:storeId/shift-requests', requireKiosk, async (req: Request, res: R
       .lte('date', endDate)
       .order('date');
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
-    const requests = (data || []).map((r: any) => ({
+    interface ShiftRequestRow { id: string; staff_id: string; date: string; request_type: string; start_time: string | null; end_time: string | null; note: string | null; staff: { id: string; user: { name: string } | null } | null }
+    const requests = (data || []).map((r: ShiftRequestRow) => ({
       id: r.id,
       staffId: r.staff_id,
       staffName: r.staff?.user?.name || '',
@@ -295,8 +300,8 @@ router.get('/:storeId/shift-requests', requireKiosk, async (req: Request, res: R
     }));
 
     res.json({ requests, startDate, endDate });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -358,13 +363,13 @@ router.post('/:storeId/shifts', requireKiosk, async (req: Request, res: Response
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.status(201).json({ ok: true, shift: data });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -388,13 +393,13 @@ router.delete('/:storeId/shifts/:shiftId', requireKiosk, async (req: Request, re
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -466,7 +471,7 @@ router.post('/:storeId/punch', requireKiosk, async (req: Request, res: Response)
           res.status(409).json({ error: '既に出勤中です（同時打刻検知）' });
           return;
         }
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Internal Server Error' });
         return;
       }
 
@@ -494,14 +499,14 @@ router.post('/:storeId/punch', requireKiosk, async (req: Request, res: Response)
         .single();
 
       if (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Internal Server Error' });
         return;
       }
 
       res.json({ ok: true, action: 'clock-out', clockOut: record.clock_out });
     }
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -521,9 +526,10 @@ router.get('/:storeId/enabled-plugins', requireKiosk, async (req: Request, res: 
       .eq('store_id', storeId)
       .eq('enabled', true);
 
-    res.json({ plugins: (data || []).map((p: any) => p.plugin_name) });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    interface StorePluginRow { plugin_name: string; enabled: boolean }
+    res.json({ plugins: (data || []).map((p: StorePluginRow) => p.plugin_name) });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -547,14 +553,14 @@ router.get('/:storeId/haccp/templates', requireKiosk, async (req: Request, res: 
           console.log(`[kiosk] Auto-provisioned ${count} HACCP templates for store ${storeId}`);
           templates = await listKioskActiveTemplates(storeId, timing);
         }
-      } catch (provErr: any) {
-        console.warn(`[kiosk] HACCP template auto-provision warning for store ${storeId}:`, provErr.message);
+      } catch (provErr: unknown) {
+        console.warn(`[kiosk] HACCP template auto-provision warning for store ${storeId}:`, provErr);
       }
     }
 
     res.json({ templates });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -598,14 +604,14 @@ router.post('/:storeId/haccp/submissions', requireKiosk, async (req: Request, re
         items,
       });
       res.status(201).json({ ok: true, submissionId: submission.id });
-    } catch (err: any) {
-      const msg = err?.message || '提出に失敗しました';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '提出に失敗しました';
       if (msg.includes('見つかりません')) res.status(404).json({ error: msg });
       else if (msg.includes('必須')) res.status(400).json({ error: msg });
-      else res.status(500).json({ error: msg });
+      else res.status(500).json({ error: '提出に失敗しました' });
     }
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -621,8 +627,8 @@ router.get('/:storeId/haccp/submissions', requireKiosk, async (req: Request, res
     const date = typeof req.query.date === 'string' ? req.query.date : new Date().toISOString().split('T')[0];
     const submissions = await listKioskSubmissionsForDate(storeId, date);
     res.json({ submissions, date });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -667,11 +673,12 @@ router.get('/:storeId/haccp/submissions/monthly', requireKiosk, async (req: Requ
     }
     const days: Record<string, Record<string, TimingInfo>> = {};
 
-    for (const row of (data || []) as any[]) {
-      const dateKey = (row.submitted_at as string).split('T')[0];
+    interface SubmissionRow { id: string; timing: string; submitted_at: string; all_passed: boolean | null; has_deviation: boolean | null }
+    for (const row of (data || []) as SubmissionRow[]) {
+      const dateKey = row.submitted_at.split('T')[0];
       if (!days[dateKey]) days[dateKey] = {};
 
-      const timing = row.timing as string;
+      const timing = row.timing;
       const allPassed = row.all_passed === true && row.has_deviation !== true;
 
       if (!days[dateKey][timing]) {
@@ -684,8 +691,8 @@ router.get('/:storeId/haccp/submissions/monthly', requireKiosk, async (req: Requ
     }
 
     res.json({ days, year, month });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -700,8 +707,8 @@ router.get('/:storeId/switchbot', requireKiosk, async (req: Request, res: Respon
     }
     const devices = await fetchStoreMeters(storeId);
     res.json({ devices });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -723,7 +730,7 @@ router.get('/:storeId/switchbot/readings', requireKiosk, async (req: Request, re
     const devices = await listStoreReadingsForDate(storeId, dateParam);
     res.json({ devices, date: dateParam });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Internal Server Error';
+    const msg = 'Internal Server Error';
     res.status(500).json({ error: msg });
   }
 });
@@ -747,8 +754,8 @@ router.get('/:storeId/switchbot/:deviceId', requireKiosk, async (req: Request, r
       res.status(502).json({ error: `SwitchBot API error: ${status.error}` }); return;
     }
     res.json(status);
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -777,12 +784,12 @@ router.get('/:storeId/reservations', requireKiosk, async (req: Request, res: Res
       .order('starts_at', { ascending: true });
 
     if (error) {
-      res.status(500).json({ error: error.message }); return;
+      res.status(500).json({ error: 'Internal Server Error' }); return;
     }
 
     res.json({ reservations: data || [] });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -815,24 +822,25 @@ router.get('/:storeId/reservations/monthly', requireKiosk, async (req: Request, 
       .lte('starts_at', monthEnd)
       .not('status', 'eq', 'cancelled');
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     const days: Record<string, { count: number; types: string[] }> = {};
-    for (const row of (data || []) as any[]) {
-      const dateKey = (row.starts_at as string).split('T')[0];
+    interface ReservationSummaryRow { id: string; starts_at: string; reservation_type: string }
+    for (const row of (data || []) as ReservationSummaryRow[]) {
+      const dateKey = row.starts_at.split('T')[0];
       if (!days[dateKey]) {
         days[dateKey] = { count: 0, types: [] };
       }
       days[dateKey].count += 1;
-      const rtype = row.reservation_type as string;
+      const rtype = row.reservation_type;
       if (rtype && !days[dateKey].types.includes(rtype)) {
         days[dateKey].types.push(rtype);
       }
     }
 
     res.json({ days });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -852,11 +860,11 @@ router.get('/:storeId/events', requireKiosk, async (req: Request, res: Response)
       .eq('store_id', storeId)
       .order('starts_at', { ascending: false });
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.json({ events: data || [] });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -901,11 +909,11 @@ router.post('/:storeId/events', requireKiosk, async (req: Request, res: Response
       .select()
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.status(201).json({ event: data });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -921,7 +929,8 @@ router.patch('/:storeId/events/:eventId', requireKiosk, async (req: Request, res
     }
 
     const { title, description, starts_at, ends_at, capacity, price, status, form_schema } = req.body || {};
-    const updates: Record<string, any> = {};
+    interface EventUpdates { title?: string; description?: string | null; starts_at?: string; ends_at?: string; capacity?: number; price?: number | null; status?: string; form_schema?: Array<{ key: string; label: string; type: string; required?: boolean }> }
+    const updates: EventUpdates = {};
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
     if (starts_at !== undefined) updates.starts_at = starts_at;
@@ -951,12 +960,12 @@ router.patch('/:storeId/events/:eventId', requireKiosk, async (req: Request, res
       .select()
       .single();
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     if (!data) { res.status(404).json({ error: 'イベントが見つかりません' }); return; }
 
     res.json({ event: data });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -977,11 +986,11 @@ router.delete('/:storeId/events/:eventId', requireKiosk, async (req: Request, re
       .eq('id', eventId)
       .eq('store_id', storeId);
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.json({ ok: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1003,10 +1012,11 @@ router.get('/:storeId/events/available', requireKiosk, async (req: Request, res:
       .gte('starts_at', new Date().toISOString())
       .order('starts_at', { ascending: true });
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
+    interface EventRow { id: string; title: string; description: string | null; starts_at: string; ends_at: string; capacity: number; price: number | null; image_url: string | null; form_schema: Array<{ key: string; label: string; type: string; required?: boolean }> | null; status: string; store_id: string; sort_order: number; created_at: string; updated_at: string }
     const events = await Promise.all(
-      (data || []).map(async (ev: any) => {
+      (data || []).map(async (ev: EventRow) => {
         const remaining = await getRemainingCapacity({
           storeId,
           resourceRef: ev.id,
@@ -1030,8 +1040,8 @@ router.get('/:storeId/events/available', requireKiosk, async (req: Request, res:
     );
 
     res.json({ events });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1079,11 +1089,12 @@ router.post('/:storeId/events/:eventId/book', requireKiosk, async (req: Request,
     }
 
     // Derive customer_name from first text field, fallback to "ゲスト"
-    const firstTextField = schema.find((f: any) => f.type === 'text');
+    interface FormSchemaField { key: string; label: string; type: string; required?: boolean }
+    const firstTextField = schema.find((f: FormSchemaField) => f.type === 'text');
     const customerName = firstTextField ? String(responses[firstTextField.key] || 'ゲスト') : 'ゲスト';
 
     // Derive party_size from first number field, fallback to 1
-    const firstNumberField = schema.find((f: any) => f.type === 'number');
+    const firstNumberField = schema.find((f: FormSchemaField) => f.type === 'number');
     const partySize = firstNumberField ? Math.max(1, Number(responses[firstNumberField.key]) || 1) : 1;
 
     const reservation = await createCapacityReservation({
@@ -1131,7 +1142,8 @@ router.post('/:storeId/reservations/:reservationId/status', requireKiosk, async 
       res.status(400).json({ error: `status は ${allowedStatuses.join(', ')} のいずれかを指定してください` }); return;
     }
 
-    const updates: Record<string, any> = { status };
+    interface ReservationStatusUpdate { status: string; cancelled_at?: string }
+    const updates: ReservationStatusUpdate = { status };
     if (status === 'cancelled') {
       updates.cancelled_at = new Date().toISOString();
     }
@@ -1142,11 +1154,11 @@ router.post('/:storeId/reservations/:reservationId/status', requireKiosk, async 
       .eq('id', reservationId)
       .eq('store_id', storeId);
 
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
 
     res.json({ ok: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

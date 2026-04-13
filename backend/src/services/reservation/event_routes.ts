@@ -44,7 +44,7 @@ eventAdminRouter.get(
       .select('*')
       .eq('store_id', storeId)
       .order('starts_at', { ascending: false });
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     res.json({ events: data });
   },
 );
@@ -150,7 +150,7 @@ eventAdminRouter.get(
       .eq('reservation_type', 'event')
       .eq('resource_ref', eventId)
       .order('created_at', { ascending: true });
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     res.json({ reservations: data });
   },
 );
@@ -258,7 +258,7 @@ eventAdminRouter.get(
       .eq('store_id', storeId)
       .eq('reservation_type', 'event')
       .order('starts_at', { ascending: false });
-    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (error) { res.status(500).json({ error: 'Internal Server Error' }); return; }
     res.json({ reservations: data });
   },
 );

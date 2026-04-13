@@ -32,11 +32,22 @@ router.get('/:storeId/items', requireAuth, async (req: Request, res: Response) =
     const { data, error } = await query;
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
-    const items = (data || []).map((item: any) => ({
+    interface MenuItemRow {
+      id: string;
+      store_id: string;
+      name: string;
+      category: string;
+      price: number;
+      display_order: number;
+      is_active: boolean;
+      created_at: string;
+      updated_at: string;
+    }
+    const items = (data || []).map((item: MenuItemRow) => ({
       id: item.id,
       storeId: item.store_id,
       name: item.name,
@@ -49,9 +60,9 @@ router.get('/:storeId/items', requireAuth, async (req: Request, res: Response) =
     }));
 
     res.json({ items });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[menu GET /:storeId/items] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -87,14 +98,14 @@ router.post('/:storeId/items', requireAuth, async (req: Request, res: Response) 
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.status(201).json({ item: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[menu POST /:storeId/items] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -108,7 +119,14 @@ router.put('/:storeId/items/:itemId', requireAuth, async (req: Request, res: Res
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
-    const updates: any = {
+    const updates: {
+      updated_at: string;
+      name?: string;
+      category?: string;
+      price?: number;
+      display_order?: number;
+      is_active?: boolean;
+    } = {
       updated_at: new Date().toISOString(),
     };
 
@@ -134,14 +152,14 @@ router.put('/:storeId/items/:itemId', requireAuth, async (req: Request, res: Res
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ item: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[menu PUT /:storeId/items/:itemId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -165,14 +183,14 @@ router.delete('/:storeId/items/:itemId', requireAuth, async (req: Request, res: 
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[menu DELETE /:storeId/items/:itemId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

@@ -5,6 +5,22 @@ import type { Express } from 'express';
 import type { Plugin } from '../types';
 import { requireManagedStore } from '../auth/authorization';
 
+/** Row from store_staff with joined profile */
+interface StaffMemberRow {
+  id: string;
+  user_id: string;
+  role: string;
+  user: { name?: string; email?: string } | null;
+}
+
+/** Row from time_records for overtime calculation */
+interface TimeRecordRow {
+  staff_id: string;
+  clock_in: string;
+  clock_out: string;
+  break_minutes: number | null;
+}
+
 const router = Router();
 
 // ============================================================
@@ -45,7 +61,7 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
       .not('clock_out', 'is', null);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -61,8 +77,8 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
     const standardHoursPerDay = pluginSetting?.config?.standard_hours_per_day ?? 8;
 
     // スタッフ別に残業時間を計算（staff_id = store_staff.id でマッチ）
-    const staffOvertime = (members || []).map((m: any) => {
-      const staffRecords = (records || []).filter((r: any) => r.staff_id === m.id);
+    const staffOvertime = ((members || []) as StaffMemberRow[]).map((m: StaffMemberRow) => {
+      const staffRecords = ((records || []) as TimeRecordRow[]).filter((r: TimeRecordRow) => r.staff_id === m.id);
       let totalWorkMinutes = 0;
       let totalDays = 0;
 
@@ -80,7 +96,7 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
 
       return {
         userId: m.user_id,
-        name: (m as { user?: { name?: string; email?: string } | null }).user?.name || (m as { user?: { name?: string; email?: string } | null }).user?.email || '不明',
+        name: m.user?.name || m.user?.email || '不明',
         role: m.role,
         totalWorkHours: Math.round(totalWorkMinutes / 6) / 10,
         totalDays,
@@ -97,9 +113,9 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
       year,
       month,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[overtime_alert GET /:storeId/monthly] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

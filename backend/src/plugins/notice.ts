@@ -26,12 +26,23 @@ router.get('/:storeId/posts', requireAuth, async (req: Request, res: Response) =
       .order('created_at', { ascending: false });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     // 既読情報を取得
-    const noticeIds = (data || []).map((n: any) => n.id);
+    interface NoticeRow {
+      id: string;
+      store_id: string;
+      author_id: string;
+      author_name: string;
+      title: string;
+      body: string;
+      pinned: boolean;
+      image_urls: string[];
+      created_at: string;
+    }
+    const noticeIds = (data || []).map((n: NoticeRow) => n.id);
     const { data: reads } = noticeIds.length > 0
       ? await supabaseAdmin
           .from('notice_reads')
@@ -40,7 +51,8 @@ router.get('/:storeId/posts', requireAuth, async (req: Request, res: Response) =
           .in('notice_id', noticeIds)
       : { data: [] };
 
-    const readMap = new Map((reads || []).map((r: any) => [r.notice_id, r.read_at]));
+    interface NoticeReadRow { notice_id: string; read_at: string }
+    const readMap = new Map((reads || []).map((r: NoticeReadRow) => [r.notice_id, r.read_at]));
 
     // コメント数を取得
     const commentCountMap = new Map<string, number>();
@@ -50,12 +62,13 @@ router.get('/:storeId/posts', requireAuth, async (req: Request, res: Response) =
         .select('notice_id')
         .eq('store_id', storeId)
         .in('notice_id', noticeIds);
-      (commentCounts || []).forEach((c: any) => {
+      interface CommentCountRow { notice_id: string }
+      (commentCounts || []).forEach((c: CommentCountRow) => {
         commentCountMap.set(c.notice_id, (commentCountMap.get(c.notice_id) || 0) + 1);
       });
     }
 
-    const notices = (data || []).map((n: any) => ({
+    const notices = (data || []).map((n: NoticeRow) => ({
       id: n.id,
       storeId: n.store_id,
       authorId: n.author_id,
@@ -71,9 +84,9 @@ router.get('/:storeId/posts', requireAuth, async (req: Request, res: Response) =
     }));
 
     res.json({ notices });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:get] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -141,9 +154,9 @@ router.post('/:storeId/posts', requireAuth, async (req: Request, res: Response) 
     }
 
     res.status(201).json({ notice: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:post] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -168,14 +181,14 @@ router.post('/:storeId/posts/:noticeId/read', requireAuth, async (req: Request, 
       }, { onConflict: 'notice_id,user_id' });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:read] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -211,7 +224,7 @@ router.put('/:storeId/posts/:noticeId', requireAuth, async (req: Request, res: R
       return;
     }
 
-    const update: any = {};
+    const update: { title?: string; body?: string } = {};
     if (typeof req.body?.title === 'string' && req.body.title.trim()) {
       update.title = req.body.title.trim();
     }
@@ -233,14 +246,14 @@ router.put('/:storeId/posts/:noticeId', requireAuth, async (req: Request, res: R
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ notice: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:edit] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -263,14 +276,14 @@ router.put('/:storeId/posts/:noticeId/pin', requireAuth, async (req: Request, re
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:pin] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -302,14 +315,14 @@ router.patch('/:storeId/posts/:noticeId/images', requireAuth, async (req: Reques
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:images] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -331,11 +344,20 @@ router.get('/:storeId/posts/:noticeId/comments', requireAuth, async (req: Reques
       .order('created_at', { ascending: true });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
-    const comments = (data || []).map((c: any) => ({
+    interface NoticeCommentRow {
+      id: string;
+      notice_id: string;
+      author_id: string;
+      author_name: string;
+      body: string;
+      created_at: string;
+      updated_at: string;
+    }
+    const comments = (data || []).map((c: NoticeCommentRow) => ({
       id: c.id,
       noticeId: c.notice_id,
       authorId: c.author_id,
@@ -346,9 +368,9 @@ router.get('/:storeId/posts/:noticeId/comments', requireAuth, async (req: Reques
     }));
 
     res.json({ comments });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:comments:get] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -390,7 +412,7 @@ router.post('/:storeId/posts/:noticeId/comments', requireAuth, async (req: Reque
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -404,9 +426,9 @@ router.post('/:storeId/posts/:noticeId/comments', requireAuth, async (req: Reque
         createdAt: data.created_at,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:comments:post] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -449,14 +471,14 @@ router.delete('/:storeId/posts/:noticeId/comments/:commentId', requireAuth, asyn
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:comments:delete] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -477,14 +499,14 @@ router.delete('/:storeId/posts/:noticeId', requireAuth, async (req: Request, res
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[notice:delete] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

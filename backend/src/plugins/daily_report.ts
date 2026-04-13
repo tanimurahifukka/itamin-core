@@ -33,22 +33,34 @@ router.get('/:storeId/reports', requireAuth, async (req: Request, res: Response)
       .order('date', { ascending: false });
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     // 報告者名を取得
-    const userIds = [...new Set((data || []).map((r: any) => r.created_by).filter(Boolean))];
+    interface DailyReportRow {
+      id: string;
+      store_id: string;
+      date: string;
+      sales: number;
+      customer_count: number;
+      weather: string;
+      memo: string;
+      created_by: string;
+      created_at: string;
+    }
+    const userIds = [...new Set((data || []).map((r: DailyReportRow) => r.created_by).filter(Boolean))];
     const nameMap = new Map<string, string>();
     if (userIds.length > 0) {
       const { data: profiles } = await supabaseAdmin
         .from('profiles')
         .select('id, name')
         .in('id', userIds);
-      (profiles || []).forEach((p: any) => nameMap.set(p.id, p.name));
+      interface ProfileRow { id: string; name: string }
+      (profiles || []).forEach((p: ProfileRow) => nameMap.set(p.id, p.name));
     }
 
-    const reports = (data || []).map((r: any) => ({
+    const reports = (data || []).map((r: DailyReportRow) => ({
       id: r.id,
       storeId: r.store_id,
       date: r.date,
@@ -62,14 +74,14 @@ router.get('/:storeId/reports', requireAuth, async (req: Request, res: Response)
     }));
 
     // 月次サマリー
-    const totalSales = reports.reduce((sum: number, r: any) => sum + (Number(r.sales) || 0), 0);
-    const totalCustomers = reports.reduce((sum: number, r: any) => sum + (Number(r.customerCount) || 0), 0);
+    const totalSales = reports.reduce((sum: number, r: { sales: number }) => sum + (Number(r.sales) || 0), 0);
+    const totalCustomers = reports.reduce((sum: number, r: { customerCount: number }) => sum + (Number(r.customerCount) || 0), 0);
     const avgCustomers = reports.length > 0 ? Math.round(totalCustomers / reports.length) : 0;
 
     res.json({ reports, summary: { totalSales, totalCustomers, avgCustomers, reportCount: reports.length }, year, month });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[daily_report GET /:storeId/reports] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -91,7 +103,7 @@ router.get('/:storeId/reports/:date', requireAuth, async (req: Request, res: Res
       .maybeSingle();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -112,14 +124,16 @@ router.get('/:storeId/reports/:date', requireAuth, async (req: Request, res: Res
     }
 
     // メニュー名を別クエリで取得
-    const menuIds = [...new Set((itemRows || []).map((r: any) => r.menu_item_id))];
+    interface ReportItemRow { id: string; menu_item_id: string; quantity: number; unit_price: number; subtotal: number }
+    const menuIds = [...new Set((itemRows || []).map((r: ReportItemRow) => r.menu_item_id))];
     const menuNameMap = new Map<string, string>();
     if (menuIds.length > 0) {
       const { data: menuData } = await supabaseAdmin
         .from('menu_items')
         .select('id, name')
         .in('id', menuIds);
-      (menuData || []).forEach((m: any) => menuNameMap.set(m.id, m.name));
+      interface MenuNameRow { id: string; name: string }
+      (menuData || []).forEach((m: MenuNameRow) => menuNameMap.set(m.id, m.name));
     }
 
     res.json({
@@ -133,7 +147,7 @@ router.get('/:storeId/reports/:date', requireAuth, async (req: Request, res: Res
         memo: data.memo,
         createdBy: data.created_by,
       },
-      items: (itemRows || []).map((item: any) => ({
+      items: (itemRows || []).map((item: ReportItemRow) => ({
         id: item.id,
         menuItemId: item.menu_item_id,
         menuItemName: menuNameMap.get(item.menu_item_id) || '',
@@ -142,9 +156,9 @@ router.get('/:storeId/reports/:date', requireAuth, async (req: Request, res: Res
         subtotal: item.subtotal,
       })),
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[daily_report GET /:storeId/reports/:date] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -184,7 +198,7 @@ router.post('/:storeId/reports', requireAuth, async (req: Request, res: Response
       .single();
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
@@ -229,7 +243,8 @@ router.post('/:storeId/reports', requireAuth, async (req: Request, res: Response
           return;
         }
 
-        const menuMap = new Map((menuRows || []).map((item: any) => [item.id, item]));
+        interface MenuRow { id: string; name: string; price: number; is_active: boolean; store_id: string }
+        const menuMap = new Map<string, MenuRow>((menuRows || []).map((item: MenuRow) => [item.id, item]));
         const invalidItem = items.find(item => {
           const menu = menuMap.get(item.menuItemId);
           return !menu || menu.store_id !== storeId;
@@ -287,9 +302,9 @@ router.post('/:storeId/reports', requireAuth, async (req: Request, res: Response
     }
 
     res.status(201).json({ report: data });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[daily_report POST /:storeId/reports] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -310,14 +325,14 @@ router.delete('/:storeId/reports/:reportId', requireAuth, async (req: Request, r
       .eq('store_id', storeId);
 
     if (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Internal Server Error' });
       return;
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[daily_report DELETE /:storeId/reports/:reportId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

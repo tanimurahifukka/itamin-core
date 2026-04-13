@@ -73,9 +73,9 @@ export const reservationTablePlugin: Plugin = {
         const result = await dispatchPendingNotifications(50);
         console.log('[cron] reservation-notifications:', result);
         res.json({ ok: true, ...result });
-      } catch (e: any) {
-        console.error('[cron] reservation-notifications error:', e.message);
-        res.status(500).json({ error: e.message });
+      } catch (e: unknown) {
+        console.error('[cron] reservation-notifications error:', e);
+        res.status(500).json({ error: 'Internal Server Error' });
       }
     });
   },
