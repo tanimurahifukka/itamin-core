@@ -116,6 +116,49 @@ interface PluginTab {
   icon: string;
 }
 
+// Sidebar category definitions for grouping navigation items
+interface SidebarCategory {
+  key: string;
+  label: string;
+  pluginNames: string[];
+}
+
+const SIDEBAR_CATEGORIES: SidebarCategory[] = [
+  { key: 'daily', label: '日常業務', pluginNames: ['punch', 'attendance', 'attendance_admin', 'line_attendance', 'haccp', 'daily_report'] },
+  { key: 'scheduling', label: 'シフト・予定', pluginNames: ['shift', 'shift_request', 'calendar', 'paid_leave'] },
+  { key: 'staff_comm', label: 'スタッフ・連絡', pluginNames: ['staff', 'notice'] },
+  { key: 'store_ops', label: '店舗管理', pluginNames: ['inventory', 'menu', 'sales_capture', 'expense'] },
+  { key: 'monitoring', label: 'モニタリング', pluginNames: ['overtime_alert', 'consecutive_work'] },
+  { key: 'reservation', label: '予約管理', pluginNames: ['reservation_table', 'reservation_timeslot', 'reservation_school', 'reservation_event'] },
+  { key: 'customers', label: '顧客', pluginNames: ['customers', 'feedback'] },
+  { key: 'devices', label: 'デバイス連携', pluginNames: ['kiosk', 'nfc_cleaning', 'switchbot'] },
+  { key: 'system', label: 'システム', pluginNames: ['settings'] },
+];
+
+function groupTabsByCategory(tabs: PluginTab[]): { category: SidebarCategory; tabs: PluginTab[] }[] {
+  const tabSet = new Set(tabs.map(t => t.name));
+  const grouped: { category: SidebarCategory; tabs: PluginTab[] }[] = [];
+  const assigned = new Set<string>();
+
+  for (const cat of SIDEBAR_CATEGORIES) {
+    const catTabs = cat.pluginNames
+      .filter(name => tabSet.has(name) && !assigned.has(name))
+      .map(name => tabs.find(t => t.name === name)!);
+    if (catTabs.length > 0) {
+      grouped.push({ category: cat, tabs: catTabs });
+      catTabs.forEach(t => assigned.add(t.name));
+    }
+  }
+
+  // Any tabs not assigned to a category go into a fallback group
+  const unassigned = tabs.filter(t => !assigned.has(t.name));
+  if (unassigned.length > 0) {
+    grouped.push({ category: { key: 'other', label: 'その他', pluginNames: [] }, tabs: unassigned });
+  }
+
+  return grouped;
+}
+
 // キオスクモード: /kiosk?store=<storeId> でアクセス
 function KioskApp() {
   const searchParams = new URLSearchParams(window.location.search);
@@ -650,9 +693,11 @@ export default function App() {
   // モバイルでactiveTabが空 → カードメニュー表示
   const showMobileMenu = isMobile && !activeTab && !tabsLoading;
 
-  // 主要タブ（打刻・チェックリスト）を上段に大きく表示
-  const primaryTabs = tabs.filter(t => ['punch', 'haccp'].includes(t.name));
-  const secondaryTabs = tabs.filter(t => !['punch', 'haccp'].includes(t.name));
+  // Categorized sidebar groups
+  const categorizedTabs = groupTabsByCategory(tabs);
+
+  // Active tab label for page title
+  const activeTabObj = tabs.find(t => t.name === activeTab);
 
   return (
     <div className="app">
@@ -687,51 +732,47 @@ export default function App() {
             {new Date().getHours() < 12 ? 'おはようございます' : new Date().getHours() < 18 ? 'お疲れさまです' : 'おつかれさまです'}、{displayName.split(/[\s@]/)[0]} さん
           </div>
 
-          {primaryTabs.length > 0 && (
-            <div className="mobile-card-grid primary">
-              {primaryTabs.map(tab => (
-                <button
-                  key={tab.name}
-                  className="mobile-card primary"
-                  onClick={() => handleCardClick(tab.name)}
-                >
-                  <span className="mobile-card-icon">{tab.icon}</span>
-                  <span className="mobile-card-label">{tab.label}</span>
-                </button>
-              ))}
+          {categorizedTabs.map(({ category, tabs: catTabs }) => (
+            <div key={category.key} className="mobile-category-section">
+              <div className="mobile-category-label">{category.label}</div>
+              <div className="mobile-card-grid">
+                {catTabs.map(tab => (
+                  <button
+                    key={tab.name}
+                    className="mobile-card"
+                    onClick={() => handleCardClick(tab.name)}
+                  >
+                    <span className="mobile-card-icon">{tab.icon}</span>
+                    <span className="mobile-card-label">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
-
-          <div className="mobile-card-grid secondary">
-            {secondaryTabs.map(tab => (
-              <button
-                key={tab.name}
-                className="mobile-card secondary"
-                onClick={() => handleCardClick(tab.name)}
-              >
-                <span className="mobile-card-icon">{tab.icon}</span>
-                <span className="mobile-card-label">{tab.label}</span>
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
       ) : (
         /* 通常レイアウト */
         <div className="app-body">
           {!isMobile && (
             <nav className="sidebar">
-              <ul className="sidebar-nav">
-                {tabs.map(tab => (
-                  <li key={tab.name}>
-                    <button
-                      className={`sidebar-nav-item ${activeTab === tab.name ? 'active' : ''}`}
-                      onClick={() => setActiveTab(tab.name)}
-                    >
-                      {tab.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              {categorizedTabs.map(({ category, tabs: catTabs }) => (
+                <div key={category.key} className="sidebar-category">
+                  <div className="sidebar-category-label">{category.label}</div>
+                  <ul className="sidebar-nav">
+                    {catTabs.map(tab => (
+                      <li key={tab.name}>
+                        <button
+                          className={`sidebar-nav-item ${activeTab === tab.name ? 'active' : ''}`}
+                          onClick={() => setActiveTab(tab.name)}
+                        >
+                          <span className="sidebar-nav-icon">{tab.icon}</span>
+                          {tab.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </nav>
           )}
 
@@ -740,6 +781,12 @@ export default function App() {
               <button className="mobile-back-btn" onClick={handleBackToMenu}>
                 ← メニュー
               </button>
+            )}
+            {activeTabObj && (
+              <div className="page-title-bar">
+                <span className="page-title-icon">{activeTabObj.icon}</span>
+                <h1 className="page-title">{activeTabObj.label}</h1>
+              </div>
             )}
             {tabsLoading ? (
               <div className="loading" style={{ minHeight: '40vh' }}>読み込み中...</div>
