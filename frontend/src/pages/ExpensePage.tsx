@@ -41,7 +41,7 @@ export default function ExpensePage() {
         setExpenses(data.expenses ?? []);
         setSummary(data.summary ?? { totalAmount: 0, categorySummary: {}, count: 0 });
       })
-      .catch(() => {});
+      .catch(() => { console.error('[ExpensePage] fetch failed'); });
   }, [selectedStore, year, month, filterCategory]);
 
   useEffect(() => { loadData(); }, [loadData]);

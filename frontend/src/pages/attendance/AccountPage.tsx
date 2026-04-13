@@ -32,7 +32,7 @@ export default function AccountPage() {
         setLineInfo(res.lineLink);
         setProfile(res.profile);
       })
-      .catch(() => {})
+      .catch(() => { console.error('[AccountPage] fetch failed'); })
       .finally(() => setLoading(false));
   }, []);
 

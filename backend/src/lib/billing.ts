@@ -33,22 +33,32 @@ export async function getOrgPlanLimits(orgId: string): Promise<{ limits: PlanLim
     .eq('status', 'active')
     .maybeSingle();
 
-  let planSlug = 'free';
-  if (sub && (sub as any).plan_id) {
+  interface PlanRow {
+    name: string;
+    max_stores: number;
+    max_staff_per_store: number;
+    max_plugins: number;
+    allowed_plugins: string[] | null;
+  }
+
+  const planSlug = 'free';
+  const subRow = sub as { plan_id: string; status: string } | null;
+  if (subRow?.plan_id) {
     const { data: plan } = await supabaseAdmin
       .from('plans')
       .select('*')
-      .eq('id', (sub as any).plan_id)
+      .eq('id', subRow.plan_id)
       .maybeSingle();
     if (plan) {
+      const p = plan as PlanRow;
       return {
         limits: {
-          max_stores: (plan as any).max_stores,
-          max_staff_per_store: (plan as any).max_staff_per_store,
-          max_plugins: (plan as any).max_plugins,
-          allowed_plugins: (plan as any).allowed_plugins || [],
+          max_stores: p.max_stores,
+          max_staff_per_store: p.max_staff_per_store,
+          max_plugins: p.max_plugins,
+          allowed_plugins: p.allowed_plugins || [],
         },
-        planName: (plan as any).name,
+        planName: p.name,
       };
     }
   }
@@ -61,14 +71,15 @@ export async function getOrgPlanLimits(orgId: string): Promise<{ limits: PlanLim
     .maybeSingle();
 
   if (freePlan) {
+    const fp = freePlan as PlanRow;
     return {
       limits: {
-        max_stores: (freePlan as any).max_stores,
-        max_staff_per_store: (freePlan as any).max_staff_per_store,
-        max_plugins: (freePlan as any).max_plugins,
-        allowed_plugins: (freePlan as any).allowed_plugins || [],
+        max_stores: fp.max_stores,
+        max_staff_per_store: fp.max_staff_per_store,
+        max_plugins: fp.max_plugins,
+        allowed_plugins: fp.allowed_plugins || [],
       },
-      planName: (freePlan as any).name,
+      planName: fp.name,
     };
   }
 
@@ -94,7 +105,7 @@ export async function checkOrgLimits(orgId: string): Promise<OrgLimitCheck> {
     .select('id')
     .eq('org_id', orgId);
 
-  const ids = (storeIds || []).map((s: any) => s.id);
+  const ids = (storeIds || []).map((s: { id: string }) => s.id);
   let pluginCount = 0;
   if (ids.length > 0) {
     const { count: pCount } = await supabaseAdmin

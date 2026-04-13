@@ -2,26 +2,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/Toast';
-import type { TimeRecord, MonthlySummaryStaff, StaffMember } from '../types/api';
+import type { TimeRecord, MonthlySummaryStaff, StaffMember, MonthlyRecordsResponse, MonthlyRawStaffRecord } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
 
 type ViewMode = 'daily' | 'monthly' | 'staff';
 
-// Shape of raw Supabase records returned in the monthly staff detail response.
-// The backend returns snake_case fields for the records array in the monthly endpoint.
-interface RawStaffRecord {
-  id: string;
-  staff_id: string;
-  clock_in: string;
-  clock_out: string | null;
-  break_minutes: number;
-  staff?: { hourly_wage?: number };
-}
-
-interface MonthlyData {
-  summary: MonthlySummaryStaff[];
-  records?: RawStaffRecord[];
-}
+type MonthlyData = MonthlyRecordsResponse;
+type RawStaffRecord = MonthlyRawStaffRecord;
 
 function permissionLevelToRoles(level: string | undefined): string[] {
   switch (level) {
@@ -88,7 +75,7 @@ export default function DashboardPage() {
     if (!selectedStore) return;
     api.getDailyRecords(selectedStore.id, date)
       .then(data => setRecords(data.records))
-      .catch(() => {});
+      .catch(() => { console.error('[DashboardPage] fetch failed'); });
   }, [selectedStore, date]);
 
   useEffect(() => { loadDailyRecords(); }, [loadDailyRecords]);
@@ -97,7 +84,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!selectedStore || (viewMode !== 'monthly' && viewMode !== 'staff')) return;
     api.getMonthlyRecords(selectedStore.id, year, month)
-      .then(data => setMonthlyData(data as unknown as MonthlyData))
+      .then(data => setMonthlyData(data))
       .catch(() => setMonthlyData(null));
   }, [selectedStore, viewMode, year, month]);
 

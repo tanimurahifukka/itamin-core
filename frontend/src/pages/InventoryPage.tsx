@@ -35,7 +35,7 @@ export default function InventoryPage() {
     const category = activeCategory || undefined;
     api.getInventory(selectedStore.id, category)
       .then(data => setItems(data.items))
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore, activeCategory]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
@@ -49,7 +49,7 @@ export default function InventoryPage() {
         const cats = Array.from(new Set(data.items.map(i => i.category).filter((c): c is string => Boolean(c))));
         setAllCategories(cats);
       })
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore]);
   useEffect(() => { loadCategories(); }, [loadCategories]);
 
@@ -101,7 +101,7 @@ export default function InventoryPage() {
   const startEdit = (item: InventoryItem, field: string) => {
     setEditingId(item.id);
     setEditingField(field);
-    setEditingValue(String((item as unknown as Record<string, unknown>)[field] ?? ''));
+    setEditingValue(String(item[field as keyof InventoryItem] ?? ''));
   };
 
   const cancelEdit = () => {

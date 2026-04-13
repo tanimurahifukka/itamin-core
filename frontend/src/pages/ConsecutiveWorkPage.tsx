@@ -13,7 +13,7 @@ export default function ConsecutiveWorkPage() {
     if (!selectedStore) return;
     api.getConsecutiveWork(selectedStore.id)
       .then((data) => setStaffStatus(data.staffStatus ?? []))
-      .catch(() => {});
+      .catch(() => { console.error('[ConsecutiveWorkPage] fetch failed'); });
   }, [selectedStore]);
 
   useEffect(() => { loadData(); }, [loadData]);

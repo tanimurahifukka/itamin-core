@@ -4,30 +4,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
+import type { AdminStaffAttendanceDetail, AdminStaffAttendanceRecord, AdminStaffCorrectionItem } from '../../../types/api';
 
-interface AttendanceRecord {
-  id: string;
-  businessDate: string;
-  clockInAt: string | null;
-  clockOutAt: string | null;
-  breakMinutes: number;
-  status: string;
-  note?: string;
-}
-
-interface CorrectionItem {
-  id: string;
-  requested_business_date: string;
-  status: string;
-  request_type: string;
-  reason: string;
-}
-
-interface StaffDetailData {
-  staff?: { name: string };
-  records?: AttendanceRecord[];
-  corrections?: CorrectionItem[];
-}
+type AttendanceRecord = AdminStaffAttendanceRecord;
+type CorrectionItem = AdminStaffCorrectionItem;
+type StaffDetailData = AdminStaffAttendanceDetail;
 
 function formatTime(iso: string | null) {
   if (!iso) return '—';
@@ -68,7 +49,7 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
     const m = `${year}-${String(month).padStart(2, '0')}`;
     try {
       const res = await api.getAdminStaffAttendance(storeId, userId, m);
-      setData(res as unknown as StaffDetailData);
+      setData(res);
     } catch {
       // ignore
     } finally {

@@ -10,6 +10,16 @@
 import { Router, Request, Response } from 'express';
 import { supabaseAdmin } from '../config/supabase';
 
+/** Shape of a single item in the POST /submit request body */
+interface NfcSubmitItem {
+  template_item_id?: string | null;
+  item_key?: string;
+  bool_value?: boolean | null;
+  numeric_value?: number | null;
+  text_value?: string | null;
+  select_value?: string | null;
+}
+
 export const nfcRouter = Router();
 
 // ─────────────────────────────────────────────────────────────
@@ -33,7 +43,14 @@ nfcRouter.get('/location/:id', async (req: Request, res: Response) => {
       return;
     }
 
-    const loc = location as any;
+    const loc = location as {
+      id: string;
+      store_id: string;
+      slug: string;
+      name: string;
+      template_id: string | null;
+      active: boolean;
+    };
 
     if (!loc.active) {
       res.status(410).json({ error: 'この場所は現在無効化されています' });
@@ -46,43 +63,60 @@ nfcRouter.get('/location/:id', async (req: Request, res: Response) => {
     }
 
     // 店舗名
-    const { data: store } = await supabaseAdmin
+    const { data: store, error: storeErr } = await supabaseAdmin
       .from('stores')
       .select('id, name')
       .eq('id', loc.store_id)
       .maybeSingle();
 
+    if (storeErr) {
+      console.error('[nfc GET /location/:id] store fetch error:', storeErr);
+    }
+
+    const storeRow = store as { id: string; name: string } | null;
+
     // テンプレート + 項目
-    const { data: template } = await supabaseAdmin
+    const { data: template, error: tmplErr } = await supabaseAdmin
       .from('checklist_templates')
       .select('id, name, description')
       .eq('id', loc.template_id)
       .maybeSingle();
+
+    if (tmplErr) {
+      console.error('[nfc GET /location/:id] template fetch error:', tmplErr);
+    }
 
     if (!template) {
       res.status(404).json({ error: 'チェックリストが見つかりません' });
       return;
     }
 
-    const { data: items } = await supabaseAdmin
+    const tmpl = template as { id: string; name: string; description: string | null };
+
+    const { data: items, error: itemsErr } = await supabaseAdmin
       .from('checklist_template_items')
       .select('id, item_key, label, item_type, required, options, sort_order')
       .eq('template_id', loc.template_id)
       .order('sort_order', { ascending: true });
 
+    if (itemsErr) {
+      console.error('[nfc GET /location/:id] template items fetch error:', itemsErr);
+    }
+
     res.json({
       location: { id: loc.id, name: loc.name, slug: loc.slug },
-      store: { id: (store as any)?.id, name: (store as any)?.name || '' },
+      store: { id: storeRow?.id, name: storeRow?.name || '' },
       template: {
-        id: (template as any).id,
-        name: (template as any).name,
-        description: (template as any).description,
+        id: tmpl.id,
+        name: tmpl.name,
+        description: tmpl.description,
         items: items || [],
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[nfc GET /location/:id] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    const message = e instanceof Error ? e.message : 'Internal Server Error';
+    res.status(500).json({ error: message });
   }
 });
 
@@ -115,13 +149,20 @@ nfcRouter.post('/submit', async (req: Request, res: Response) => {
       .eq('id', locationId)
       .maybeSingle();
 
-    if (locErr || !location || !(location as any).active || !(location as any).template_id) {
+    const loc = location as {
+      id: string;
+      store_id: string;
+      template_id: string | null;
+      active: boolean;
+    } | null;
+
+    if (locErr || !loc || !loc.active || !loc.template_id) {
       res.status(404).json({ error: '無効なタグです' });
       return;
     }
 
-    const storeId = (location as any).store_id as string;
-    const templateId = (location as any).template_id as string;
+    const storeId = loc.store_id;
+    const templateId = loc.template_id;
 
     // 2) PIN 照合 (store 内ユニーク)
     const { data: pinRow, error: pinErr } = await supabaseAdmin
@@ -136,7 +177,8 @@ nfcRouter.post('/submit', async (req: Request, res: Response) => {
       return;
     }
 
-    const membershipId = (pinRow as any).membership_id as string;
+    const pinRecord = pinRow as { membership_id: string; store_id: string };
+    const membershipId = pinRecord.membership_id;
 
     // 3) スタッフ情報と user_id 取得 (submitted_by 用)
     const { data: staff } = await supabaseAdmin
@@ -145,13 +187,20 @@ nfcRouter.post('/submit', async (req: Request, res: Response) => {
       .eq('id', membershipId)
       .maybeSingle();
 
-    if (!staff || (staff as any).store_id !== storeId) {
+    const staffRow = staff as {
+      id: string;
+      user_id: string;
+      store_id: string;
+      user: { name: string } | null;
+    } | null;
+
+    if (!staffRow || staffRow.store_id !== storeId) {
       res.status(401).json({ error: 'スタッフ情報の解決に失敗しました' });
       return;
     }
 
-    const userId = (staff as any).user_id as string;
-    const staffName = (staff as any).user?.name || null;
+    const userId = staffRow.user_id;
+    const staffName = staffRow.user?.name || null;
 
     // 4) テンプレートバージョン取得
     const { data: template } = await supabaseAdmin
@@ -166,13 +215,15 @@ nfcRouter.post('/submit', async (req: Request, res: Response) => {
       return;
     }
 
+    const tmpl = template as { id: string; version: number; name: string };
+
     // 5) submission insert
     const { data: submission, error: subErr } = await supabaseAdmin
       .from('checklist_submissions')
       .insert({
         store_id: storeId,
         template_id: templateId,
-        template_version: (template as any).version ?? 1,
+        template_version: tmpl.version ?? 1,
         scope: 'personal',
         timing: 'ad_hoc',
         membership_id: membershipId,
@@ -193,10 +244,12 @@ nfcRouter.post('/submit', async (req: Request, res: Response) => {
       return;
     }
 
+    const submissionRow = submission as { id: string };
+
     // 6) submission items insert
-    const rows = items.map((item: any) => ({
+    const rows = (items as NfcSubmitItem[]).map((item) => ({
       store_id: storeId,
-      submission_id: (submission as any).id,
+      submission_id: submissionRow.id,
       template_item_id: item.template_item_id || null,
       item_key: item.item_key || '',
       bool_value: item.bool_value ?? null,
@@ -221,12 +274,13 @@ nfcRouter.post('/submit', async (req: Request, res: Response) => {
 
     res.status(201).json({
       ok: true,
-      submissionId: (submission as any).id,
+      submissionId: submissionRow.id,
       staffName,
       message: 'チェック記録を送信しました',
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[nfc POST /submit] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    const message = e instanceof Error ? e.message : 'Internal Server Error';
+    res.status(500).json({ error: message });
   }
 });

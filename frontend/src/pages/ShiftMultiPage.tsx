@@ -99,7 +99,7 @@ export default function ShiftMultiPage() {
       if (orgs.length > 0 && !selectedOrgId) {
         setSelectedOrgId(orgs[0].id);
       }
-    }).catch(() => {});
+    }).catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, []);
 
   // スタッフ取得
@@ -107,7 +107,7 @@ export default function ShiftMultiPage() {
     if (!selectedOrgId) return;
     shiftMultiApi.getOrgStaff(selectedOrgId).then(res => {
       setEmployees(res.employees);
-    }).catch(() => {});
+    }).catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedOrgId]);
 
   // シフトデータ取得

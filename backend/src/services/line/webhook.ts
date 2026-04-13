@@ -96,7 +96,7 @@ async function resolveLineUser(lineUserId: string): Promise<{
     userId: link.user_id,
     storeId: membership.store_id,
     staffId: membership.id,
-    storeName: (membership as any).store?.name || '',
+    storeName: (() => { const s = Array.isArray(membership.store) ? membership.store[0] : membership.store; return s?.name || ''; })(),
   };
 }
 
@@ -295,7 +295,7 @@ router.post('/', async (req: Request, res: Response) => {
   // 署名検証: 必ず生バイト列に対して HMAC を計算する。
   // 署名が無い、または rawBody が取得できない場合は安全側に倒して拒否する。
   const signature = req.headers['x-line-signature'];
-  const rawBody = (req as any).rawBody as Buffer | undefined;
+  const rawBody = req.rawBody;
   if (typeof signature !== 'string' || !signature || !rawBody) {
     console.error('[webhook] missing signature or raw body');
     res.status(200).json({ ok: true });

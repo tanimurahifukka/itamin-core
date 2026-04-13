@@ -72,7 +72,7 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
 
       return {
         userId: m.user_id,
-        name: (m as any).user?.name || (m as any).user?.email || '不明',
+        name: (m as { user?: { name?: string; email?: string } | null }).user?.name || (m as { user?: { name?: string; email?: string } | null }).user?.email || '不明',
         role: m.role,
         consecutiveDays,
         level: consecutiveDays >= 6 ? 'danger' : consecutiveDays >= 5 ? 'warning' : 'normal',

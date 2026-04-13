@@ -20,15 +20,25 @@ function constantTimeEquals(a: string, b: string): boolean {
   return timingSafeEqual(bufA, bufB);
 }
 
-function serializeStoreAccount(store: any) {
+interface StoreAccountRow {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  slug: string | null;
+  settings: Record<string, unknown> | null;
+}
+
+function serializeStoreAccount(store: StoreAccountRow) {
+  const settings = store.settings as Record<string, string | undefined> | null;
   return {
     id: store.id,
     name: store.name || '',
     address: store.address || '',
     phone: store.phone || '',
     slug: store.slug || '',
-    openTime: store.settings?.open_time || '',
-    closeTime: store.settings?.close_time || '',
+    openTime: settings?.open_time || '',
+    closeTime: settings?.close_time || '',
   };
 }
 
@@ -57,11 +67,12 @@ async function getOrCreateInitialPassword(storeId: string): Promise<string> {
     .eq('id', storeId)
     .maybeSingle();
 
-  const existing = (storeData as any)?.settings?.initial_password as string | undefined;
+  const storeSettings = (storeData?.settings ?? {}) as Record<string, unknown>;
+  const existing = storeSettings.initial_password as string | undefined;
   if (existing && existing.length >= 12) return existing;
 
   const generated = generateInitialPassword();
-  const nextSettings = { ...((storeData as any)?.settings || {}), initial_password: generated };
+  const nextSettings = { ...storeSettings, initial_password: generated };
   await supabaseAdmin
     .from('stores')
     .update({ settings: nextSettings })
@@ -190,28 +201,37 @@ router.post('/:storeId/invitations', requireAuth, async (req: Request, res: Resp
       return;
     }
 
+    const inv = invitation as {
+      id: string;
+      token: string;
+      expires_at: string;
+      max_uses: number;
+      intended_email: string | null;
+      intended_role: string;
+    };
+
     await writeAuditLog({
       storeId,
       actorId: req.user!.id,
       action: 'store_invitation_create',
       targetType: 'store_invitation',
-      targetId: (invitation as any).id,
+      targetId: inv.id,
       metadata: { intendedEmail, intendedRole, maxUses, ttlHours },
     });
 
     res.status(201).json({
       invitation: {
-        id: (invitation as any).id,
-        token: (invitation as any).token,
-        expiresAt: (invitation as any).expires_at,
-        maxUses: (invitation as any).max_uses,
-        intendedEmail: (invitation as any).intended_email,
-        intendedRole: (invitation as any).intended_role,
+        id: inv.id,
+        token: inv.token,
+        expiresAt: inv.expires_at,
+        maxUses: inv.max_uses,
+        intendedEmail: inv.intended_email,
+        intendedRole: inv.intended_role,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores POST /:storeId/invitations] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -234,9 +254,9 @@ router.get('/:storeId/invitations', requireAuth, async (req: Request, res: Respo
     }
 
     res.json({ invitations: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores GET /:storeId/invitations] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -269,9 +289,9 @@ router.delete('/:storeId/invitations/:invitationId', requireAuth, async (req: Re
     });
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores DELETE /:storeId/invitations/:invitationId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -307,29 +327,42 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
       res.status(403).json({ error: '招待トークンが無効です' });
       return;
     }
+
+    const inv = invitation as {
+      id: string;
+      store_id: string;
+      token: string;
+      intended_email: string | null;
+      intended_role: string;
+      max_uses: number;
+      used_count: number;
+      expires_at: string;
+      revoked_at: string | null;
+    };
+
     // timing-safe 比較 (DB 一致後の保険)
-    if (!constantTimeEquals((invitation as any).token, inviteToken)) {
+    if (!constantTimeEquals(inv.token, inviteToken)) {
       res.status(403).json({ error: '招待トークンが無効です' });
       return;
     }
-    if ((invitation as any).revoked_at) {
+    if (inv.revoked_at) {
       res.status(403).json({ error: 'この招待は失効しています' });
       return;
     }
-    if (new Date((invitation as any).expires_at).getTime() < Date.now()) {
+    if (new Date(inv.expires_at).getTime() < Date.now()) {
       res.status(403).json({ error: 'この招待は期限切れです' });
       return;
     }
-    if ((invitation as any).used_count >= (invitation as any).max_uses) {
+    if (inv.used_count >= inv.max_uses) {
       res.status(403).json({ error: 'この招待は使用上限に達しています' });
       return;
     }
-    if ((invitation as any).intended_email && (invitation as any).intended_email !== email) {
+    if (inv.intended_email && inv.intended_email !== email) {
       res.status(403).json({ error: 'この招待は別のメールアドレス用です' });
       return;
     }
 
-    const intendedRole = (invitation as any).intended_role || 'part_time';
+    const intendedRole = inv.intended_role || 'part_time';
     if (intendedRole === 'owner') {
       // 安全ネット: owner 昇格は招待経路では許可しない
       res.status(403).json({ error: '招待経路で owner ロールは付与できません' });
@@ -413,9 +446,9 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
     // 招待トークンの使用回数をアトミックに増やす (race condition 防止)
     const { data: updatedInvitation, error: invUpdateErr } = await supabaseAdmin
       .from('store_invitations')
-      .update({ used_count: ((invitation as any).used_count || 0) + 1 })
-      .eq('id', (invitation as any).id)
-      .lt('used_count', (invitation as any).max_uses)
+      .update({ used_count: (inv.used_count || 0) + 1 })
+      .eq('id', inv.id)
+      .lt('used_count', inv.max_uses)
       .select('id')
       .maybeSingle();
 
@@ -434,7 +467,7 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
       action: 'store_join_via_invitation',
       targetType: 'store_staff',
       targetId: newMembership?.id ?? undefined,
-      metadata: { invitationId: (invitation as any).id, email, intendedRole },
+      metadata: { invitationId: inv.id, email, intendedRole },
     });
 
     res.status(201).json({
@@ -442,9 +475,9 @@ router.post('/:storeId/join', async (req: Request, res: Response) => {
       message: `${store.name} にスタッフ登録しました。ログインしてください。`,
       storeName: store.name,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores POST /:storeId/join] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -474,33 +507,46 @@ router.post('/:storeId/join-member', requireAuth, async (req: Request, res: Resp
       res.status(403).json({ error: '招待コードが無効です' });
       return;
     }
-    if (!constantTimeEquals((invitation as any).token, inviteToken)) {
+
+    const inv = invitation as {
+      id: string;
+      store_id: string;
+      token: string;
+      intended_email: string | null;
+      intended_role: string;
+      max_uses: number;
+      used_count: number;
+      expires_at: string;
+      revoked_at: string | null;
+    };
+
+    if (!constantTimeEquals(inv.token, inviteToken)) {
       res.status(403).json({ error: '招待コードが無効です' });
       return;
     }
-    if ((invitation as any).revoked_at) {
+    if (inv.revoked_at) {
       res.status(403).json({ error: 'この招待は失効しています' });
       return;
     }
-    if (new Date((invitation as any).expires_at).getTime() < Date.now()) {
+    if (new Date(inv.expires_at).getTime() < Date.now()) {
       res.status(403).json({ error: 'この招待は期限切れです' });
       return;
     }
-    if ((invitation as any).used_count >= (invitation as any).max_uses) {
+    if (inv.used_count >= inv.max_uses) {
       res.status(403).json({ error: 'この招待は使用上限に達しています' });
       return;
     }
 
     // intended_email チェック（設定されている場合のみ）
-    if ((invitation as any).intended_email) {
+    if (inv.intended_email) {
       const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(userId);
-      if (!authUser || authUser.email?.toLowerCase() !== (invitation as any).intended_email.toLowerCase()) {
+      if (!authUser || authUser.email?.toLowerCase() !== inv.intended_email.toLowerCase()) {
         res.status(403).json({ error: 'この招待は別のメールアドレス用です' });
         return;
       }
     }
 
-    const intendedRole = (invitation as any).intended_role || 'part_time';
+    const intendedRole = inv.intended_role || 'part_time';
     if (intendedRole === 'owner') {
       res.status(403).json({ error: '招待経路で owner ロールは付与できません' });
       return;
@@ -550,9 +596,9 @@ router.post('/:storeId/join-member', requireAuth, async (req: Request, res: Resp
     // 使用回数をアトミックに増やす (race condition 防止)
     const { data: updated, error: updateErr } = await supabaseAdmin
       .from('store_invitations')
-      .update({ used_count: ((invitation as any).used_count || 0) + 1 })
-      .eq('id', (invitation as any).id)
-      .lt('used_count', (invitation as any).max_uses)
+      .update({ used_count: (inv.used_count || 0) + 1 })
+      .eq('id', inv.id)
+      .lt('used_count', inv.max_uses)
       .select('id')
       .maybeSingle();
 
@@ -572,7 +618,7 @@ router.post('/:storeId/join-member', requireAuth, async (req: Request, res: Resp
       action: 'store_join_via_invitation',
       targetType: 'store_staff',
       targetId: newMembership?.id ?? undefined,
-      metadata: { invitationId: (invitation as any).id, intendedRole },
+      metadata: { invitationId: inv.id, intendedRole },
     });
 
     res.status(201).json({
@@ -580,9 +626,9 @@ router.post('/:storeId/join-member', requireAuth, async (req: Request, res: Resp
       message: `${store.name} に参加しました`,
       storeName: store.name,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores POST /:storeId/join-member] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -602,8 +648,8 @@ router.get('/:storeId/info', async (_req: Request, res: Response) => {
     }
 
     res.json({ store: { id: data.id, name: data.name } });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -631,9 +677,9 @@ router.get('/:storeId/account', requireAuth, async (req: Request, res: Response)
     }
 
     res.json({ account: serializeStoreAccount(store) });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores GET /:storeId/account] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -721,7 +767,7 @@ router.put('/:storeId/account', requireAuth, async (req: Request, res: Response)
       else delete settings.close_time;
     }
 
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       name: name.trim(),
       settings,
     };
@@ -751,9 +797,9 @@ router.put('/:storeId/account', requireAuth, async (req: Request, res: Response)
       message: '施設アカウントを更新しました',
       account: serializeStoreAccount(updatedStore),
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores PUT /:storeId/account] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -796,9 +842,9 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     await ensureStaffPin(store.id, staff.id);
 
     res.status(201).json({ store, staffId: staff.id });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores POST /] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -817,17 +863,21 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
       return;
     }
 
-    const stores = (data || []).map((d: any) => ({
-      id: d.store.id,
-      name: d.store.name,
-      address: d.store.address,
-      role: d.role,
-    }));
+    // Supabase returns joined tables as arrays without Database types
+    const stores = (data || []).map((d) => {
+      const store = Array.isArray(d.store) ? d.store[0] : d.store;
+      return {
+        id: store?.id,
+        name: store?.name,
+        address: store?.address ?? null,
+        role: d.role,
+      };
+    });
 
     res.json({ stores });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores GET /] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -840,9 +890,9 @@ router.get('/:storeId/initial-password', requireAuth, async (req: Request, res: 
 
     const initialPassword = await getOrCreateInitialPassword(storeId);
     res.json({ initialPassword });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores GET /:storeId/initial-password] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -878,9 +928,9 @@ router.put('/:storeId/initial-password', requireAuth, async (req: Request, res: 
     }
 
     res.json({ ok: true, message: '初期パスワードを変更しました' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores PUT /:storeId/initial-password] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -987,9 +1037,9 @@ router.post('/:storeId/staff', requireAuth, async (req: Request, res: Response) 
         message: `${name} さんを追加しました。初期パスワードは事業所IDです。`,
       });
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores POST /:storeId/staff] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1069,9 +1119,9 @@ router.post('/:storeId/staff/assign-existing', requireAuth, async (req: Request,
       userName: profile.name,
       message: `${profile.name} さんを追加しました`,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores POST /:storeId/staff/assign-existing] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1120,9 +1170,9 @@ router.post('/:storeId/invitations/:invitationId/resend', requireAuth, async (re
     }
 
     res.json({ ok: true, message: '招待メールを再送しました' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores POST /:storeId/invitations/:invitationId/resend] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1139,7 +1189,7 @@ router.put('/:storeId/staff/:staffId', requireAuth, async (req: Request, res: Re
     const joinedAt = req.body?.joinedAt;
     const newRole = req.body?.role;
 
-    const updates: Record<string, any> = {};
+    const updates: Record<string, unknown> = {};
     if (hourlyWage !== undefined) updates.hourly_wage = hourlyWage;
     if (transportFee !== undefined) updates.transport_fee = transportFee;
     if (joinedAt !== undefined) updates.joined_at = joinedAt;
@@ -1173,9 +1223,9 @@ router.put('/:storeId/staff/:staffId', requireAuth, async (req: Request, res: Re
     }
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores PUT /:storeId/staff/:staffId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1200,8 +1250,15 @@ router.delete('/:storeId/staff/:staffId', requireAuth, async (req: Request, res:
       return;
     }
 
+    const userJoin = Array.isArray(target.user) ? target.user[0] : target.user;
+    const targetRow = {
+      id: target.id as string,
+      role: target.role as string,
+      user: userJoin as { name: string | null } | null,
+    };
+
     // オーナーは退職させられない
-    if (target.role === 'owner') {
+    if (targetRow.role === 'owner') {
       res.status(400).json({ error: 'オーナーを退職させることはできません' });
       return;
     }
@@ -1217,10 +1274,10 @@ router.delete('/:storeId/staff/:staffId', requireAuth, async (req: Request, res:
       return;
     }
 
-    res.json({ ok: true, message: `${(target as any).user?.name || 'スタッフ'} さんを退職処理しました` });
-  } catch (e: any) {
+    res.json({ ok: true, message: `${targetRow.user?.name || 'スタッフ'} さんを退職処理しました` });
+  } catch (e: unknown) {
     console.error('[stores DELETE /:storeId/staff/:staffId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1255,13 +1312,21 @@ router.post('/:storeId/staff/:staffId/reset-password', requireAuth, async (req: 
       return;
     }
 
+    const userJoin2 = Array.isArray(target.user) ? target.user[0] : target.user;
+    const targetRow = {
+      id: target.id as string,
+      user_id: target.user_id as string,
+      role: target.role as string,
+      user: (userJoin2 as { name: string | null; email: string | null }) || null,
+    };
+
     // 自分以上の権限のスタッフのパスワードはリセットできない
     // 例: manager は owner のパスワードをリセットできない
     const roleHierarchy: Record<string, number> = {
       owner: 4, manager: 3, leader: 2, full_time: 1, part_time: 0,
     };
     const myRank = roleHierarchy[membership.role] ?? 0;
-    const targetRank = roleHierarchy[(target as any).role] ?? 0;
+    const targetRank = roleHierarchy[targetRow.role] ?? 0;
     if (targetRank >= myRank) {
       res.status(403).json({ error: '自分と同等以上のロールのスタッフのパスワードはリセットできません' });
       return;
@@ -1281,7 +1346,7 @@ router.post('/:storeId/staff/:staffId/reset-password', requireAuth, async (req: 
     }
 
     // 対象ユーザーの現在の user_metadata を取得
-    const { data: { user: authUser }, error: getErr } = await supabaseAdmin.auth.admin.getUserById((target as any).user_id);
+    const { data: { user: authUser }, error: getErr } = await supabaseAdmin.auth.admin.getUserById(targetRow.user_id);
     if (getErr || !authUser) {
       res.status(404).json({ error: '認証アカウントが見つかりません' });
       return;
@@ -1303,7 +1368,7 @@ router.post('/:storeId/staff/:staffId/reset-password', requireAuth, async (req: 
     }
 
     // 対象ユーザーの既存セッションを即時 revoke
-    await revokeUserSessions((target as any).user_id);
+    await revokeUserSessions(targetRow.user_id);
 
     // actor (操作者) の情報を取得してログに記録
     const { data: actorProfile } = await supabaseAdmin
@@ -1312,18 +1377,20 @@ router.post('/:storeId/staff/:staffId/reset-password', requireAuth, async (req: 
       .eq('id', req.user!.id)
       .maybeSingle();
 
+    const actorRow = actorProfile as { name: string | null } | null;
+
     await writeAuditLog({
       storeId,
       actorId: req.user!.id,
-      actorName: (actorProfile as any)?.name || req.user!.email || null,
+      actorName: actorRow?.name || req.user!.email || null,
       actorRole: membership.role,
       action: 'password_reset',
       targetType: 'staff',
       targetId: staffId,
-      targetName: (target as any).user?.name || (target as any).user?.email || null,
+      targetName: targetRow.user?.name || targetRow.user?.email || null,
       metadata: {
         custom_password_used: !!customPassword,
-        target_role: (target as any).role,
+        target_role: targetRow.role,
         sessions_revoked: true,
       },
     });
@@ -1332,13 +1399,13 @@ router.post('/:storeId/staff/:staffId/reset-password', requireAuth, async (req: 
 
     res.json({
       ok: true,
-      message: `${(target as any).user?.name || 'スタッフ'} さんのパスワードをリセットしました`,
+      message: `${targetRow.user?.name || 'スタッフ'} さんのパスワードをリセットしました`,
       password: newPassword,
       forceChange: true,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores POST /:storeId/staff/:staffId/reset-password] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1376,9 +1443,9 @@ router.get('/:storeId/audit-log', requireAuth, async (req: Request, res: Respons
     }
 
     res.json({ entries: data || [] });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores GET /:storeId/audit-log] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1398,13 +1465,27 @@ router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) =
       return;
     }
 
+    interface StaffWithProfileRow {
+      id: string;
+      role: string;
+      hourly_wage: number | null;
+      transport_fee: number | null;
+      joined_at: string | null;
+      user: { id: string; name: string | null; email: string | null; picture: string | null };
+    }
+
     // auth.usersから最終ログイン時間を取得（個別取得で全件スキャンを回避）
-    const userIds = (data || []).map((staff: any) => staff.user?.id).filter(Boolean);
+    // Supabase returns joined tables as arrays without Database types
+    const typedData = (data || []).map(d => {
+      const u = Array.isArray(d.user) ? d.user[0] : d.user;
+      return { ...d, user: u } as StaffWithProfileRow;
+    });
+    const userIds = typedData.map(s => s.user?.id).filter(Boolean) as string[];
     const lastSignInMap = new Map<string, string | null>();
 
     if (userIds.length > 0) {
       const userFetches = await Promise.all(
-        (userIds as string[]).map(uid => supabaseAdmin.auth.admin.getUserById(uid))
+        userIds.map(uid => supabaseAdmin.auth.admin.getUserById(uid))
       );
       for (const { data: userData } of userFetches) {
         if (userData?.user) {
@@ -1413,23 +1494,23 @@ router.get('/:storeId/staff', requireAuth, async (req: Request, res: Response) =
       }
     }
 
-    const staff = (data || []).map((staff: any) => ({
-      id: staff.id,
-      role: staff.role,
-      hourlyWage: staff.hourly_wage,
-      transportFee: staff.transport_fee || 0,
-      joinedAt: staff.joined_at,
-      userId: staff.user.id,
-      userName: staff.user.name,
-      email: staff.user.email,
-      picture: staff.user.picture,
-      lastSignInAt: lastSignInMap.get(staff.user.id) || null,
+    const staff = typedData.map(s => ({
+      id: s.id,
+      role: s.role,
+      hourlyWage: s.hourly_wage,
+      transportFee: s.transport_fee || 0,
+      joinedAt: s.joined_at,
+      userId: s.user.id,
+      userName: s.user.name,
+      email: s.user.email,
+      picture: s.user.picture,
+      lastSignInAt: lastSignInMap.get(s.user.id) || null,
     }));
 
     res.json({ staff });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores GET /:storeId/staff] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1460,7 +1541,15 @@ router.post('/:storeId/staff/rehire', requireAuth, async (req: Request, res: Res
       .select('id, user:profiles(email)')
       .eq('store_id', storeId);
 
-    const alreadyMember = (existing || []).find((staff: any) => staff.user?.email === email);
+    interface StaffWithEmailRow {
+      id: string;
+      user: { email: string | null } | null;
+    }
+    const typedExisting = (existing || []).map(d => {
+      const u = Array.isArray(d.user) ? d.user[0] : d.user;
+      return { ...d, user: u } as StaffWithEmailRow;
+    });
+    const alreadyMember = typedExisting.find(s => s.user?.email === email);
     if (alreadyMember) {
       res.status(409).json({ error: 'このスタッフは既に所属しています' });
       return;
@@ -1531,9 +1620,9 @@ router.post('/:storeId/staff/rehire', requireAuth, async (req: Request, res: Res
       message: `${email} さんを再入職しました（パスワードは初期パスワードにリセット済み）`,
       staff,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores POST /:storeId/staff/rehire] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1586,9 +1675,9 @@ router.get('/:storeId/staff-pins/me', requireAuth, async (req: Request, res: Res
       .maybeSingle();
 
     res.json({ pin: fresh?.pin || null });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores GET /:storeId/staff-pins/me] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1609,17 +1698,22 @@ router.get('/:storeId/staff-pins', requireAuth, async (req: Request, res: Respon
       return;
     }
 
-    const pins = (data || []).map((row: any) => ({
-      membershipId: row.membership_id,
-      pin: row.pin,
-      updatedAt: row.updated_at,
-      staffName: row.staff?.user?.name || '',
-    }));
+    // Supabase returns nested joins as arrays without Database types
+    const pins = (data || []).map(row => {
+      const staffJoin = Array.isArray(row.staff) ? row.staff[0] : row.staff;
+      const userJoin = staffJoin ? (Array.isArray(staffJoin.user) ? staffJoin.user[0] : staffJoin.user) : null;
+      return {
+        membershipId: row.membership_id,
+        pin: row.pin,
+        updatedAt: row.updated_at,
+        staffName: userJoin?.name || '',
+      };
+    });
 
     res.json({ pins });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores GET /:storeId/staff-pins] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1644,6 +1738,12 @@ router.post('/:storeId/staff-pins/:staffId/regenerate', requireAuth, async (req:
       res.status(404).json({ error: 'スタッフが見つかりません' });
       return;
     }
+
+    const userJoin3 = Array.isArray(target.user) ? target.user[0] : target.user;
+    const targetRow = {
+      id: target.id as string,
+      user: (userJoin3 as { name: string | null }) || null,
+    };
 
     const pin = await generateUniqueStaffPin(storeId);
     if (!pin) {
@@ -1673,14 +1773,14 @@ router.post('/:storeId/staff-pins/:staffId/regenerate', requireAuth, async (req:
       action: 'staff_pin.regenerate',
       targetType: 'staff',
       targetId: staffId,
-      targetName: (target as any).user?.name || null,
+      targetName: targetRow.user?.name || null,
       metadata: {},
     });
 
-    res.json({ ok: true, pin, staffName: (target as any).user?.name || null });
-  } catch (e: any) {
+    res.json({ ok: true, pin, staffName: targetRow.user?.name || null });
+  } catch (e: unknown) {
     console.error('[stores POST /:storeId/staff-pins/:staffId/regenerate] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1715,9 +1815,9 @@ router.delete('/:storeId/staff-pins/:staffId', requireAuth, async (req: Request,
     });
 
     res.json({ ok: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores DELETE /:storeId/staff-pins/:staffId] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1744,20 +1844,31 @@ router.get('/:storeId/nfc-locations', requireAuth, async (req: Request, res: Res
     }
 
     // テンプレート名を併せて返す
-    const templateIds = Array.from(new Set((data || []).map((d: any) => d.template_id).filter(Boolean)));
+    interface NfcLocationRow {
+      id: string;
+      slug: string;
+      name: string;
+      template_id: string | null;
+      active: boolean;
+      created_at: string;
+      updated_at: string | null;
+    }
+    const typedLocations = (data || []) as NfcLocationRow[];
+    const templateIds = Array.from(new Set(typedLocations.map(d => d.template_id).filter(Boolean))) as string[];
     let templateMap: Record<string, string> = {};
     if (templateIds.length > 0) {
       const { data: templates } = await supabaseAdmin
         .from('checklist_templates')
         .select('id, name')
         .in('id', templateIds);
-      for (const t of templates || []) {
-        templateMap[(t as any).id] = (t as any).name;
+      interface TemplateRow { id: string; name: string }
+      for (const t of (templates || []) as TemplateRow[]) {
+        templateMap[t.id] = t.name;
       }
     }
 
     const origin = `${req.protocol}://${req.get('host')}`;
-    const locations = (data || []).map((row: any) => ({
+    const locations = typedLocations.map(row => ({
       id: row.id,
       slug: row.slug,
       name: row.name,
@@ -1770,9 +1881,9 @@ router.get('/:storeId/nfc-locations', requireAuth, async (req: Request, res: Res
     }));
 
     res.json({ locations });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores GET /:storeId/nfc-locations] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1800,7 +1911,8 @@ router.post('/:storeId/nfc-locations', requireAuth, async (req: Request, res: Re
         .select('id, store_id')
         .eq('id', templateId)
         .maybeSingle();
-      if (!tpl || (tpl as any).store_id !== storeId) {
+      const tplRow = tpl as { id: string; store_id: string };
+      if (!tpl || tplRow.store_id !== storeId) {
         res.status(400).json({ error: '無効なテンプレートです' });
         return;
       }
@@ -1813,7 +1925,7 @@ router.post('/:storeId/nfc-locations', requireAuth, async (req: Request, res: Re
       .single();
 
     if (error) {
-      if ((error as any).code === '23505') {
+      if (error.code === '23505') {
         res.status(409).json({ error: '同じ slug の場所がすでに存在します' });
         return;
       }
@@ -1821,13 +1933,21 @@ router.post('/:storeId/nfc-locations', requireAuth, async (req: Request, res: Re
       return;
     }
 
+    const createdLocation = data as {
+      id: string;
+      slug: string;
+      name: string;
+      template_id: string | null;
+      active: boolean;
+    };
+
     await writeAuditLog({
       storeId,
       actorId: req.user!.id,
       actorRole: membership.role,
       action: 'nfc_location.create',
       targetType: 'nfc_location',
-      targetId: (data as any).id,
+      targetId: createdLocation.id,
       targetName: name,
       metadata: { slug, templateId },
     });
@@ -1836,13 +1956,13 @@ router.post('/:storeId/nfc-locations', requireAuth, async (req: Request, res: Re
     res.status(201).json({
       ok: true,
       location: {
-        ...(data as any),
-        url: `${origin}/nfc/clean?loc=${(data as any).id}`,
+        ...createdLocation,
+        url: `${origin}/nfc/clean?loc=${createdLocation.id}`,
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[stores POST /:storeId/nfc-locations] error:', e);
-    res.status(500).json({ error: e.message || 'Internal Server Error' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Internal Server Error' });
   }
 });
 
@@ -1854,7 +1974,7 @@ router.put('/:storeId/nfc-locations/:id', requireAuth, async (req: Request, res:
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
-    const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (typeof req.body?.name === 'string') patch.name = req.body.name.trim();
     if (typeof req.body?.slug === 'string') {
       if (!/^[a-z0-9-]+$/i.test(req.body.slug)) {

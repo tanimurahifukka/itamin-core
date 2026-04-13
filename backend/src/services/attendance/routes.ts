@@ -102,7 +102,7 @@ router.get('/me/today', requireAuth, async (req: Request, res: Response) => {
     });
   } catch (e: any) {
     console.error('[attendance GET /me/today]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -178,7 +178,7 @@ router.post('/clock-in', requireAuth, async (req: Request, res: Response) => {
     });
   } catch (e: any) {
     console.error('[attendance POST /clock-in]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -245,7 +245,7 @@ router.post('/break-start', requireAuth, async (req: Request, res: Response) => 
     });
   } catch (e: any) {
     console.error('[attendance POST /break-start]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -306,7 +306,7 @@ router.post('/break-end', requireAuth, async (req: Request, res: Response) => {
     });
   } catch (e: any) {
     console.error('[attendance POST /break-end]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -383,7 +383,7 @@ router.post('/clock-out', requireAuth, async (req: Request, res: Response) => {
     });
   } catch (e: any) {
     console.error('[attendance POST /clock-out]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -444,7 +444,7 @@ router.get('/me/history', requireAuth, async (req: Request, res: Response) => {
     res.json({ records });
   } catch (e: any) {
     console.error('[attendance GET /me/history]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -486,7 +486,7 @@ router.post('/corrections', requireAuth, async (req: Request, res: Response) => 
     res.status(201).json({ correction: data, message: '修正申請を送信しました' });
   } catch (e: any) {
     console.error('[attendance POST /corrections]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -512,7 +512,7 @@ router.get('/corrections/me', requireAuth, async (req: Request, res: Response) =
     res.json({ corrections: data || [] });
   } catch (e: any) {
     console.error('[attendance GET /corrections/me]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -644,7 +644,7 @@ router.get('/admin/today', requireAuth, async (req: Request, res: Response) => {
     res.json({ businessDate, staff: staffList });
   } catch (e: any) {
     console.error('[attendance GET /admin/today]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -694,7 +694,7 @@ router.get('/admin/monthly', requireAuth, async (req: Request, res: Response) =>
       staffMap.set(s.user_id, {
         userId: s.user_id,
         staffId: s.id,
-        staffName: (s as any).user?.name || '—',
+        staffName: (s as { user?: { name?: string } | null }).user?.name || '—',
         role: s.role,
         hourlyWage: s.hourly_wage || 0,
         totalMinutes: 0,
@@ -738,7 +738,7 @@ router.get('/admin/monthly', requireAuth, async (req: Request, res: Response) =>
     res.json({ month: targetMonth, summary });
   } catch (e: any) {
     console.error('[attendance GET /admin/monthly]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -794,8 +794,8 @@ router.get('/admin/staff/:userId', requireAuth, async (req: Request, res: Respon
       staff: staffInfo ? {
         userId: targetUserId,
         staffId: staffInfo.id,
-        name: (staffInfo as any).user?.name,
-        picture: (staffInfo as any).user?.picture,
+        name: (staffInfo as { user?: { name?: string; picture?: string } | null }).user?.name,
+        picture: (staffInfo as { user?: { name?: string; picture?: string } | null }).user?.picture,
         role: staffInfo.role,
         hourlyWage: staffInfo.hourly_wage,
       } : null,
@@ -804,7 +804,7 @@ router.get('/admin/staff/:userId', requireAuth, async (req: Request, res: Respon
     });
   } catch (e: any) {
     console.error('[attendance GET /admin/staff/:userId]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -865,7 +865,7 @@ router.patch('/admin/records/:recordId', requireAuth, async (req: Request, res: 
     res.json({ record: formatSession({ ...updated, breaks: [] }), message: '勤怠レコードを更新しました' });
   } catch (e: any) {
     console.error('[attendance PATCH /admin/records/:recordId]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -974,7 +974,7 @@ router.get('/admin/corrections', requireAuth, async (req: Request, res: Response
     res.json({ corrections: data || [] });
   } catch (e: any) {
     console.error('[attendance GET /admin/corrections]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1037,7 +1037,7 @@ router.post('/admin/corrections/:id/approve', requireAuth, async (req: Request, 
     res.json({ message: '申請を承認しました' });
   } catch (e: any) {
     console.error('[attendance POST /admin/corrections/:id/approve]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1086,7 +1086,7 @@ router.post('/admin/corrections/:id/reject', requireAuth, async (req: Request, r
     res.json({ message: '申請を却下しました' });
   } catch (e: any) {
     console.error('[attendance POST /admin/corrections/:id/reject]', e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1104,7 +1104,7 @@ router.get('/admin/policy', requireAuth, async (req: Request, res: Response) => 
     const policy = await getPolicy(supabaseAdmin, storeId);
     res.json({ policy });
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -1143,7 +1143,7 @@ router.put('/admin/policy', requireAuth, async (req: Request, res: Response) => 
     const policy = await getPolicy(supabaseAdmin, storeId);
     res.json({ policy, message: 'ポリシーを更新しました' });
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 

@@ -163,7 +163,7 @@ organizationsRouter.get('/:orgId', async (req: Request, res: Response) => {
 
   res.json({
     organization: org,
-    myRole: (membership as any).role,
+    myRole: (membership as { role: string }).role,
     subscription: sub || null,
   });
 });
@@ -263,7 +263,7 @@ organizationsRouter.post('/:orgId/members', async (req: Request, res: Response) 
     .from('organization_members')
     .insert({
       org_id: orgId,
-      user_id: (profile as any).id,
+      user_id: (profile as { id: string }).id,
       role: targetRole,
     })
     .select()

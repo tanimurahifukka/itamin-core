@@ -1,6 +1,7 @@
 /**
  * 勤怠ドメイン共通ヘルパー
  */
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * business_date を算出する。cutoffHour 未満のローカル時刻なら前日扱い。
@@ -29,7 +30,7 @@ export function calcBusinessDate(at: Date, timezone: string, cutoffHour: number)
  *       将来的には DB の sequences または INSERT ... SELECT max()+1 サブクエリに置き換える。
  */
 export async function nextSessionNo(
-  supabase: any,
+  supabase: SupabaseClient,
   storeId: string,
   userId: string,
   businessDate: string
@@ -63,7 +64,7 @@ export function calcBreakMinutes(breaks: { started_at: string; ended_at: string 
  * 冪等チェック用: 同じ idempotencyKey のイベントが既に存在するか
  */
 export async function checkIdempotency(
-  supabase: any,
+  supabase: SupabaseClient,
   storeId: string,
   userId: string,
   idempotencyKey: string | undefined
@@ -84,7 +85,7 @@ export async function checkIdempotency(
  * 監査イベント書き込み
  */
 export async function writeEvent(
-  supabase: any,
+  supabase: SupabaseClient,
   params: {
     storeId: string;
     userId: string;
@@ -136,8 +137,20 @@ export interface AttendanceSessionDTO {
   breakMinutes: number;
 }
 
-export function formatAttendanceSession(s: any): AttendanceSessionDTO {
-  const breaks = (s.breaks || []) as any[];
+interface AttendanceRecordWithBreaks {
+  id: string;
+  business_date: string;
+  session_no: number;
+  status: string;
+  clock_in_at?: string | null;
+  clock_out_at?: string | null;
+  source?: string | null;
+  note?: string | null;
+  breaks?: { id: string; started_at: string; ended_at: string | null; reason?: string | null }[];
+}
+
+export function formatAttendanceSession(s: AttendanceRecordWithBreaks): AttendanceSessionDTO {
+  const breaks = s.breaks || [];
   return {
     id: s.id,
     businessDate: s.business_date,
@@ -160,7 +173,7 @@ export function formatAttendanceSession(s: any): AttendanceSessionDTO {
 /**
  * ポリシーを取得（なければデフォルト値）
  */
-export async function getPolicy(supabase: any, storeId: string) {
+export async function getPolicy(supabase: SupabaseClient, storeId: string) {
   const { data } = await supabase
     .from('attendance_policies')
     .select('*')

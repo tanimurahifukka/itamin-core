@@ -74,7 +74,7 @@ export default function ShiftRequestPage() {
     api.getStoreStaff(selectedStore.id).then(data => {
       const me = data.staff.find((s: { userId: string; id: string }) => s.userId === user.id);
       if (me) setStaffId(me.id);
-    }).catch(() => {});
+    }).catch(() => { console.error('[ShiftRequestPage] fetch failed'); });
   }, [selectedStore, user]);
 
   // 月のデータを取得（月初〜月末をカバーする週で取得）
@@ -85,7 +85,7 @@ export default function ShiftRequestPage() {
       setTemplates(data.templates.map((t: { id: string; name: string; startTime: string; endTime: string }) => ({
         id: t.id, name: t.name, startTime: t.startTime, endTime: t.endTime,
       })));
-    }).catch(() => {});
+    }).catch(() => { console.error('[ShiftRequestPage] fetch failed'); });
   }, [selectedStore]);
 
   const loadData = useCallback(async () => {

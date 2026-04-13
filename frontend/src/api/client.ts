@@ -32,8 +32,11 @@ import type {
   AttendanceTodayResponse,
   AttendanceActionResponse,
   AttendanceCorrection,
+  AttendanceHistoryRecord,
   AdminTodayStaff,
   AdminMonthlySummary,
+  AdminStaffAttendanceDetail,
+  MonthlyRecordsResponse,
   HaccpTemplate,
   HaccpItem,
   LineLoginUrlResponse,
@@ -267,7 +270,7 @@ export const api = {
     const params = new URLSearchParams();
     if (year) params.set('year', String(year));
     if (month !== undefined) params.set('month', String(month));
-    return request<{ records: TimeRecord[]; summary: MonthlySummaryStaff[] }>(`/timecard/${storeId}/monthly?${params}`);
+    return request<MonthlyRecordsResponse>(`/timecard/${storeId}/monthly?${params}`);
   },
 
   // Plugin Settings
@@ -476,7 +479,7 @@ export const api = {
   attendanceClockOut: (storeId: string, idempotencyKey?: string) =>
     request<AttendanceActionResponse>('/attendance/clock-out', { method: 'POST', body: JSON.stringify({ storeId, idempotencyKey }) }),
   getAttendanceHistory: (storeId: string, month?: string) =>
-    request<{ records: AttendanceTodayResponse[] }>(`/attendance/me/history?storeId=${storeId}${month ? `&month=${month}` : ''}`),
+    request<{ records: AttendanceHistoryRecord[] }>(`/attendance/me/history?storeId=${storeId}${month ? `&month=${month}` : ''}`),
   createCorrection: (storeId: string, data: {
     attendanceRecordId?: string | null;
     requestedBusinessDate?: string;
@@ -495,12 +498,12 @@ export const api = {
     const params = new URLSearchParams({ storeId });
     if (status) params.set('status', status);
     if (q) params.set('q', q);
-    return request<{ staff: AdminTodayStaff[] }>(`/attendance/admin/today?${params}`);
+    return request<{ businessDate?: string; staff: AdminTodayStaff[] }>(`/attendance/admin/today?${params}`);
   },
   getAdminAttendanceMonthly: (storeId: string, month?: string) =>
     request<{ summary: AdminMonthlySummary[] }>(`/attendance/admin/monthly?storeId=${storeId}${month ? `&month=${month}` : ''}`),
   getAdminStaffAttendance: (storeId: string, userId: string, month?: string) =>
-    request<{ summary: AdminMonthlySummary; records: AttendanceTodayResponse[] }>(`/attendance/admin/staff/${userId}?storeId=${storeId}${month ? `&month=${month}` : ''}`),
+    request<AdminStaffAttendanceDetail>(`/attendance/admin/staff/${userId}?storeId=${storeId}${month ? `&month=${month}` : ''}`),
   adminUpdateRecord: (storeId: string, recordId: string, data: { clockInAt?: string; clockOutAt?: string; breakMinutes?: number; note?: string }) =>
     request<OkResponse>(`/attendance/admin/records/${recordId}`, { method: 'PATCH', body: JSON.stringify({ storeId, ...data }) }),
   adminDeleteRecord: (storeId: string, recordId: string) =>

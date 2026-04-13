@@ -96,7 +96,7 @@ function CheckForm({ template, items, timing, storeId, membershipId, onSubmitted
       if (!locationId) return;
       checkApi.getNfcLocationStatus(storeId, locationId, today)
         .then(d => setNfcStatuses(prev => ({ ...prev, [item.id]: { done: d.done, submitted_at: d.submitted_at } })))
-        .catch(() => {});
+        .catch(() => { console.error('[StoreChecklistPage] fetch failed'); });
     });
   }, [items, storeId]);
 
@@ -421,7 +421,7 @@ export default function StoreChecklistPage() {
     if (selectedStore.role === 'owner') return;
     api.getTimecardStatus(selectedStore.id)
       .then((d) => { if (d.staffId) setMembershipId(d.staffId); })
-      .catch(() => {});
+      .catch(() => { console.error('[StoreChecklistPage] fetch failed'); });
   }, [selectedStore]);
 
   const load = useCallback(async () => {

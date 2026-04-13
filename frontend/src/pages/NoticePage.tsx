@@ -45,7 +45,7 @@ export default function NoticePage() {
     if (!selectedStore) return;
     api.getNotices(selectedStore.id)
       .then((data) => setNotices(data.notices))
-      .catch(() => {});
+      .catch(() => { console.error('[NoticePage] fetch failed'); });
   }, [selectedStore]);
 
   useEffect(() => { loadData(); }, [loadData]);

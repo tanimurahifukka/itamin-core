@@ -14,7 +14,7 @@ async function requirePlatformTeam(userId: string): Promise<{ role: string } | n
     .select('role')
     .eq('user_id', userId)
     .maybeSingle();
-  return data ? { role: (data as any).role } : null;
+  return data ? { role: (data as { role: string }).role } : null;
 }
 
 // Middleware: verify platform team
@@ -25,13 +25,13 @@ platformRouter.use(async (req: Request, res: Response, next) => {
     res.status(403).json({ error: 'プラットフォーム管理権限がありません' });
     return;
   }
-  (req as any).platformRole = team.role;
+  req.platformRole = team.role;
   next();
 });
 
 // GET /api/platform/me
 platformRouter.get('/me', async (req: Request, res: Response) => {
-  res.json({ role: (req as any).platformRole });
+  res.json({ role: req.platformRole });
 });
 
 // GET /api/platform/organizations
@@ -76,7 +76,7 @@ platformRouter.get('/organizations/:orgId', async (req: Request, res: Response) 
 
 // PUT /api/platform/organizations/:orgId/subscription
 platformRouter.put('/organizations/:orgId/subscription', async (req: Request, res: Response) => {
-  const role = (req as any).platformRole;
+  const role = req.platformRole;
   if (role !== 'super_admin' && role !== 'admin') {
     res.status(403).json({ error: 'サブスクリプション変更には admin 権限が必要です' });
     return;
@@ -101,7 +101,7 @@ platformRouter.put('/organizations/:orgId/subscription', async (req: Request, re
     const { error } = await supabaseAdmin
       .from('organization_subscriptions')
       .update({ plan_id: planId, status: status || 'active' })
-      .eq('id', (existing as any).id);
+      .eq('id', (existing as { id: string }).id);
     if (error) {
       res.status(500).json({ error: error.message });
       return;
@@ -135,7 +135,7 @@ platformRouter.get('/team', async (_req: Request, res: Response) => {
 
 // POST /api/platform/team
 platformRouter.post('/team', async (req: Request, res: Response) => {
-  const role = (req as any).platformRole;
+  const role = req.platformRole;
   if (role !== 'super_admin') {
     res.status(403).json({ error: 'super_admin 権限が必要です' });
     return;
@@ -167,7 +167,7 @@ platformRouter.post('/team', async (req: Request, res: Response) => {
 
   const { data, error } = await supabaseAdmin
     .from('platform_team')
-    .insert({ user_id: (profile as any).id, role: assignRole })
+    .insert({ user_id: (profile as { id: string }).id, role: assignRole })
     .select()
     .single();
 
@@ -181,7 +181,7 @@ platformRouter.post('/team', async (req: Request, res: Response) => {
 
 // DELETE /api/platform/team/:memberId
 platformRouter.delete('/team/:memberId', async (req: Request, res: Response) => {
-  const role = (req as any).platformRole;
+  const role = req.platformRole;
   if (role !== 'super_admin') {
     res.status(403).json({ error: 'super_admin 権限が必要です' });
     return;
@@ -252,13 +252,16 @@ platformRouter.get('/plans', async (_req: Request, res: Response) => {
 
 // POST /api/platform/plans
 platformRouter.post('/plans', async (req: Request, res: Response) => {
-  const role = (req as any).platformRole;
+  const role = req.platformRole;
   if (role !== 'super_admin' && role !== 'admin') {
     res.status(403).json({ error: 'プラン作成には admin 権限が必要です' });
     return;
   }
 
-  const { name, slug, max_stores, max_staff_per_store, max_plugins, allowed_plugins, price_monthly_jpy } = req.body as any;
+  const { name, slug, max_stores, max_staff_per_store, max_plugins, allowed_plugins, price_monthly_jpy } = req.body as {
+    name?: string; slug?: string; max_stores?: number; max_staff_per_store?: number;
+    max_plugins?: number; allowed_plugins?: string[]; price_monthly_jpy?: number;
+  };
 
   if (!name || !slug) {
     res.status(400).json({ error: 'name と slug は必須です' });
@@ -289,14 +292,14 @@ platformRouter.post('/plans', async (req: Request, res: Response) => {
 
 // PUT /api/platform/plans/:planId
 platformRouter.put('/plans/:planId', async (req: Request, res: Response) => {
-  const role = (req as any).platformRole;
+  const role = req.platformRole;
   if (role !== 'super_admin' && role !== 'admin') {
     res.status(403).json({ error: 'プラン更新には admin 権限が必要です' });
     return;
   }
 
   const { planId } = req.params as { planId: string };
-  const body = req.body as any;
+  const body = req.body as Record<string, unknown>;
 
   const updates: Record<string, unknown> = {};
   for (const key of ['name', 'max_stores', 'max_staff_per_store', 'max_plugins', 'allowed_plugins', 'price_monthly_jpy', 'is_active']) {

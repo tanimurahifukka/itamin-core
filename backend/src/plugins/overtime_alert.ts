@@ -80,7 +80,7 @@ router.get('/:storeId/monthly', requireAuth, async (req: Request, res: Response)
 
       return {
         userId: m.user_id,
-        name: (m as any).user?.name || (m as any).user?.email || '不明',
+        name: (m as { user?: { name?: string; email?: string } | null }).user?.name || (m as { user?: { name?: string; email?: string } | null }).user?.email || '不明',
         role: m.role,
         totalWorkHours: Math.round(totalWorkMinutes / 6) / 10,
         totalDays,

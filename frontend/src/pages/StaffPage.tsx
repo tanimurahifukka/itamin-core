@@ -115,7 +115,7 @@ export default function StaffPage() {
         setInvitations(invitationData.invitations);
         setInitialPassword(pwData.initialPassword);
       })
-      .catch(() => {});
+      .catch(() => { console.error('[StaffPage] fetch failed'); });
   }, [selectedStore]);
 
   useEffect(() => { loadStaff(); }, [loadStaff]);

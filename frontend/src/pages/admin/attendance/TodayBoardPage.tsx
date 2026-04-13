@@ -4,19 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
-interface AdminTodayStaff {
-  userId: string;
-  staffId: string;
-  staffName: string;
-  staffPicture?: string;
-  role: string;
-  currentStatus: string;
-  clockInAt?: string;
-  clockOutAt?: string;
-  breakMinutes?: number;
-  shift?: { startTime: string; endTime: string };
-  checklist?: { clockIn?: boolean; clockOut?: boolean };
-}
+import type { AdminTodayStaff } from '../../../types/api';
 
 const STATUS_LABELS: Record<string, string> = {
   not_clocked_in: '未出勤',
@@ -71,7 +59,7 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
     setLoading(true);
     try {
       const res = await api.getAdminAttendanceToday(storeId, statusFilter || undefined, search || undefined);
-      setData(res as unknown as { businessDate?: string; staff?: AdminTodayStaff[] });
+      setData(res);
     } catch {
       // ignore
     } finally {

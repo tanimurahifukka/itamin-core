@@ -29,21 +29,21 @@ export default function PaidLeavePage() {
     if (!selectedStore) return;
     api.getStoreStaff(selectedStore.id)
       .then(data => setStaffList(data.staff || []))
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore]);
 
   const loadSummary = useCallback(() => {
     if (!selectedStore) return;
     api.getPaidLeaveSummary(selectedStore.id, fiscalYear)
       .then(data => setSummary(data.summary))
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore, fiscalYear]);
 
   const loadRecords = useCallback(() => {
     if (!selectedStore) return;
     api.getLeaveRecords(selectedStore.id, selectedStaffId || undefined)
       .then(data => setRecords(data.records))
-      .catch(() => {});
+      .catch(() => { showToast('読み込みに失敗しました', 'error'); });
   }, [selectedStore, selectedStaffId]);
 
   useEffect(() => { loadSummary(); }, [loadSummary]);

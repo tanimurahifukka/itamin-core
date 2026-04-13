@@ -4,14 +4,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
+import type { LineLink } from '../../../types/api';
 
-interface StaffLineLinkItem {
-  userId: string;
-  staffName: string;
-  role: string;
-  lineLink?: { displayName?: string; linkedAt?: string };
-  activeToken?: { code: string; expiresAt: string };
-}
+type StaffLineLinkItem = LineLink;
 
 export default function LineLinkManagePage() {
   const { selectedStore } = useAuth();
@@ -25,7 +20,7 @@ export default function LineLinkManagePage() {
     if (!storeId) return;
     setLoading(true);
     api.adminGetLineLinks(storeId)
-      .then(res => setStaff((res.staff || []) as unknown as StaffLineLinkItem[]))
+      .then(res => setStaff(res.staff || []))
       .catch(() => setStaff([]))
       .finally(() => setLoading(false));
   }, [storeId]);

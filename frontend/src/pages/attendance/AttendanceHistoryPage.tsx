@@ -4,17 +4,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
+import type { AttendanceHistoryRecord } from '../../types/api';
 
-interface AttendanceRecord {
-  id: string;
-  businessDate: string;
-  clockInAt: string;
-  clockOutAt: string | null;
-  breakMinutes: number;
-  status: string;
-  correctionStatus?: string;
-  note?: string;
-}
+type AttendanceRecord = AttendanceHistoryRecord;
 
 const STATUS_LABELS: Record<string, string> = {
   working: '勤務中',
@@ -55,7 +47,7 @@ export default function AttendanceHistoryPage({ onNavigate }: Props) {
     const m = `${year}-${String(month).padStart(2, '0')}`;
     try {
       const res = await api.getAttendanceHistory(storeId, m);
-      setRecords((res.records as unknown as AttendanceRecord[]) || []);
+      setRecords(res.records || []);
     } catch {
       setRecords([]);
     } finally {

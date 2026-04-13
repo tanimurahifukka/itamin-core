@@ -61,7 +61,8 @@ async function getStoreStaffMembership(storeId: string, userId: string): Promise
     return null;
   }
   if (!data) return null;
-  return { id: (data as any).id, role: (data as any).role, source: 'store_staff' };
+  const row = data as { id: string; role: StaffRole };
+  return { id: row.id, role: row.role, source: 'store_staff' };
 }
 
 async function getOrgMembershipForStore(storeId: string, userId: string): Promise<StoreMembership | null> {
@@ -72,20 +73,22 @@ async function getOrgMembershipForStore(storeId: string, userId: string): Promis
     .eq('id', storeId)
     .maybeSingle();
 
-  if (storeErr || !store || !(store as any).org_id) return null;
+  const storeRow = store as { id: string; org_id: string | null } | null;
+  if (storeErr || !storeRow || !storeRow.org_id) return null;
 
   const { data: member, error: memberErr } = await supabaseAdmin
     .from('organization_members')
     .select('id, role')
-    .eq('org_id', (store as any).org_id)
+    .eq('org_id', storeRow.org_id)
     .eq('user_id', userId)
     .maybeSingle();
 
   if (memberErr || !member) return null;
 
-  const orgRole = (member as any).role as OrgRole;
+  const memberRow = member as { id: string; role: string };
+  const orgRole = memberRow.role as OrgRole;
   return {
-    id: (member as any).id,
+    id: memberRow.id,
     role: mapOrgRoleToStaffRole(orgRole),
     source: 'organization',
   };
@@ -100,9 +103,10 @@ async function getPlatformMembership(userId: string): Promise<StoreMembership | 
 
   if (error || !data) return null;
 
-  const platformRole = (data as any).role as PlatformRole;
+  const row = data as { id: string; role: string };
+  const platformRole = row.role as PlatformRole;
   return {
-    id: (data as any).id,
+    id: row.id,
     role: mapPlatformRoleToStaffRole(platformRole),
     source: 'platform',
   };
@@ -200,12 +204,13 @@ export async function requireOrgManager(
     res.status(403).json({ error: 'この組織へのアクセス権限がありません' });
     return null;
   }
-  const role = (data as any).role as OrgRole;
+  const row = data as { id: string; role: string };
+  const role = row.role as OrgRole;
   if (role !== 'owner' && role !== 'admin') {
     res.status(403).json({ error: '組織の管理権限が必要です' });
     return null;
   }
-  return { id: (data as any).id, role };
+  return { id: row.id, role };
 }
 
 // 組織配下の店舗ID一覧を取得
@@ -216,7 +221,7 @@ export async function getOrgStoreIds(orgId: string): Promise<string[]> {
     .eq('org_id', orgId);
 
   if (error || !data) return [];
-  return (data as any[]).map(s => s.id);
+  return (data as { id: string }[]).map(s => s.id);
 }
 
 export async function canResetStaffPassword(
