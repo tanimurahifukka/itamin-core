@@ -4,6 +4,8 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { kioskApi } from '../api/kioskClient';
+import type { EventFormField } from '../api/kioskClient';
+import KioskEventBooking from './KioskEventBooking';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +36,7 @@ interface KioskEvent {
   image_url: string | null;
   status: string;
   sort_order: number;
+  form_schema: EventFormField[];
 }
 
 interface DayData {
@@ -49,6 +52,7 @@ interface EventFormState {
   capacity: string;
   price: string;
   status: string;
+  form_schema: EventFormField[];
 }
 
 interface Props {
@@ -140,6 +144,15 @@ const EMPTY_FORM: EventFormState = {
   capacity: '',
   price: '',
   status: 'draft',
+  form_schema: [],
+};
+
+const FIELD_TYPE_LABELS: Record<string, string> = {
+  text: 'テキスト',
+  number: '数値',
+  select: '選択肢',
+  textarea: 'テキストエリア',
+  checkbox: 'チェックボックス',
 };
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -316,6 +329,111 @@ function CalendarGrid({
 
 // ─── Event Form Modal ─────────────────────────────────────────────────────────
 
+function FormSchemaBuilder({
+  schema,
+  onChange,
+}: {
+  schema: EventFormField[];
+  onChange: (schema: EventFormField[]) => void;
+}) {
+  const addField = () => {
+    const key = `field_${Date.now()}`;
+    onChange([...schema, { key, label: '', type: 'text', required: false }]);
+  };
+
+  const updateField = (idx: number, patch: Partial<EventFormField>) => {
+    const next = schema.map((f, i) => (i === idx ? { ...f, ...patch } : f));
+    onChange(next);
+  };
+
+  const removeField = (idx: number) => {
+    onChange(schema.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#333', marginBottom: 10, borderTop: '1px solid #e8ecf4', paddingTop: 14 }}>
+        予約フォーム設定
+      </div>
+      {schema.length === 0 && (
+        <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 8 }}>
+          フィールドがありません。追加ボタンで項目を追加してください。
+        </div>
+      )}
+      {schema.map((field, idx) => (
+        <div key={field.key} style={s.schemaFieldCard}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div style={{ flex: 2, minWidth: 120 }}>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>ラベル</div>
+              <input
+                style={s.input}
+                value={field.label}
+                onChange={e => updateField(idx, { label: e.target.value })}
+                placeholder="例: お名前"
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 100 }}>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>タイプ</div>
+              <select
+                style={s.input}
+                value={field.type}
+                onChange={e => {
+                  const type = e.target.value as EventFormField['type'];
+                  const patch: Partial<EventFormField> = { type };
+                  if (type === 'select' && !field.options) patch.options = [];
+                  updateField(idx, patch);
+                }}
+              >
+                {Object.entries(FIELD_TYPE_LABELS).map(([val, lbl]) => (
+                  <option key={val} value={val}>{lbl}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 18 }}>
+              <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <input
+                  type="checkbox"
+                  checked={field.required}
+                  onChange={e => updateField(idx, { required: e.target.checked })}
+                />
+                必須
+              </label>
+              <button
+                type="button"
+                style={s.schemaRemoveBtn}
+                onClick={() => removeField(idx)}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+          {field.type === 'select' && (
+            <div style={{ marginTop: 6 }}>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 2 }}>選択肢（カンマ区切り）</div>
+              <input
+                style={s.input}
+                value={(field.options || []).join(', ')}
+                onChange={e => {
+                  const opts = e.target.value.split(',').map(o => o.trim()).filter(Boolean);
+                  updateField(idx, { options: opts });
+                }}
+                placeholder="例: A, B, C"
+              />
+            </div>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        style={s.schemaAddBtn}
+        onClick={addField}
+      >
+        + フィールド追加
+      </button>
+    </div>
+  );
+}
+
 function EventFormModal({
   initial,
   onSave,
@@ -419,6 +537,13 @@ function EventFormModal({
               <option value="published">公開中</option>
             </select>
           </div>
+
+          {/* Form schema builder */}
+          <FormSchemaBuilder
+            schema={form.form_schema}
+            onChange={(schema) => setForm(prev => ({ ...prev, form_schema: schema }))}
+          />
+
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
             <button type="button" style={s.cancelBtn} onClick={onClose} disabled={saving}>キャンセル</button>
             <button type="submit" style={s.primaryBtn} disabled={saving}>
@@ -444,7 +569,7 @@ export default function KioskReservations({ storeId }: Props) {
   }, []);
 
   // Tab state
-  const [tab, setTab] = useState<'calendar' | 'events'>('calendar');
+  const [tab, setTab] = useState<'calendar' | 'events' | 'event-booking'>('calendar');
 
   // Calendar state
   const [calYear, setCalYear] = useState(nowDate.getFullYear());
@@ -595,6 +720,7 @@ export default function KioskReservations({ storeId }: Props) {
         capacity: parseInt(form.capacity, 10),
         price: form.price ? parseFloat(form.price) : null,
         status: form.status,
+        form_schema: form.form_schema,
       };
       if (editingEvent) {
         await kioskApi.updateEvent(storeId, editingEvent.id, payload);
@@ -638,6 +764,7 @@ export default function KioskReservations({ storeId }: Props) {
         capacity: String(editingEvent.capacity),
         price: editingEvent.price != null ? String(editingEvent.price) : '',
         status: editingEvent.status,
+        form_schema: editingEvent.form_schema || [],
       }
     : EMPTY_FORM;
 
@@ -661,6 +788,12 @@ export default function KioskReservations({ storeId }: Props) {
           onClick={() => setTab('calendar')}
         >
           カレンダー
+        </button>
+        <button
+          style={{ ...s.tabBtn, ...(tab === 'event-booking' ? s.tabBtnActive : {}) }}
+          onClick={() => setTab('event-booking')}
+        >
+          イベント予約
         </button>
         <button
           style={{ ...s.tabBtn, ...(tab === 'events' ? s.tabBtnActive : {}) }}
@@ -777,6 +910,11 @@ export default function KioskReservations({ storeId }: Props) {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── Event Booking Tab ────────────────────────────────────────────── */}
+      {tab === 'event-booking' && (
+        <KioskEventBooking storeId={storeId} />
       )}
 
       {/* ── Events Tab ───────────────────────────────────────────────────── */}
@@ -1154,5 +1292,36 @@ const s: Record<string, React.CSSProperties> = {
     fontFamily: 'sans-serif',
     width: '100%',
     boxSizing: 'border-box',
+  },
+
+  // Form schema builder
+  schemaFieldCard: {
+    background: '#f8fafc',
+    border: '1px solid #e8ecf4',
+    borderRadius: 8,
+    padding: '10px 12px',
+    marginBottom: 8,
+  },
+  schemaRemoveBtn: {
+    background: 'none',
+    border: '1px solid #e0b0b0',
+    color: '#c0392b',
+    borderRadius: 5,
+    padding: '4px 8px',
+    cursor: 'pointer',
+    fontSize: 12,
+    fontFamily: 'sans-serif',
+  },
+  schemaAddBtn: {
+    background: '#f0f4ff',
+    color: '#4f8ef7',
+    border: '1px dashed #c7d4f0',
+    borderRadius: 8,
+    padding: '8px 0',
+    width: '100%',
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 600,
+    fontFamily: 'sans-serif',
   },
 };

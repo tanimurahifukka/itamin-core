@@ -41,6 +41,28 @@ async function kioskRequest<T>(path: string, options?: RequestInit): Promise<T> 
   return res.json();
 }
 
+export interface EventFormField {
+  key: string;
+  label: string;
+  type: 'text' | 'number' | 'select' | 'textarea' | 'checkbox';
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+}
+
+export interface AvailableEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  starts_at: string;
+  ends_at: string;
+  capacity: number;
+  remaining: number;
+  price: number | null;
+  image_url: string | null;
+  form_schema: EventFormField[];
+}
+
 export const kioskApi = {
   login: (storeId: string, pin: string) =>
     kioskRequest<{ token: string; storeName: string; storeId: string }>(
@@ -166,11 +188,13 @@ export const kioskApi = {
       id: string; store_id: string; title: string; description: string | null;
       starts_at: string; ends_at: string; capacity: number; price: number | null;
       image_url: string | null; status: string; sort_order: number;
+      form_schema: EventFormField[];
     }> }>(`/kiosk/${storeId}/events`),
 
   createEvent: (storeId: string, data: {
     title: string; description?: string | null; starts_at: string; ends_at: string;
     capacity: number; price?: number | null; status?: string;
+    form_schema?: EventFormField[];
   }) => kioskRequest<{ event: Record<string, unknown> }>(`/kiosk/${storeId}/events`, {
     method: 'POST', body: JSON.stringify(data),
   }),
@@ -182,6 +206,17 @@ export const kioskApi = {
 
   deleteEvent: (storeId: string, eventId: string) =>
     kioskRequest<{ ok: boolean }>(`/kiosk/${storeId}/events/${eventId}`, { method: 'DELETE' }),
+
+  getAvailableEvents: (storeId: string) =>
+    kioskRequest<{ events: AvailableEvent[] }>(`/kiosk/${storeId}/events/available`),
+
+  bookEvent: (storeId: string, eventId: string, data: { responses: Record<string, unknown> }) =>
+    kioskRequest<{ reservation: {
+      id: string; confirmation_code: string;
+      starts_at: string; ends_at: string; party_size: number;
+    } }>(`/kiosk/${storeId}/events/${eventId}/book`, {
+      method: 'POST', body: JSON.stringify(data),
+    }),
 
   updateReservationStatus: (storeId: string, reservationId: string, status: string) =>
     kioskRequest<{ ok: boolean }>(`/kiosk/${storeId}/reservations/${reservationId}/status`, {
