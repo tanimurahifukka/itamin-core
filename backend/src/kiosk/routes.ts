@@ -814,7 +814,7 @@ router.get('/:storeId/reservations/monthly', requireKiosk, async (req: Request, 
 
     const { data, error } = await supabaseAdmin
       .from('reservations')
-      .select('id, starts_at, reservation_type')
+      .select('id, starts_at, reservation_type, customer_name, resource_ref')
       .eq('store_id', storeId)
       .gte('starts_at', monthStart)
       .lte('starts_at', monthEnd)
@@ -822,20 +822,59 @@ router.get('/:storeId/reservations/monthly', requireKiosk, async (req: Request, 
 
     if (error) { res.status(500).json({ error: error.message }); return; }
 
-    const days: Record<string, { count: number; types: string[] }> = {};
+    const { data: eventData, error: eventError } = await supabaseAdmin
+      .from('reservation_events')
+      .select('id, title, starts_at')
+      .eq('store_id', storeId)
+      .gte('starts_at', monthStart)
+      .lte('starts_at', monthEnd)
+      .in('status', ['published', 'draft']);
+
+    if (eventError) { res.status(500).json({ error: eventError.message }); return; }
+
+    const days: Record<string, { count: number; types: string[]; items: { id: string; name: string; type: string; time: string; isEvent: boolean }[] }> = {};
     for (const row of (data || []) as any[]) {
       const dateKey = (row.starts_at as string).split('T')[0];
       if (!days[dateKey]) {
-        days[dateKey] = { count: 0, types: [] };
+        days[dateKey] = { count: 0, types: [], items: [] };
       }
       days[dateKey].count += 1;
       const rtype = row.reservation_type as string;
       if (rtype && !days[dateKey].types.includes(rtype)) {
         days[dateKey].types.push(rtype);
       }
+      const timeStr = new Date(row.starts_at as string).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
+      days[dateKey].items.push({
+        id: row.id as string,
+        name: row.customer_name as string,
+        type: rtype || 'table',
+        time: timeStr,
+        isEvent: false,
+      });
     }
 
-    res.json({ days });
+    const events: { id: string; title: string; date: string; time: string }[] = [];
+    for (const ev of (eventData || []) as any[]) {
+      const dateKey = (ev.starts_at as string).split('T')[0];
+      const timeStr = new Date(ev.starts_at as string).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false });
+      events.push({ id: ev.id as string, title: ev.title as string, date: dateKey, time: timeStr });
+
+      if (!days[dateKey]) {
+        days[dateKey] = { count: 0, types: [], items: [] };
+      }
+      if (!days[dateKey].types.includes('event')) {
+        days[dateKey].types.push('event');
+      }
+      days[dateKey].items.push({
+        id: ev.id as string,
+        name: ev.title as string,
+        type: 'event',
+        time: timeStr,
+        isEvent: true,
+      });
+    }
+
+    res.json({ days, events });
   } catch (e: any) {
     res.status(500).json({ error: e.message || 'Internal Server Error' });
   }

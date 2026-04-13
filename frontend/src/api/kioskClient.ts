@@ -179,7 +179,10 @@ export const kioskApi = {
     }> }>(`/kiosk/${storeId}/reservations${date ? `?date=${date}` : ''}`),
 
   getReservationsMonthly: (storeId: string, year: number, month: number) =>
-    kioskRequest<{ days: Record<string, { count: number; types: string[] }> }>(
+    kioskRequest<{
+      days: Record<string, { count: number; types: string[]; items: { id: string; name: string; type: string; time: string; isEvent: boolean }[] }>;
+      events: { id: string; title: string; date: string; time: string }[];
+    }>(
       `/kiosk/${storeId}/reservations/monthly?year=${year}&month=${month}`
     ),
 

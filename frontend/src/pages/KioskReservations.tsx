@@ -39,9 +39,18 @@ interface KioskEvent {
   form_schema: EventFormField[];
 }
 
+interface DayItem {
+  id: string;
+  name: string;
+  type: string;
+  time: string;
+  isEvent?: boolean;
+}
+
 interface DayData {
   count: number;
   types: string[];
+  items: DayItem[];
 }
 
 interface EventFormState {
@@ -269,20 +278,26 @@ function CalendarGrid({
   today,
   selectedDay,
   dayData,
+  events,
   onSelectDay,
   onPrevMonth,
   onNextMonth,
   onToday,
+  onEventClick,
+  onReservationClick,
 }: {
   year: number;
   month: number;
   today: string;
   selectedDay: string | null;
   dayData: Record<string, DayData>;
+  events: KioskEvent[];
   onSelectDay: (d: string) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onToday: () => void;
+  onEventClick: (event: KioskEvent) => void;
+  onReservationClick: (dateStr: string, reservationId: string) => void;
 }) {
   const firstDay = new Date(year, month - 1, 1);
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -329,34 +344,92 @@ function CalendarGrid({
           const dayNum = parseInt(dateStr.split('-')[2], 10);
           const weekday = (idx % 7);
 
+          const items = data?.items || [];
+          const visibleItems = items.slice(0, 3);
+          const extraCount = items.length - visibleItems.length;
+
           return (
             <div
               key={dateStr}
               onClick={() => onSelectDay(dateStr)}
               style={{
                 ...s.dayCell,
+                alignItems: 'stretch',
+                justifyContent: 'flex-start',
+                padding: '2px',
+                minHeight: 72,
                 background: isSelected ? '#4f8ef7' : isToday ? '#e8f0fe' : '#fff',
                 color: isSelected ? '#fff' : weekday === 0 ? '#ef4444' : weekday === 6 ? '#3b82f6' : '#222',
                 border: isToday && !isSelected ? '2px solid #4f8ef7' : '1px solid #e8ecf4',
               }}
             >
-              <span style={{ fontSize: 13, fontWeight: isToday ? 700 : 400 }}>{dayNum}</span>
-              {data && data.count > 0 && (
-                <span style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  padding: '1px 5px',
-                  borderRadius: 10,
-                  background: isSelected
-                    ? 'rgba(255,255,255,0.3)'
-                    : `${TYPE_COLOR[getDominantType(data.types)] || '#4f8ef7'}22`,
-                  color: isSelected
-                    ? '#fff'
-                    : TYPE_COLOR[getDominantType(data.types)] || '#4f8ef7',
-                  marginTop: 2,
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1px 3px', marginBottom: 1 }}>
+                <span style={{ fontSize: 13, fontWeight: isToday ? 700 : 400 }}>{dayNum}</span>
+                {data && data.count > 0 && (
+                  <span style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    padding: '1px 4px',
+                    borderRadius: 10,
+                    background: isSelected
+                      ? 'rgba(255,255,255,0.3)'
+                      : `${TYPE_COLOR[getDominantType(data.types)] || '#4f8ef7'}22`,
+                    color: isSelected
+                      ? '#fff'
+                      : TYPE_COLOR[getDominantType(data.types)] || '#4f8ef7',
+                  }}>
+                    {data.count}
+                  </span>
+                )}
+              </div>
+              {visibleItems.map(item => {
+                const dotColor = item.isEvent ? '#10b981' : TYPE_COLOR[item.type] || '#4f8ef7';
+                const bgColor = isSelected ? 'rgba(255,255,255,0.18)' : `${dotColor}18`;
+                const textColor = isSelected ? '#fff' : dotColor;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (item.isEvent) {
+                        const ev = events.find(ev => ev.id === item.id);
+                        if (ev) onEventClick(ev);
+                      } else {
+                        onReservationClick(dateStr, item.id);
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
+                      fontSize: 10,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      maxWidth: '100%',
+                      borderRadius: 3,
+                      padding: '1px 3px',
+                      marginBottom: 1,
+                      background: bgColor,
+                      color: textColor,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span style={{ flexShrink: 0, fontSize: 8 }}>●</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.time} {item.name}
+                    </span>
+                  </div>
+                );
+              })}
+              {extraCount > 0 && (
+                <div style={{
+                  fontSize: 9,
+                  color: isSelected ? 'rgba(255,255,255,0.8)' : '#94a3b8',
+                  padding: '0 3px',
                 }}>
-                  {data.count}
-                </span>
+                  +{extraCount}件
+                </div>
               )}
             </div>
           );
@@ -656,6 +729,15 @@ export default function KioskReservations({ storeId }: Props) {
     }
   }, [storeId]);
 
+  const handleCalendarEventClick = (ev: KioskEvent) => {
+    setEditingEvent(ev);
+    setShowEventModal(true);
+  };
+
+  const handleCalendarReservationClick = (dateStr: string) => {
+    setSelectedDay(dateStr);
+  };
+
   const loadDayReservations = useCallback(async (dateStr: string) => {
     setResLoading(true);
     setResError(null);
@@ -693,6 +775,10 @@ export default function KioskReservations({ storeId }: Props) {
   useEffect(() => {
     if (selectedDay) loadDayReservations(selectedDay);
   }, [selectedDay, loadDayReservations]);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
 
   useEffect(() => {
     if (tab === 'events') loadEvents();
@@ -887,10 +973,13 @@ export default function KioskReservations({ storeId }: Props) {
             today={todayStr}
             selectedDay={selectedDay}
             dayData={monthlyData}
+            events={events}
             onSelectDay={handleSelectDay}
             onPrevMonth={handlePrevMonth}
             onNextMonth={handleNextMonth}
             onToday={handleToday}
+            onEventClick={handleCalendarEventClick}
+            onReservationClick={handleCalendarReservationClick}
           />
           {monthlyLoading && (
             <div style={{ textAlign: 'center', color: '#999', fontSize: 12, marginBottom: 8 }}>カレンダー更新中...</div>
