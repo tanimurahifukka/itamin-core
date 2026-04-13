@@ -14,6 +14,7 @@ interface AuthContextType {
   user: User | null;
   stores: StoreInfo[];
   loading: boolean;
+  storesLoading: boolean;
   selectedStore: StoreInfo | null;
   requiresPasswordChange: boolean;
   selectStore: (store: StoreInfo | null) => void;
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [stores, setStores] = useState<StoreInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [storesLoading, setStoresLoading] = useState(false);
   const [selectedStore, setSelectedStore] = useState<StoreInfo | null>(() => {
     try {
       const saved = localStorage.getItem('itamin_selectedStore');
@@ -50,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [selectedStore]);
 
   const refreshStores = useCallback(async () => {
+    setStoresLoading(true);
     try {
       const data = await api.getStores();
       const nextStores: StoreInfo[] = data.stores;
@@ -76,15 +79,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } catch {
       setStores([]);
+    } finally {
+      setStoresLoading(false);
     }
   }, []);
 
   useEffect(() => {
     // 初期セッション確認
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        refreshStores();
+        await refreshStores();
       }
       setLoading(false);
     });
@@ -195,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, stores, loading, selectedStore, requiresPasswordChange,
+      user, stores, loading, storesLoading, selectedStore, requiresPasswordChange,
       selectStore, signUp, completeInvitedSignUp, signIn, signOut, refreshStores, changePassword,
     }}>
       {children}
