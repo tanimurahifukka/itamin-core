@@ -1053,7 +1053,7 @@ router.get('/:storeId/events/available', requireKiosk, async (req: Request, res:
       .select('*')
       .eq('store_id', storeId)
       .eq('status', 'published')
-      .gte('starts_at', new Date().toISOString())
+      .gte('ends_at', new Date().toISOString())
       .order('starts_at', { ascending: true });
 
     if (error) { res.status(500).json({ error: error.message }); return; }
