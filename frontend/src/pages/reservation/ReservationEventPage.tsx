@@ -368,13 +368,21 @@ function EventsTab({ storeId }: { storeId: string }) {
 
   const onDelete = async (id: string) => {
     if (!confirm('削除しますか?')) return;
-    await api.deleteReservationEvent(storeId, id);
-    await load();
+    try {
+      await api.deleteReservationEvent(storeId, id);
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '削除に失敗しました');
+    }
   };
 
   const onStatusChange = async (id: string, status: ReservationEvent['status']) => {
-    await api.updateReservationEvent(storeId, id, { status });
-    await load();
+    try {
+      await api.updateReservationEvent(storeId, id, { status });
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'ステータス変更に失敗しました');
+    }
   };
 
   if (loading) return <div>読み込み中...</div>;
@@ -660,13 +668,23 @@ function EventDetailModal({
 
   const saveDetail = async () => {
     setError(null);
+    const startsDate = new Date(startsAt);
+    const endsDate = new Date(endsAt);
+    if (isNaN(startsDate.getTime()) || isNaN(endsDate.getTime())) {
+      setError('開始日時・終了日時を正しく入力してください');
+      return;
+    }
+    if (endsDate <= startsDate) {
+      setError('終了日時は開始日時より後にしてください');
+      return;
+    }
     setSaving(true);
     try {
       await api.updateReservationEvent(storeId, event.id, {
         title,
         description: description || null,
-        starts_at: new Date(startsAt).toISOString(),
-        ends_at: new Date(endsAt).toISOString(),
+        starts_at: startsDate.toISOString(),
+        ends_at: endsDate.toISOString(),
         capacity,
         price: price ? Number(price) : null,
         status,

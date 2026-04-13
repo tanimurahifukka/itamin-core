@@ -712,12 +712,30 @@ export default function KioskReservations({ storeId }: Props) {
   const handleSaveEvent = async (form: EventFormState) => {
     setEventFormSaving(true);
     try {
+      const startsDate = new Date(form.starts_at);
+      const endsDate = new Date(form.ends_at);
+      if (isNaN(startsDate.getTime()) || isNaN(endsDate.getTime())) {
+        showMsg('開始日時・終了日時を正しく入力してください', 'error');
+        setEventFormSaving(false);
+        return;
+      }
+      if (endsDate <= startsDate) {
+        showMsg('終了日時は開始日時より後にしてください', 'error');
+        setEventFormSaving(false);
+        return;
+      }
+      const cap = parseInt(form.capacity, 10);
+      if (isNaN(cap) || cap < 1) {
+        showMsg('定員は1以上を入力してください', 'error');
+        setEventFormSaving(false);
+        return;
+      }
       const payload = {
         title: form.title,
         description: form.description || null,
-        starts_at: new Date(form.starts_at).toISOString(),
-        ends_at: new Date(form.ends_at).toISOString(),
-        capacity: parseInt(form.capacity, 10),
+        starts_at: startsDate.toISOString(),
+        ends_at: endsDate.toISOString(),
+        capacity: cap,
         price: form.price ? parseFloat(form.price) : null,
         status: form.status,
         form_schema: form.form_schema,
@@ -731,8 +749,8 @@ export default function KioskReservations({ storeId }: Props) {
       setEditingEvent(null);
       loadEvents();
       showMsg(editingEvent ? 'イベントを更新しました' : 'イベントを作成しました', 'success');
-    } catch {
-      showMsg('イベントの保存に失敗しました', 'error');
+    } catch (e) {
+      showMsg(e instanceof Error ? e.message : 'イベントの保存に失敗しました', 'error');
     } finally {
       setEventFormSaving(false);
     }
