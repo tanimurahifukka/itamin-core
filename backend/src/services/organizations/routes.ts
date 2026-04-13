@@ -4,6 +4,10 @@ import { requireAuth } from '../../middleware/auth';
 import { checkOrgLimits } from '../../lib/billing';
 import { requireOrgManager } from '../../auth/authorization';
 
+export const organizationsRouter = Router();
+
+organizationsRouter.use(requireAuth);
+
 // GET /api/organizations — 自分の所属組織一覧
 organizationsRouter.get('/', async (req: Request, res: Response) => {
   const userId = req.user!.id;
