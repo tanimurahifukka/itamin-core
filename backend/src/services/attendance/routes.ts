@@ -885,7 +885,14 @@ router.patch('/admin/records/:recordId', requireAuth, async (req: Request, res: 
       note: target.note,
     };
 
-    const update: any = { updated_by: req.user!.id, updated_at: new Date().toISOString() };
+    const update: {
+      updated_by: string;
+      updated_at: string;
+      clock_in_at?: string;
+      clock_out_at?: string;
+      status?: string;
+      note?: string;
+    } = { updated_by: req.user!.id, updated_at: new Date().toISOString() };
     if (req.body.clockInAt !== undefined) update.clock_in_at = req.body.clockInAt;
     if (req.body.clockOutAt !== undefined) update.clock_out_at = req.body.clockOutAt;
     if (req.body.status !== undefined) update.status = req.body.status;
@@ -1061,7 +1068,14 @@ router.post('/admin/corrections/:id/approve', requireAuth, async (req: Request, 
     // after_snapshot の内容を勤怠レコードに反映
     if (correction.attendance_record_id && correction.after_snapshot) {
       const snap = correction.after_snapshot;
-      const update: any = { updated_by: req.user!.id, updated_at: now };
+      const update: {
+        updated_by: string;
+        updated_at: string;
+        clock_in_at?: string;
+        clock_out_at?: string;
+        status?: string;
+        note?: string;
+      } = { updated_by: req.user!.id, updated_at: now };
       if (snap.clockInAt) update.clock_in_at = snap.clockInAt;
       if (snap.clockOutAt) update.clock_out_at = snap.clockOutAt;
       if (snap.status) update.status = snap.status;
@@ -1164,7 +1178,15 @@ router.put('/admin/policy', requireAuth, async (req: Request, res: Response) => 
     const mgmt = await requireManagedStore(req, res, storeId);
     if (!mgmt) return;
 
-    const update: any = { updated_at: new Date().toISOString() };
+    const update: {
+      updated_at: string;
+      timezone?: string;
+      business_day_cutoff_hour?: number;
+      rounding_unit_minutes?: number;
+      rounding_mode?: string;
+      auto_close_break_before_clock_out?: boolean;
+      require_manager_approval?: boolean;
+    } = { updated_at: new Date().toISOString() };
     if (policyData.timezone !== undefined) update.timezone = policyData.timezone;
     if (policyData.businessDayCutoffHour !== undefined) update.business_day_cutoff_hour = policyData.businessDayCutoffHour;
     if (policyData.roundingUnitMinutes !== undefined) update.rounding_unit_minutes = policyData.roundingUnitMinutes;

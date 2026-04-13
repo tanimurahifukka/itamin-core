@@ -36,7 +36,18 @@ router.get('/:storeId/items', requireAuth, async (req: Request, res: Response) =
       return;
     }
 
-    const items = (data || []).map((item: any) => ({
+    interface MenuItemRow {
+      id: string;
+      store_id: string;
+      name: string;
+      category: string;
+      price: number;
+      display_order: number;
+      is_active: boolean;
+      created_at: string;
+      updated_at: string;
+    }
+    const items = (data || []).map((item: MenuItemRow) => ({
       id: item.id,
       storeId: item.store_id,
       name: item.name,
@@ -108,7 +119,14 @@ router.put('/:storeId/items/:itemId', requireAuth, async (req: Request, res: Res
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
-    const updates: any = {
+    const updates: {
+      updated_at: string;
+      name?: string;
+      category?: string;
+      price?: number;
+      display_order?: number;
+      is_active?: boolean;
+    } = {
       updated_at: new Date().toISOString(),
     };
 

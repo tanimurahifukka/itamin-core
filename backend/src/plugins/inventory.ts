@@ -37,7 +37,22 @@ router.get('/:storeId/items', requireAuth, async (req: Request, res: Response) =
       return;
     }
 
-    const items = (data || []).map((item: any) => ({
+    interface InventoryItemRow {
+      id: string;
+      store_id: string;
+      name: string;
+      category: string;
+      unit: string;
+      quantity: number;
+      min_quantity: number;
+      cost: number;
+      note: string | null;
+      status: string;
+      last_checked_at: string;
+      updated_at: string;
+      created_at: string;
+    }
+    const items = (data || []).map((item: InventoryItemRow) => ({
       id: item.id,
       storeId: item.store_id,
       name: item.name,
@@ -133,7 +148,18 @@ router.put('/:storeId/items/:itemId', requireAuth, async (req: Request, res: Res
     const cost = req.body?.cost;
     const note = req.body?.note;
 
-    const updates: any = { updated_at: new Date().toISOString() };
+    const updates: {
+      updated_at: string;
+      name?: string;
+      category?: string;
+      unit?: string;
+      quantity?: number;
+      min_quantity?: number;
+      cost?: number;
+      note?: string;
+      status?: string;
+      last_checked_at?: string;
+    } = { updated_at: new Date().toISOString() };
     if (name !== undefined) updates.name = name;
     if (category !== undefined) updates.category = category;
     if (unit !== undefined) updates.unit = unit;

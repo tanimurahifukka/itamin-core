@@ -5,6 +5,29 @@ import type { Express } from 'express';
 import type { Plugin } from '../types';
 import { requireManagedStore } from '../auth/authorization';
 
+/** Row from store_staff with joined profile */
+interface StaffMemberRow {
+  id: string;
+  user_id: string;
+  role: string;
+  user: { name?: string; email?: string } | null;
+}
+
+/** Row from time_records for consecutive work check */
+interface ClockInRecordRow {
+  staff_id: string;
+  clock_in: string;
+}
+
+/** Computed staff status entry */
+interface StaffStatusEntry {
+  userId: string;
+  name: string;
+  role: string;
+  consecutiveDays: number;
+  level: string;
+}
+
 const router = Router();
 
 // ============================================================
@@ -41,9 +64,9 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const staffStatus = (members || []).map((m: any) => {
+    const staffStatus = ((members || []) as StaffMemberRow[]).map((m: StaffMemberRow) => {
       // staff_id = store_staff.id でフィルタ
-      const staffRecords = (records || []).filter((r: any) => r.staff_id === m.id);
+      const staffRecords = ((records || []) as ClockInRecordRow[]).filter((r: ClockInRecordRow) => r.staff_id === m.id);
       const workDates = new Set<string>();
       for (const r of staffRecords) {
         const d = new Date(r.clock_in);
@@ -72,7 +95,7 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
 
       return {
         userId: m.user_id,
-        name: (m as { user?: { name?: string; email?: string } | null }).user?.name || (m as { user?: { name?: string; email?: string } | null }).user?.email || '不明',
+        name: m.user?.name || m.user?.email || '不明',
         role: m.role,
         consecutiveDays,
         level: consecutiveDays >= 6 ? 'danger' : consecutiveDays >= 5 ? 'warning' : 'normal',
@@ -80,7 +103,7 @@ router.get('/:storeId/status', requireAuth, async (req: Request, res: Response) 
     });
 
     // 連勤日数が多い順にソート
-    staffStatus.sort((a: any, b: any) => b.consecutiveDays - a.consecutiveDays);
+    staffStatus.sort((a: StaffStatusEntry, b: StaffStatusEntry) => b.consecutiveDays - a.consecutiveDays);
 
     res.json({ staffStatus });
   } catch (e: unknown) {

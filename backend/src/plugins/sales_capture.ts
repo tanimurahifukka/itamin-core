@@ -34,17 +34,33 @@ router.get('/:storeId/receipts', requireAuth, async (req: Request, res: Response
     }
 
     // アップロード者名を取得
-    const userIds = [...new Set((data || []).map((r: any) => r.uploaded_by).filter(Boolean))];
+    interface SalesReceiptRow {
+      id: string;
+      store_id: string;
+      business_date: string;
+      source_type: string;
+      file_path: string;
+      file_name: string;
+      parsed_summary: string | null;
+      confidence: number | null;
+      status: string;
+      uploaded_by: string;
+      reviewed_by: string | null;
+      uploaded_at: string;
+      reviewed_at: string | null;
+    }
+    const userIds = [...new Set((data || []).map((r: SalesReceiptRow) => r.uploaded_by).filter(Boolean))];
     const nameMap = new Map<string, string>();
     if (userIds.length > 0) {
       const { data: profiles } = await supabaseAdmin
         .from('profiles')
         .select('id, name')
         .in('id', userIds);
-      (profiles || []).forEach((p: any) => nameMap.set(p.id, p.name));
+      interface ProfileRow { id: string; name: string }
+      (profiles || []).forEach((p: ProfileRow) => nameMap.set(p.id, p.name));
     }
 
-    const receipts = (data || []).map((r: any) => ({
+    const receipts = (data || []).map((r: SalesReceiptRow) => ({
       id: r.id,
       storeId: r.store_id,
       businessDate: r.business_date,

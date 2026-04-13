@@ -743,15 +743,29 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
       `attachment; filename="${asciiFilename}"; filename*=UTF-8''${utf8Filename}`,
     );
 
+    interface ExportTimeRecordRow {
+      staff_id: string;
+      clock_in: string;
+      clock_out: string | null;
+      break_minutes: number;
+      staff: {
+        id: string;
+        hourly_wage: number;
+        user: { name: string } | null;
+      } | null;
+    }
+
+    const typedData = (data as ExportTimeRecordRow[]) || [];
+
     if (mode === 'detail') {
       // High 5: clock_out != null のレコードのみ集計
-      const records: DetailRecord[] = (data || [])
-        .filter((r: any) => r.clock_out != null)
-        .map((r: any) => {
+      const records: DetailRecord[] = typedData
+        .filter((r) => r.clock_out != null)
+        .map((r) => {
           const clockInDate = new Date(r.clock_in);
-          const clockOutDate = new Date(r.clock_out);
+          const clockOutDate = new Date(r.clock_out!);
           const breakMins = r.break_minutes || 0;
-          const workMinutes = computeWorkMinutes(r.clock_in, r.clock_out, breakMins);
+          const workMinutes = computeWorkMinutes(r.clock_in, r.clock_out!, breakMins);
           const hourlyWage: number = r.staff?.hourly_wage || 0;
           const estimatedSalary = Math.round(workMinutes / 60 * hourlyWage);
           const dateStr = clockInDate.toISOString().split('T')[0];
@@ -772,7 +786,7 @@ router.get('/:storeId/export', requireAuth, async (req: Request, res: Response) 
     } else {
       // summary モード: aggregateSummary で集計（High 5, High 7）
       // aggregateSummary は clock_out != null のレコードのみ集計し、detail と一致する
-      const rawRecords: RawRecord[] = (data || []).map((r: any) => ({
+      const rawRecords: RawRecord[] = typedData.map((r) => ({
         staff_id: r.staff_id,
         clock_in: r.clock_in,
         clock_out: r.clock_out,

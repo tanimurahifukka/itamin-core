@@ -31,7 +31,18 @@ router.get('/:storeId/posts', requireAuth, async (req: Request, res: Response) =
     }
 
     // 既読情報を取得
-    const noticeIds = (data || []).map((n: any) => n.id);
+    interface NoticeRow {
+      id: string;
+      store_id: string;
+      author_id: string;
+      author_name: string;
+      title: string;
+      body: string;
+      pinned: boolean;
+      image_urls: string[];
+      created_at: string;
+    }
+    const noticeIds = (data || []).map((n: NoticeRow) => n.id);
     const { data: reads } = noticeIds.length > 0
       ? await supabaseAdmin
           .from('notice_reads')
@@ -40,7 +51,8 @@ router.get('/:storeId/posts', requireAuth, async (req: Request, res: Response) =
           .in('notice_id', noticeIds)
       : { data: [] };
 
-    const readMap = new Map((reads || []).map((r: any) => [r.notice_id, r.read_at]));
+    interface NoticeReadRow { notice_id: string; read_at: string }
+    const readMap = new Map((reads || []).map((r: NoticeReadRow) => [r.notice_id, r.read_at]));
 
     // コメント数を取得
     const commentCountMap = new Map<string, number>();
@@ -50,12 +62,13 @@ router.get('/:storeId/posts', requireAuth, async (req: Request, res: Response) =
         .select('notice_id')
         .eq('store_id', storeId)
         .in('notice_id', noticeIds);
-      (commentCounts || []).forEach((c: any) => {
+      interface CommentCountRow { notice_id: string }
+      (commentCounts || []).forEach((c: CommentCountRow) => {
         commentCountMap.set(c.notice_id, (commentCountMap.get(c.notice_id) || 0) + 1);
       });
     }
 
-    const notices = (data || []).map((n: any) => ({
+    const notices = (data || []).map((n: NoticeRow) => ({
       id: n.id,
       storeId: n.store_id,
       authorId: n.author_id,
@@ -211,7 +224,7 @@ router.put('/:storeId/posts/:noticeId', requireAuth, async (req: Request, res: R
       return;
     }
 
-    const update: any = {};
+    const update: { title?: string; body?: string } = {};
     if (typeof req.body?.title === 'string' && req.body.title.trim()) {
       update.title = req.body.title.trim();
     }
@@ -335,7 +348,16 @@ router.get('/:storeId/posts/:noticeId/comments', requireAuth, async (req: Reques
       return;
     }
 
-    const comments = (data || []).map((c: any) => ({
+    interface NoticeCommentRow {
+      id: string;
+      notice_id: string;
+      author_id: string;
+      author_name: string;
+      body: string;
+      created_at: string;
+      updated_at: string;
+    }
+    const comments = (data || []).map((c: NoticeCommentRow) => ({
       id: c.id,
       noticeId: c.notice_id,
       authorId: c.author_id,

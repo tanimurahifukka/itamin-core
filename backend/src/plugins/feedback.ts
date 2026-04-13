@@ -39,7 +39,18 @@ router.get('/:storeId/items', requireAuth, async (req: Request, res: Response) =
       return;
     }
 
-    const items = (data || []).map((f: any) => ({
+    interface FeedbackRow {
+      id: string;
+      store_id: string;
+      date: string;
+      type: string;
+      content: string;
+      response: string;
+      status: string;
+      created_by: string;
+      created_at: string;
+    }
+    const items = (data || []).map((f: FeedbackRow) => ({
       id: f.id,
       storeId: f.store_id,
       date: f.date,
@@ -114,7 +125,7 @@ router.put('/:storeId/items/:itemId', requireAuth, async (req: Request, res: Res
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
-    const updates: any = {};
+    const updates: { type?: string; content?: string; response?: string; status?: string; date?: string } = {};
     if (req.body.type !== undefined) updates.type = req.body.type;
     if (req.body.content !== undefined) updates.content = req.body.content;
     if (req.body.response !== undefined) updates.response = req.body.response;

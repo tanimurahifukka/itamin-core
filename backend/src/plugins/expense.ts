@@ -44,7 +44,18 @@ router.get('/:storeId/items', requireAuth, async (req: Request, res: Response) =
       return;
     }
 
-    const expenses = (data || []).map((e: any) => ({
+    interface ExpenseRow {
+      id: string;
+      store_id: string;
+      date: string;
+      category: string;
+      description: string;
+      amount: number;
+      receipt_note: string;
+      created_by: string;
+      created_at: string;
+    }
+    const expenses = (data || []).map((e: ExpenseRow) => ({
       id: e.id,
       storeId: e.store_id,
       date: e.date,
@@ -128,7 +139,7 @@ router.put('/:storeId/items/:expenseId', requireAuth, async (req: Request, res: 
     const membership = await requireManagedStore(req, res, storeId);
     if (!membership) return;
 
-    const updates: any = {};
+    const updates: { date?: string; category?: string; description?: string; amount?: number; receipt_note?: string } = {};
     if (req.body.date !== undefined) updates.date = req.body.date;
     if (req.body.category !== undefined) updates.category = req.body.category;
     if (req.body.description !== undefined) updates.description = req.body.description;
