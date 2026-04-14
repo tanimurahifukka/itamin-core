@@ -1,9 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
-import { showToast } from '../components/Toast';
+import { showToast } from '../components/molecules/Toast';
+import { Modal } from '../components/molecules/Modal';
+import { BreakMinutesField } from '../components/molecules/BreakMinutesField';
+import { Button } from '../components/atoms/Button';
+import { StatusDot } from '../components/atoms/StatusDot';
+import { ErrorMessage } from '../components/atoms/ErrorMessage';
+import { SummaryCard } from '../components/molecules/SummaryCard';
 import type { TimeRecord, MonthlySummaryStaff, StaffMember, MonthlyRecordsResponse, MonthlyRawStaffRecord } from '../types/api';
 import { todayJST, formatDateJST, formatShortDateJST, formatTimeJST, currentJstYearMonth, isoToJstDateTimeLocalValue, jstDateTimeLocalValueToIso } from '../lib/dateUtils';
+import { EmptyState } from '../components/molecules/EmptyState';
 
 type ViewMode = 'daily' | 'monthly' | 'staff';
 
@@ -342,37 +349,31 @@ export default function DashboardPage() {
           {/* サマリーカード */}
           {records.length > 0 && (
             <div className="today-summary" style={isOwner ? { gridTemplateColumns: 'repeat(4, 1fr)' } : undefined}>
-              {isToday && (
-                <div className="summary-card working">
-                  <div className="summary-number">{working.length}</div>
-                  <div className="summary-label">勤務中</div>
-                </div>
-              )}
-              <div className="summary-card finished">
-                <div className="summary-number">{finished.length}</div>
-                <div className="summary-label">退勤済み</div>
-              </div>
-              <div className="summary-card hours">
-                <div className="summary-number">{totalHoursToday.toFixed(1)}</div>
-                <div className="summary-label">合計時間</div>
-              </div>
+              {isToday && <SummaryCard variant="working" value={working.length} label="勤務中" />}
+              <SummaryCard variant="finished" value={finished.length} label="退勤済み" />
+              <SummaryCard variant="hours" value={totalHoursToday.toFixed(1)} label="合計時間" />
               {isOwner && (
-                <div className="summary-card labor" data-testid="daily-labor-cost">
-                  <div className="summary-number">¥{totalLaborCost.toLocaleString()}</div>
-                  <div className="summary-label">概算人件費</div>
-                </div>
+                <SummaryCard
+                  variant="labor"
+                  value={`¥${totalLaborCost.toLocaleString()}`}
+                  label="概算人件費"
+                  data-testid="daily-labor-cost"
+                />
               )}
               {isOwner && totalTransportFee > 0 && (
-                <div className="summary-card" data-testid="daily-transport-cost">
-                  <div className="summary-number">¥{totalTransportFee.toLocaleString()}</div>
-                  <div className="summary-label">交通費</div>
-                </div>
+                <SummaryCard
+                  value={`¥${totalTransportFee.toLocaleString()}`}
+                  label="交通費"
+                  data-testid="daily-transport-cost"
+                />
               )}
               {isOwner && (
-                <div className="summary-card" data-testid="daily-total-cost" style={{ borderLeft: '4px solid #ef4444' }}>
-                  <div className="summary-number">¥{totalDailyCost.toLocaleString()}</div>
-                  <div className="summary-label">1日コスト合計</div>
-                </div>
+                <SummaryCard
+                  value={`¥${totalDailyCost.toLocaleString()}`}
+                  label="1日コスト合計"
+                  data-testid="daily-total-cost"
+                  className="border-l-[#ef4444]"
+                />
               )}
             </div>
           )}
@@ -402,15 +403,7 @@ export default function DashboardPage() {
             </div>
 
             {records.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">📋</div>
-                <p className="empty-state-text">
-                  {isToday ? 'まだ出勤記録がありません' : 'この日の記録はありません'}
-                </p>
-                <p className="empty-state-hint">
-                  {isToday ? 'スタッフが出勤すると自動的に表示されます' : '日付を変更して別の日の記録を確認できます'}
-                </p>
-              </div>
+              <EmptyState icon="📋" text={isToday ? 'まだ出勤記録がありません' : 'この日の記録はありません'} hint={isToday ? 'スタッフが出勤すると自動的に表示されます' : '日付を変更して別の日の記録を確認できます'} />
             ) : (
               <table className="records-table">
                 <thead>
@@ -432,7 +425,7 @@ export default function DashboardPage() {
                       <tr key={r.id} className={!r.clockOut ? 'row-working row-unpaired' : ''}>
                         <td>
                           <span className="staff-name-cell">{r.staffName || '—'}</span>
-                          {!r.clockOut && <span className="status-dot" title="勤務中" />}
+                          {!r.clockOut && <StatusDot state="working_pulse" title="勤務中" />}
                         </td>
                         <td>{formatTime(r.clockIn)}</td>
                         <td className={!r.clockOut ? 'text-unpaired' : ''}>
@@ -561,11 +554,7 @@ export default function DashboardPage() {
             </table>
             </>
           ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">📊</div>
-              <p className="empty-state-text">この月の集計データがありません</p>
-              <p className="empty-state-hint">月を変更して別の期間を確認できます</p>
-            </div>
+            <EmptyState icon="📊" text="この月の集計データがありません" hint="月を変更して別の期間を確認できます" />
           )}
         </div>
       )}
@@ -611,10 +600,7 @@ export default function DashboardPage() {
 
             if (staffRecords.length === 0) {
               return (
-                <div className="empty-state">
-                  <div className="empty-state-icon">📋</div>
-                  <p className="empty-state-text">この月の勤務記録はありません</p>
-                </div>
+                <EmptyState icon="📋" text="この月の勤務記録はありません" />
               );
             }
 
@@ -623,25 +609,21 @@ export default function DashboardPage() {
                 {/* スタッフサマリー */}
                 {staffSummary && (
                   <div className="today-summary" style={isOwner ? { gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 } : { marginBottom: 16 }}>
-                    <div className="summary-card finished">
-                      <div className="summary-number">{staffSummary.workDays}日</div>
-                      <div className="summary-label">出勤日数</div>
-                    </div>
-                    <div className="summary-card hours">
-                      <div className="summary-number">{Number(staffSummary.totalWorkHours).toFixed(1)}h</div>
-                      <div className="summary-label">合計時間</div>
-                    </div>
+                    <SummaryCard variant="finished" value={`${staffSummary.workDays}日`} label="出勤日数" />
+                    <SummaryCard variant="hours" value={`${Number(staffSummary.totalWorkHours).toFixed(1)}h`} label="合計時間" />
                     {isOwner && (
-                      <div className="summary-card labor">
-                        <div className="summary-number">¥{staffSummary.hourlyWage?.toLocaleString() || '—'}</div>
-                        <div className="summary-label">時給</div>
-                      </div>
+                      <SummaryCard
+                        variant="labor"
+                        value={`¥${staffSummary.hourlyWage?.toLocaleString() || '—'}`}
+                        label="時給"
+                      />
                     )}
                     {isOwner && (
-                      <div className="summary-card" style={{ borderLeftColor: '#2563eb' }}>
-                        <div className="summary-number">¥{Number(staffSummary.estimatedSalary).toLocaleString()}</div>
-                        <div className="summary-label">概算給与</div>
-                      </div>
+                      <SummaryCard
+                        value={`¥${Number(staffSummary.estimatedSalary).toLocaleString()}`}
+                        label="概算給与"
+                        className="border-l-[#2563eb]"
+                      />
                     )}
                   </div>
                 )}
@@ -717,27 +699,55 @@ export default function DashboardPage() {
               </>
             );
           })() : (
-            <div className="empty-state">
-              <div className="empty-state-icon">👤</div>
-              <p className="empty-state-text">スタッフを選択してください</p>
-              <p className="empty-state-hint">上のボタンからスタッフを選ぶと月間タイムカードが表示されます</p>
-            </div>
+            <EmptyState icon="👤" text="スタッフを選択してください" hint="上のボタンからスタッフを選ぶと月間タイムカードが表示されます" />
           )}
         </div>
       )}
 
       {/* 勤怠編集モーダル (create / edit 兼用) */}
-      {(editRecord || isCreating) && (
-        <div className="break-modal-overlay" onClick={closeEditModal}>
-          <div className="break-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }} data-testid="edit-record-modal">
-            <h3>{isCreating ? '勤怠記録の新規作成' : '勤怠記録の修正'}</h3>
-            <p className="break-modal-desc">
+      <Modal
+        open={!!editRecord || isCreating}
+        onClose={closeEditModal}
+        size="sm"
+        actions={
+          <div data-testid="edit-record-modal-actions" className="flex w-full flex-wrap gap-2">
+            <Button variant="secondary" onClick={closeEditModal} data-testid="edit-cancel-btn">
+              キャンセル
+            </Button>
+            {!isCreating && editRecord && canDelete && (
+              <Button
+                variant="secondary"
+                onClick={handleEditDelete}
+                disabled={editSubmitting}
+                data-testid="edit-delete-btn"
+                className="border-error text-error"
+              >
+                削除
+              </Button>
+            )}
+            <Button
+              className="flex-[2] bg-gradient-to-br from-[#0f3460] to-[#16213e] text-white hover:opacity-90"
+              onClick={handleEditSubmit}
+              disabled={editSubmitting}
+              data-testid="edit-save-btn"
+            >
+              {editSubmitting ? (isCreating ? '作成中...' : '保存中...') : (isCreating ? '作成' : '保存')}
+            </Button>
+          </div>
+        }
+      >
+        {(editRecord || isCreating) && (
+          <div data-testid="edit-record-modal">
+            <h3 className="text-center text-[1.2rem] text-[#1a1a2e] mb-1">
+              {isCreating ? '勤怠記録の新規作成' : '勤怠記録の修正'}
+            </h3>
+            <p className="text-center text-[0.85rem] text-[#888] mb-5">
               {isCreating
                 ? 'スタッフと時刻を選択して作成します'
                 : `${editRecord?.staffName || '—'} さんの記録を修正します`}
             </p>
 
-            {editError && <div className="error-msg" style={{ marginBottom: 8 }}>{editError}</div>}
+            {editError && <ErrorMessage className="mb-2 mt-0">{editError}</ErrorMessage>}
 
             {isCreating && (
               <div style={{ marginBottom: 12 }}>
@@ -787,58 +797,15 @@ export default function DashboardPage() {
 
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>休憩時間</label>
-              <div className="break-input-row">
-                <input
-                  type="number"
-                  min={0}
-                  max={480}
-                  value={editBreakMinutes}
-                  onChange={e => setEditBreakMinutes(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="break-input"
-                  data-testid="edit-break-input"
-                />
-                <span className="break-unit">分</span>
-              </div>
-              <div className="break-presets">
-                {[0, 15, 30, 45, 60].map(m => (
-                  <button
-                    key={m}
-                    className={`break-preset ${editBreakMinutes === m ? 'active' : ''}`}
-                    onClick={() => setEditBreakMinutes(m)}
-                  >
-                    {m}分
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="break-modal-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button className="break-cancel" onClick={closeEditModal} data-testid="edit-cancel-btn">
-                キャンセル
-              </button>
-              {!isCreating && editRecord && canDelete && (
-                <button
-                  className="break-cancel"
-                  onClick={handleEditDelete}
-                  disabled={editSubmitting}
-                  data-testid="edit-delete-btn"
-                  style={{ color: '#ef4444', borderColor: '#ef4444' }}
-                >
-                  削除
-                </button>
-              )}
-              <button
-                className="break-confirm"
-                onClick={handleEditSubmit}
-                disabled={editSubmitting}
-                data-testid="edit-save-btn"
-              >
-                {editSubmitting ? (isCreating ? '作成中...' : '保存中...') : (isCreating ? '作成' : '保存')}
-              </button>
+              <BreakMinutesField
+                value={editBreakMinutes}
+                onChange={setEditBreakMinutes}
+                inputTestId="edit-break-input"
+              />
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </>
   );
 }

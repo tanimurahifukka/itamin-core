@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../api/client';
+import { api } from '../../../api/client';
 
 /**
  * 打刻ルート選択式のヒントバナー。

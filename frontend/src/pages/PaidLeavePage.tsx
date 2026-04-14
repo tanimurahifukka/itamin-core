@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
-import { showToast } from '../components/Toast';
+import { showToast } from '../components/molecules/Toast';
 import type { PaidLeaveSummary, LeaveRecord, StaffMember } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
+import { EmptyState } from '../components/molecules/EmptyState';
 
 export default function PaidLeavePage() {
   const { selectedStore } = useAuth();
@@ -105,11 +106,7 @@ export default function PaidLeavePage() {
       <div className="records-section" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 12 }}>スタッフ別有給残日数</h3>
         {summary.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">🏖️</div>
-            <p className="empty-state-text">有給データがありません</p>
-            <p className="empty-state-hint">下のフォームから有給を付与してください</p>
-          </div>
+          <EmptyState icon="🏖️" text="有給データがありません" hint="下のフォームから有給を付与してください" />
         ) : (
           <table className="records-table">
             <thead>

@@ -20,6 +20,7 @@ import {
   TabBar,
   formatDateTime,
 } from './_ui';
+import { Loading } from '../../components/atoms/Loading';
 
 type Tab = 'courses' | 'reservations';
 
@@ -27,7 +28,7 @@ export default function ReservationSchoolPage() {
   const { selectedStore } = useAuth();
   const [tab, setTab] = useState<Tab>('courses');
 
-  if (!selectedStore) return <div className="loading">店舗を選択してください</div>;
+  if (!selectedStore) return <Loading message="店舗を選択してください" />;
 
   return (
     <div style={{ padding: 20, maxWidth: 1100, margin: '0 auto' }}>

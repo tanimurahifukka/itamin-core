@@ -1,9 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
-import { showToast } from '../components/Toast';
+import { showToast } from '../components/molecules/Toast';
 import type { ExpenseSummary } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
+import { EmptyState } from '../components/molecules/EmptyState';
+import { SummaryCard } from '../components/molecules/SummaryCard';
 
 // Local Expense omits server-only fields (storeId, createdBy, createdAt)
 interface Expense {
@@ -204,14 +206,12 @@ export default function ExpensePage() {
 
       {/* 月次サマリー */}
       <div className="today-summary">
-        <div className="summary-card">
-          <div className="summary-number" style={{ fontSize: '1.2rem' }}>¥{summary.totalAmount.toLocaleString()}</div>
-          <div className="summary-label">合計金額</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-number">{summary.count}</div>
-          <div className="summary-label">件数</div>
-        </div>
+        <SummaryCard
+          value={`¥${summary.totalAmount.toLocaleString()}`}
+          label="合計金額"
+          valueClassName="text-[1.2rem]"
+        />
+        <SummaryCard value={summary.count} label="件数" />
       </div>
 
       {/* カテゴリ別サマリー */}
@@ -252,11 +252,7 @@ export default function ExpensePage() {
       <div className="records-section">
         <h3 style={{ marginBottom: 12 }}>経費一覧</h3>
         {expenses.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">💰</div>
-            <p className="empty-state-text">この月の経費データはありません</p>
-            <p className="empty-state-hint">上のフォームから経費を追加してください</p>
-          </div>
+          <EmptyState icon="💰" text="この月の経費データはありません" hint="上のフォームから経費を追加してください" />
         ) : (
           <table className="records-table">
             <thead>

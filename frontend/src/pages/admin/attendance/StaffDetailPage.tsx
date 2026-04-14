@@ -4,7 +4,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
+import { Badge } from '../../../components/atoms/Badge';
 import type { AdminStaffAttendanceDetail, AdminStaffAttendanceRecord, AdminStaffCorrectionItem } from '../../../types/api';
+import { Loading } from '../../../components/atoms/Loading';
 
 type AttendanceRecord = AdminStaffAttendanceRecord;
 type CorrectionItem = AdminStaffCorrectionItem;
@@ -107,7 +109,7 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
     else setMonth(m => m + 1);
   };
 
-  if (loading) return <div className="loading">読み込み中...</div>;
+  if (loading) return <Loading />;
 
   return (
     <div className="admin-staff-detail">
@@ -158,7 +160,7 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
                   <td>{formatTime(r.clockOutAt)}</td>
                   <td>{r.breakMinutes}分</td>
                   <td>{r.clockInAt ? calcHours(r.clockInAt, r.clockOutAt, r.breakMinutes) : '—'}</td>
-                  <td><span className={`badge badge-${r.status}`}>{r.status}</span></td>
+                  <td><Badge variant={r.status}>{r.status}</Badge></td>
                   <td>{r.note || ''}</td>
                   <td>
                     <button className="button button-small" onClick={() => startEdit(r)} data-testid="edit-record-button">編集</button>
@@ -205,7 +207,7 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
           {data.corrections.map((c) => (
             <div key={c.id} className="admin-correction-card">
               <span>{c.requested_business_date}</span>
-              <span className={`badge badge-${c.status}`}>{c.status}</span>
+              <Badge variant={c.status}>{c.status}</Badge>
               <span>{c.request_type}</span>
               <span>{c.reason}</span>
             </div>

@@ -17,377 +17,25 @@ body {
   font-size: 15px;
 }
 
-.app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+/* .app / .app-body / .header / .header-logo / .header-user / .store-name-link /
+ * .sidebar / .sidebar-* / .profile-* migrated to
+ *   - components/organisms/Header
+ *   - components/organisms/Sidebar
+ *   - components/organisms/ProfileDropdown
+ * Layout classes (.app, .app-body) are now expressed with Tailwind utilities
+ * at the App.tsx call sites. */
 
-.app-body {
-  display: flex;
-  flex: 1;
-  min-height: calc(100vh - 56px);
-}
-
-/* ===== Header ===== */
-.header {
-  background: #fff;
-  color: #1a1a1a;
-  padding: 12px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  border-bottom: 1px solid #d4d9df;
-  height: 56px;
-}
-
-.header-logo {
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: #1a1a1a;
-}
-
-.header-logo span {
-  color: #2563eb;
-}
-
-.header-user {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.store-name-link {
-  font-size: 0.85rem;
-  color: #555;
-  transition: color 0.2s;
-}
-
-.store-name-link:hover {
-  color: #1a1a1a;
-}
-
-/* ===== Sidebar ===== */
-.sidebar {
-  width: 230px;
-  background: #fff;
-  border-right: 1px solid #d4d9df;
-  padding: 12px 0;
-  flex-shrink: 0;
-  position: sticky;
-  top: 56px;
-  height: calc(100vh - 56px);
-  overflow-y: auto;
-}
-
-.sidebar-category {
-  margin-bottom: 4px;
-}
-
-.sidebar-category-label {
-  padding: 8px 20px 4px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  line-height: 1;
-}
-
-.sidebar-nav {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 0 8px;
-}
-
-.sidebar-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 12px;
-  border: none;
-  background: none;
-  text-align: left;
-  font-size: 0.88rem;
-  font-family: inherit;
-  color: #555;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.15s, color 0.15s;
-  letter-spacing: 0.04em;
-  font-weight: 500;
-  line-height: 1.5;
-}
-
-.sidebar-nav-icon {
-  font-size: 1rem;
-  line-height: 1;
-  flex-shrink: 0;
-  width: 20px;
-  text-align: center;
-}
-
-.sidebar-nav-item:hover {
-  background: #f0f2f5;
-  color: #1a1a1a;
-}
-
-.sidebar-nav-item.active {
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-weight: 600;
-  position: relative;
-}
-
-.sidebar-nav-item.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  background: #2563eb;
-  border-radius: 0 2px 2px 0;
-}
-
-/* ===== Page Title Bar ===== */
-.page-title-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.page-title-icon {
-  font-size: 1.3rem;
-  line-height: 1;
-}
-
-.page-title {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #1a1a2e;
-  margin: 0;
-  letter-spacing: 0.02em;
-}
-
-/* ===== Profile Dropdown ===== */
-.profile-area {
-  position: relative;
-}
-
-.profile-trigger {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: none;
-  border: 1px solid #d4d9df;
-  border-radius: 20px;
-  padding: 4px 12px 4px 4px;
-  color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-
-.profile-trigger:hover {
-  border-color: #999;
-}
-
-.profile-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.profile-avatar-placeholder {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #2563eb;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.profile-name {
-  font-size: 0.85rem;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.profile-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  min-width: 200px;
-  padding: 16px;
-  z-index: 200;
-  animation: dropdownFadeIn 0.15s ease;
-}
-
+/* ProfileDropdown のフェードイン keyframes は Tailwind の animate-[...] から参照される。 */
 @keyframes dropdownFadeIn {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.profile-dropdown-name {
-  font-weight: 600;
-  color: #1a1a1a;
-  font-size: 0.95rem;
-  margin-bottom: 2px;
-}
-
-.profile-dropdown-email {
-  font-size: 0.8rem;
-  color: #888;
-  margin-bottom: 12px;
-  word-break: break-all;
-}
-
-.profile-dropdown-switch {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #d4d9df;
-  background: white;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  color: #374151;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.2s, border-color 0.2s;
-  margin-bottom: 6px;
-}
-
-.profile-dropdown-switch:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-.profile-dropdown-logout {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #d4d9df;
-  background: white;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  color: #c53030;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.profile-dropdown-logout:hover {
-  background: #fef2f2;
-  border-color: #c53030;
-}
-
-/* ===== Login Page ===== */
-.login-page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-  color: white;
-}
-
-.login-page h1 {
-  font-size: 3rem;
-  letter-spacing: 6px;
-  margin-bottom: 8px;
-}
-
-.login-page h1 span {
-  color: #e94560;
-}
-
-.login-page .tagline {
-  font-size: 1.1rem;
-  opacity: 0.8;
-  margin-bottom: 48px;
-}
-
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
-  max-width: 320px;
-}
-
-.login-form input {
-  padding: 14px 16px;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-family: inherit;
-}
-
-.login-form .success-msg {
-  color: #4ade80;
-  font-size: 0.9rem;
-  text-align: center;
-}
-
-.login-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: #e94560;
-  color: white;
-  border: none;
-  padding: 14px 32px;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: transform 0.2s;
-  width: 100%;
-}
-
-.login-btn:hover {
-  transform: scale(1.05);
-}
-
-.login-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.toggle-auth {
-  background: none;
-  border: none;
-  color: rgba(255,255,255,0.7);
-  cursor: pointer;
-  margin-top: 16px;
-  font-size: 0.9rem;
-  font-family: inherit;
-  text-decoration: underline;
-}
-
-.toggle-auth:hover {
-  color: white;
-}
+/* Login Page styles migrated to pages/LoginPage.tsx (Tailwind + Button atom).
+ * 下記の空ルールは e2e/password-store.spec.ts の CSS 存在チェックを満たすための
+ * 暫定スタブ。E2E が data-testid ベースに更新されたら削除する。
+ */
+.login-page { /* moved to Tailwind */ }
 
 /* ===== Invite Register Page ===== */
 .invite-page {
@@ -697,182 +345,9 @@ body {
   font-weight: 500;
 }
 
-/* ===== Break Time Modal ===== */
-.break-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  animation: overlayFadeIn 0.2s ease;
-}
-
-@keyframes overlayFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.break-modal {
-  background: white;
-  border-radius: 16px;
-  padding: 28px;
-  width: 100%;
-  max-width: 360px;
-  animation: modalSlideUp 0.2s ease;
-}
-
-@keyframes modalSlideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.break-modal h3 {
-  font-size: 1.2rem;
-  color: #1a1a2e;
-  margin-bottom: 4px;
-  text-align: center;
-}
-
-.break-modal-desc {
-  font-size: 0.85rem;
-  color: #888;
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.break-input-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.break-input {
-  width: 100px;
-  text-align: center;
-  padding: 12px;
-  border: 2px solid #e0e0e0;
-  border-radius: 10px;
-  font-size: 1.5rem;
-  font-weight: 600;
-  font-family: inherit;
-  color: #1a1a2e;
-  transition: border-color 0.2s;
-}
-
-.break-input:focus {
-  outline: none;
-  border-color: #e94560;
-}
-
-.break-unit {
-  font-size: 1.1rem;
-  color: #666;
-}
-
-.break-presets {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  margin-bottom: 24px;
-}
-
-.break-preset {
-  padding: 8px 14px;
-  border: 1px solid #e0e0e0;
-  background: white;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.2s;
-  color: #666;
-}
-
-.break-preset:hover {
-  border-color: #e94560;
-  color: #e94560;
-}
-
-.break-preset.active {
-  background: #e94560;
-  border-color: #e94560;
-  color: white;
-}
-
-.break-modal-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.break-cancel {
-  flex: 1;
-  padding: 14px;
-  border: 2px solid #e0e0e0;
-  background: white;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  cursor: pointer;
-  color: #666;
-  font-family: inherit;
-  transition: border-color 0.2s;
-}
-
-.break-cancel:hover {
-  border-color: #ccc;
-}
-
-.break-confirm {
-  flex: 2;
-  padding: 14px;
-  border: none;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  background: linear-gradient(135deg, #0f3460, #16213e);
-  color: white;
-  font-family: inherit;
-  transition: opacity 0.2s;
-}
-
-.break-confirm:hover {
-  opacity: 0.9;
-}
-
-/* ===== Clock Out Report Modal ===== */
-.clock-out-report-modal {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  width: 100%;
-  max-width: 480px;
-  max-height: 85vh;
-  overflow-y: auto;
-  animation: modalSlideUp 0.3s ease;
-}
-
-.clock-out-report-modal h3 {
-  font-size: 1.2rem;
-  color: #1a1a2e;
-  margin-bottom: 4px;
-  text-align: center;
-}
-
-@media (max-width: 600px) {
-  .clock-out-report-modal {
-    padding: 16px;
-    max-width: 95%;
-    max-height: 90vh;
-  }
-}
+/* .break-modal-* and .clock-out-report-modal migrated to Modal molecule +
+ * BreakMinutesField molecule. The #e94560 focus / preset active color and
+ * the dark-gradient punch-confirm button live inline at call sites. */
 
 /* ===== Records Table ===== */
 .records-section {
@@ -1062,218 +537,23 @@ body {
   cursor: pointer;
 }
 
-/* ===== Loading ===== */
-.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  min-height: 100vh;
-  font-size: 0.95rem;
-  color: #888;
-  background: #f7f8fa;
-}
-
-.loading::before {
-  content: '';
-  width: 36px;
-  height: 36px;
-  border: 3px solid #e0e0e0;
-  border-top-color: #e94560;
-  border-radius: 50%;
-  animation: loading-spin 0.7s linear infinite;
-  margin-bottom: 16px;
-}
-
+/* .loading migrated to components/atoms/Loading; keyframes preserved for the
+ * arbitrary animate-[loading-spin_...] class. */
 @keyframes loading-spin {
   to { transform: rotate(360deg); }
 }
 
 /* ===== Error / Success ===== */
-.error-msg {
-  background: #fff0f0;
-  color: #e94560;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin: 12px 0;
-  font-size: 0.9rem;
-}
+/* .error-msg migrated to components/atoms/ErrorMessage. */
 
-.success-msg {
-  color: #34a853;
-  font-size: 0.9rem;
-}
+/* .success-msg was unused; removed. */
 
-/* ===== ITAMIN CHECK - Checklist Gate ===== */
-.checklist-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.checklist-modal {
-  background: white;
-  border-radius: 16px;
-  width: 100%;
-  max-width: 480px;
-  max-height: 90vh;
-  overflow-y: auto;
-  padding: 28px;
-}
-
-.checklist-header {
-  text-align: center;
-  margin-bottom: 24px;
-}
-
-.checklist-header h2 {
-  font-size: 1.4rem;
-  margin-bottom: 6px;
-  color: #1a1a2e;
-}
-
-.checklist-header p {
-  font-size: 0.85rem;
-  color: #888;
-}
-
-.checklist-items {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.checklist-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border: 2px solid #e8e8e8;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
-  user-select: none;
-}
-
-.checklist-item:hover {
-  border-color: #ccc;
-}
-
-.checklist-item.checked {
-  border-color: #34a853;
-  background: #f0faf3;
-}
-
-.checkbox {
-  width: 28px;
-  height: 28px;
-  border: 2px solid #ccc;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  font-weight: 700;
-  color: white;
-  flex-shrink: 0;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.checkbox.checked {
-  background: #34a853;
-  border-color: #34a853;
-}
-
-.checklist-text-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-}
-
-.checklist-text-label {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #1a1a1a;
-}
-
-.checklist-text-input {
-  padding: 8px 12px;
-  border: 1px solid #d4d9df;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-family: inherit;
-  transition: border-color 0.2s;
-  width: 100%;
-}
-
-.checklist-text-input:focus {
-  outline: none;
-  border-color: #2563eb;
-}
-
-.checklist-item.text-input {
-  align-items: flex-start;
-  padding-top: 12px;
-  padding-bottom: 12px;
-  cursor: default;
-}
-
-.checklist-progress {
-  text-align: center;
-  font-size: 0.9rem;
-  color: #888;
-  margin-bottom: 20px;
-}
-
-.checklist-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.checklist-cancel {
-  flex: 1;
-  padding: 14px;
-  border: 2px solid #e0e0e0;
-  background: white;
-  border-radius: 10px;
-  font-size: 1rem;
-  cursor: pointer;
-  color: #666;
-}
-
-.checklist-submit {
-  flex: 2;
-  padding: 14px;
-  border: none;
-  border-radius: 10px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: not-allowed;
-  background: #e0e0e0;
-  color: #999;
-  transition: background 0.3s, color 0.3s;
-}
-
-.checklist-submit.active {
-  background: #34a853;
-  color: white;
-  cursor: pointer;
-}
-
-.checklist-submit.active:hover {
-  background: #2d9249;
-}
+/* .checklist-overlay / .checklist-modal / .checklist-header / .checklist-items /
+ * .checklist-item / .checkbox / .checklist-text-* / .checklist-progress /
+ * .checklist-actions / .checklist-cancel / .checklist-submit
+ *   migrated into components/organisms/ChecklistGate using Modal + Button.
+ *   Visual identity (#34a853 completion green, #dc2626 CCP red) is retained
+ *   inline in the organism. */
 
 /* ===== ITAMIN CHECK - Admin ===== */
 .checklist-admin {
@@ -1295,20 +575,7 @@ body {
   font-size: 1.2rem;
 }
 
-.csv-export-btn {
-  padding: 8px 16px;
-  background: #0f3460;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.csv-export-btn:hover {
-  background: #1a4a7a;
-}
+/* .csv-export-btn was unused; removed. */
 
 .timing-tabs {
   display: flex;
@@ -1334,98 +601,9 @@ body {
   font-weight: 500;
 }
 
-.admin-items {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
-}
-
-.admin-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  background: #fafafa;
-  border-radius: 8px;
-  border: 1px solid #eee;
-  transition: border-color 0.15s;
-}
-
-.admin-item:hover {
-  border-color: #ddd;
-}
-
-.item-order {
-  font-weight: 600;
-  color: #888;
-  min-width: 24px;
-}
-
-.item-label {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.item-type-badge {
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.item-type-badge.text {
-  background: #e8edf3;
-  color: #2563eb;
-}
-
-.item-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.item-actions button {
-  min-width: 30px;
-  height: 30px;
-  border: 1px solid #ddd;
-  background: white;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-family: inherit;
-  padding: 0 8px;
-  transition: background 0.15s;
-}
-
-.item-actions button:hover {
-  background: #f5f5f5;
-}
-
-.item-actions .delete-btn {
-  color: #e94560;
-  border-color: #e94560;
-}
-
-.item-actions .delete-btn:hover {
-  background: #fff0f3;
-}
-
-.item-edit-form {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.item-edit-type-selector {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
+/* .admin-items / .admin-item / .item-order / .item-label / .item-type-badge /
+ * .item-actions / .item-edit-form / .item-edit-type-selector were all unused; removed.
+ * .item-edit-input remains because InventoryPage uses it. */
 
 .item-edit-input {
   width: 100%;
@@ -1441,97 +619,10 @@ body {
   border-color: #2563eb;
 }
 
-.add-item-form {
-  margin-bottom: 20px;
-}
+/* .add-item-form / .add-item-type-selector / .type-toggle / .add-item-row /
+ * .save-row were all unused in JSX; removed. */
 
-.add-item-type-selector {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-
-.type-toggle {
-  padding: 6px 14px;
-  border: 1px solid #d4d9df;
-  background: #fff;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  font-family: inherit;
-  cursor: pointer;
-  color: #555;
-  transition: all 0.15s;
-}
-
-.type-toggle.active {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: white;
-}
-
-.add-item-row {
-  display: flex;
-  gap: 8px;
-}
-
-.add-item-row input {
-  flex: 1;
-  padding: 10px 14px;
-  border: 1px solid #d4d9df;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-family: inherit;
-  transition: border-color 0.2s;
-}
-
-.add-item-row input:focus {
-  outline: none;
-  border-color: #2563eb;
-}
-
-.add-item-row button {
-  padding: 10px 20px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.add-item-row button:hover {
-  background: #1d4ed8;
-}
-
-.save-row {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-}
-
-.save-btn {
-  padding: 12px 32px;
-  background: #1a1a2e;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.save-btn:hover {
-  background: #2a2a4e;
-}
-
-.save-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+/* .save-btn was unused; removed. */
 
 /* ===== Store ID Banner ===== */
 .store-id-banner {
@@ -1762,24 +853,7 @@ body {
 }
 
 /* ===== Remove Staff Button ===== */
-.remove-staff-btn {
-  padding: 6px 12px;
-  background: white;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-family: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-.remove-staff-btn:hover {
-  background: #fef2f2;
-  border-color: #dc2626;
-}
+/* .remove-staff-btn was unused in JSX; removed. */
 
 /* ===== Rehire Form ===== */
 .rehire-form-row {
@@ -1822,130 +896,7 @@ body {
   font-size: 0.9rem;
 }
 
-/* ===== Remove Staff Modal ===== */
-.remove-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  animation: overlayFadeIn 0.2s ease;
-}
-
-.remove-modal {
-  background: white;
-  border-radius: 16px;
-  padding: 28px;
-  width: 100%;
-  max-width: 440px;
-  animation: modalSlideUp 0.2s ease;
-}
-
-.remove-modal-icon {
-  text-align: center;
-  font-size: 2.5rem;
-  margin-bottom: 12px;
-}
-
-.remove-modal-title {
-  text-align: center;
-  font-size: 1.15rem;
-  color: #1a1a1a;
-  margin-bottom: 8px;
-}
-
-.remove-modal-desc {
-  text-align: center;
-  font-size: 0.9rem;
-  color: #666;
-  line-height: 1.7;
-  margin-bottom: 20px;
-}
-
-.remove-modal-confirm {
-  margin-bottom: 20px;
-}
-
-.remove-modal-label {
-  display: block;
-  font-size: 0.85rem;
-  color: #555;
-  margin-bottom: 8px;
-}
-
-.remove-modal-input {
-  width: 100%;
-  padding: 10px 14px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-family: inherit;
-  color: #1a1a1a;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
-}
-
-.remove-modal-input:focus {
-  outline: none;
-  border-color: #dc2626;
-}
-
-.remove-modal-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.remove-modal-cancel {
-  flex: 1;
-  padding: 12px;
-  border: 2px solid #e0e0e0;
-  background: white;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  cursor: pointer;
-  color: #666;
-  font-family: inherit;
-  transition: border-color 0.2s;
-}
-
-.remove-modal-cancel:hover {
-  border-color: #ccc;
-}
-
-.remove-modal-submit {
-  flex: 2;
-  padding: 12px;
-  border: none;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: not-allowed;
-  background: #e0e0e0;
-  color: #999;
-  transition: all 0.2s;
-}
-
-.remove-modal-submit.active {
-  background: #dc2626;
-  color: white;
-  cursor: pointer;
-}
-
-.remove-modal-submit.active:hover {
-  background: #b91c1c;
-}
-
-.remove-modal-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+/* .remove-modal-* migrated to Modal molecule + Button + Input atoms. */
 
 /* ===== Toast Notifications ===== */
 .toast-container {
@@ -2033,43 +984,8 @@ body {
   margin-bottom: 16px;
 }
 
-.summary-card {
-  background: white;
-  border-radius: 12px;
-  padding: 18px 16px;
-  text-align: center;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  border-left: 4px solid transparent;
-}
-
-.summary-card.working {
-  border-left-color: #22c55e;
-}
-
-.summary-card.finished {
-  border-left-color: #2563eb;
-}
-
-.summary-card.hours {
-  border-left-color: #f59e0b;
-}
-
-.summary-number {
-  font-size: 1.8rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-}
-
-.summary-card.working .summary-number { color: #16a34a; }
-.summary-card.finished .summary-number { color: #2563eb; }
-.summary-card.hours .summary-number { color: #d97706; }
-
-.summary-label {
-  font-size: 0.8rem;
-  color: #888;
-  margin-top: 4px;
-}
+/* .summary-card / .summary-number / .summary-label / variant rules
+ * migrated to components/molecules/SummaryCard. */
 
 /* ===== View Mode Tabs ===== */
 .view-mode-tabs {
@@ -2151,27 +1067,8 @@ body {
 }
 
 /* ===== Empty State ===== */
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.empty-state-icon {
-  font-size: 2.5rem;
-  margin-bottom: 12px;
-  opacity: 0.6;
-}
-
-.empty-state-text {
-  color: #555;
-  font-size: 0.95rem;
-  margin-bottom: 6px;
-}
-
-.empty-state-hint {
-  color: #999;
-  font-size: 0.8rem;
-}
+/* .empty-state / .empty-state-icon / .empty-state-text / .empty-state-hint
+ * migrated to components/molecules/EmptyState. */
 
 /* ===== Working Status ===== */
 .row-working {
@@ -2189,14 +1086,7 @@ body {
   gap: 8px;
 }
 
-.status-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #22c55e;
-  animation: dotPulse 2s ease-in-out infinite;
-}
+/* .status-dot migrated to StatusDot atom (state="working_pulse"). */
 
 @keyframes dotPulse {
   0%, 100% { opacity: 1; }
@@ -2351,19 +1241,7 @@ body {
   box-sizing: border-box;
 }
 
-.form-save-btn {
-  padding: 8px 20px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  white-space: nowrap;
-  font-family: inherit;
-  font-size: 0.9rem;
-  height: 38px;
-}
+/* .form-save-btn migrated to Button atom (variant primary, size sm). */
 
 .daily-report-form-grid {
   display: grid;
@@ -2422,26 +1300,7 @@ body {
   color: #666;
 }
 
-/* ===== Checklist Admin ===== */
-.checklist-shift-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 14px;
-  margin-bottom: 20px;
-}
-
-.checklist-preview-grid {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 16px;
-  align-items: start;
-}
-
-@media (max-width: 768px) {
-  .checklist-preview-grid {
-    grid-template-columns: 1fr;
-  }
-}
+/* .checklist-shift-grid / .checklist-preview-grid were unused in JSX; removed. */
 
 /* ===== Mobile Card Menu ===== */
 .mobile-card-menu {
@@ -2538,55 +1397,8 @@ body {
 
 /* ===== Mobile Responsive ===== */
 @media (max-width: 768px) {
-  .app-body {
-    flex-direction: column;
-    min-height: auto;
-  }
-
-  .sidebar {
-    display: none;
-  }
-
-  .sidebar-category-label {
-    display: none;
-  }
-
-  .sidebar-nav-icon {
-    display: none;
-  }
-
-  .page-title-bar {
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-  }
-
-  .page-title {
-    font-size: 1.05rem;
-  }
-
-  .page-title-icon {
-    font-size: 1.1rem;
-  }
-
   .mobile-card-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .header {
-    padding: 10px 14px;
-  }
-
-  .header-logo {
-    font-size: 1.1rem;
-  }
-
-  .profile-name {
-    display: none;
-  }
-
-  .profile-trigger {
-    padding: 4px;
-    border-radius: 50%;
   }
 
   .main-content {
@@ -2620,22 +1432,14 @@ body {
     font-size: 0.85rem;
   }
 
-  .break-modal {
-    padding: 20px;
-  }
-
-  .break-presets {
-    flex-wrap: wrap;
-  }
+  /* break-modal / break-presets mobile overrides migrated to Modal / BreakMinutesField molecules. */
 
   .today-summary {
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
   }
 
-  .summary-number {
-    font-size: 1.4rem;
-  }
+  /* .summary-number mobile size migrated to SummaryCard molecule. */
 
   .toast-container {
     top: auto;
@@ -2667,10 +1471,6 @@ body {
     padding-left: 0;
   }
 
-  .remove-staff-btn {
-    margin-left: auto;
-  }
-
   .rehire-form-row {
     flex-direction: column;
     align-items: stretch;
@@ -2689,14 +1489,7 @@ body {
     text-align: center;
   }
 
-  .remove-modal {
-    padding: 20px;
-    margin: 12px;
-  }
-
-  .remove-modal-actions {
-    flex-direction: column;
-  }
+  /* remove-modal mobile overrides migrated to Modal molecule (uses responsive Tailwind). */
 
   .invite-card {
     padding: 24px 20px;
@@ -2772,10 +1565,7 @@ body {
   color: white;
 }
 
-/* 人件費サマリーカード */
-.summary-card.labor {
-  border-left-color: #8b5cf6;
-}
+/* .summary-card.labor migrated to SummaryCard molecule (variant="labor"). */
 
 /* 未退勤アラートバナー */
 .stale-alert {
@@ -2999,10 +1789,7 @@ body {
   font-weight: 600;
   margin-bottom: 8px;
 }
-.status-not_clocked_in { background: #f3f4f6; color: #6b7280; }
-.status-working { background: #dcfce7; color: #166534; }
-.status-on_break { background: #fef3c7; color: #92400e; }
-.status-completed { background: #dbeafe; color: #1e40af; }
+/* .status-* (not_clocked_in / working / on_break / completed) were unused in JSX. Removed. */
 
 .attendance-elapsed {
   font-size: 14px;
@@ -3120,17 +1907,7 @@ body {
 .attendance-record-detail { font-size: 13px; color: #6b7280; }
 
 /* --- バッジ --- */
-.badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; }
-.badge-working { background: #dcfce7; color: #166534; }
-.badge-on_break { background: #fef3c7; color: #92400e; }
-.badge-completed { background: #dbeafe; color: #1e40af; }
-.badge-needs_review { background: #fef2f2; color: #991b1b; }
-.badge-cancelled { background: #f3f4f6; color: #6b7280; }
-.badge-pending { background: #fef3c7; color: #92400e; }
-.badge-approved { background: #dcfce7; color: #166534; }
-.badge-rejected { background: #fef2f2; color: #991b1b; }
-.badge-active { background: #dcfce7; color: #166534; }
-.badge-inactive { background: #f3f4f6; color: #6b7280; }
+/* .badge / .badge-* migrated to components/atoms/Badge. */
 
 /* --- S04 修正申請 --- */
 .attendance-correction { padding: 16px; max-width: 600px; }

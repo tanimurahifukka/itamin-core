@@ -19,6 +19,7 @@ import {
 } from '../api/checkApi';
 import { api } from '../api/client';
 import StoreChecklistPage from './StoreChecklistPage';
+import { Loading } from '../components/atoms/Loading';
 
 interface SwitchBotDevice {
   deviceId: string;
@@ -501,7 +502,7 @@ function TemplatesTab({ storeId }: { storeId: string }) {
       })()}
 
       {/* テンプレート一覧 */}
-      {loading ? <div className="loading">読み込み中...</div> : templates.length === 0 ? (
+      {loading ? <Loading /> : templates.length === 0 ? (
         <div style={{ padding: 18, border: '1px dashed #cbd5e1', borderRadius: 10, color: '#64748b' }}>
           テンプレートがありません。
         </div>
@@ -744,7 +745,7 @@ function AssignmentsTab({ storeId }: { storeId: string }) {
           {message}
         </div>
       )}
-      {loading ? <div className="loading">読み込み中...</div> : (
+      {loading ? <Loading /> : (
         <>
           <div style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: 16, padding: '10px 14px', background: '#f8fafc', borderRadius: 8 }}>
             タイミング × スコープごとに適用するテンプレートを選択してください。<br />

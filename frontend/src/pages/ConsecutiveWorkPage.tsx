@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import type { StaffConsecutiveInfo } from '../types/api';
+import { EmptyState } from '../components/molecules/EmptyState';
+import { SummaryCard } from '../components/molecules/SummaryCard';
 
 type StaffStatus = StaffConsecutiveInfo;
 
@@ -25,18 +27,19 @@ export default function ConsecutiveWorkPage() {
     <div className="main-content">
       {/* サマリー */}
       <div className="today-summary">
-        <div className="summary-card">
-          <div className="summary-number">{staffStatus.length}</div>
-          <div className="summary-label">対象スタッフ</div>
-        </div>
-        <div className="summary-card" style={dangerCount > 0 ? { background: '#fef2f2' } : {}}>
-          <div className="summary-number" style={dangerCount > 0 ? { color: '#dc2626' } : {}}>{dangerCount}</div>
-          <div className="summary-label">危険（6日以上）</div>
-        </div>
-        <div className="summary-card" style={warningCount > 0 ? { background: '#fffbeb' } : {}}>
-          <div className="summary-number" style={warningCount > 0 ? { color: '#f59e0b' } : {}}>{warningCount}</div>
-          <div className="summary-label">注意（5日）</div>
-        </div>
+        <SummaryCard value={staffStatus.length} label="対象スタッフ" />
+        <SummaryCard
+          value={dangerCount}
+          label="危険（6日以上）"
+          className={dangerCount > 0 ? 'bg-[#fef2f2]' : undefined}
+          valueClassName={dangerCount > 0 ? 'text-[#dc2626]' : undefined}
+        />
+        <SummaryCard
+          value={warningCount}
+          label="注意（5日）"
+          className={warningCount > 0 ? 'bg-[#fffbeb]' : undefined}
+          valueClassName={warningCount > 0 ? 'text-[#f59e0b]' : undefined}
+        />
       </div>
 
       {/* 一覧 */}
@@ -46,10 +49,7 @@ export default function ConsecutiveWorkPage() {
           今日から遡って連続出勤日数を表示しています
         </p>
         {staffStatus.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📊</div>
-            <p className="empty-state-text">スタッフデータがありません</p>
-          </div>
+          <EmptyState icon="📊" text="スタッフデータがありません" />
         ) : (
           <table className="records-table">
             <thead>

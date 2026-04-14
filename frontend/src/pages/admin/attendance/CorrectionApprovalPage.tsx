@@ -4,7 +4,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
+import { Badge } from '../../../components/atoms/Badge';
 import type { AttendanceCorrection } from '../../../types/api';
+import { Loading } from '../../../components/atoms/Loading';
 
 type CorrectionItem = AttendanceCorrection;
 
@@ -79,7 +81,7 @@ export default function CorrectionApprovalPage() {
       <h2>修正申請承認</h2>
 
       {loading ? (
-        <div className="loading">読み込み中...</div>
+        <Loading />
       ) : corrections.length === 0 ? (
         <div className="admin-empty">申請はありません</div>
       ) : (
@@ -88,7 +90,7 @@ export default function CorrectionApprovalPage() {
             <div key={c.id} className={`admin-correction-item status-${c.status}`} data-testid="correction-item">
               <div className="admin-correction-header">
                 <span className="admin-correction-applicant">{c.user?.name || c.user_id}</span>
-                <span className={`badge badge-${c.status}`}>{STATUS_LABELS[c.status]}</span>
+                <Badge variant={c.status}>{STATUS_LABELS[c.status]}</Badge>
               </div>
               <div className="admin-correction-body">
                 <div><strong>対象日:</strong> {c.requested_business_date}</div>

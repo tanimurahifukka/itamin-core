@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
-import { showToast } from '../components/Toast';
+import { showToast } from '../components/molecules/Toast';
 import type { InventoryItem } from '../types/api';
+import { EmptyState } from '../components/molecules/EmptyState';
+import { SummaryCard } from '../components/molecules/SummaryCard';
 
 const STATUS_OPTIONS = [
   { value: '適正', color: '#22c55e', bg: '#f0fdf4' },
@@ -174,18 +176,18 @@ export default function InventoryPage() {
     <div className="main-content">
       {/* サマリーカード */}
       <div className="today-summary">
-        <div className="summary-card">
-          <div className="summary-number">{totalItems}</div>
-          <div className="summary-label">商品数</div>
-        </div>
-        <div className="summary-card" style={lowStockCount > 0 ? { background: '#fef2f2' } : {}}>
-          <div className="summary-number" style={lowStockCount > 0 ? { color: '#dc2626' } : {}}>{lowStockCount}</div>
-          <div className="summary-label">在庫不足</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-number" style={{ fontSize: '1.2rem' }}>¥{totalValue.toLocaleString()}</div>
-          <div className="summary-label">在庫総額</div>
-        </div>
+        <SummaryCard value={totalItems} label="商品数" />
+        <SummaryCard
+          value={lowStockCount}
+          label="在庫不足"
+          className={lowStockCount > 0 ? 'bg-[#fef2f2]' : undefined}
+          valueClassName={lowStockCount > 0 ? 'text-[#dc2626]' : undefined}
+        />
+        <SummaryCard
+          value={`¥${totalValue.toLocaleString()}`}
+          label="在庫総額"
+          valueClassName="text-[1.2rem]"
+        />
       </div>
 
       {/* 新規追加フォーム */}
@@ -287,11 +289,7 @@ export default function InventoryPage() {
       <div className="records-section">
         <h3 style={{ marginBottom: 12 }}>在庫一覧</h3>
         {displayItems.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📦</div>
-            <p className="empty-state-text">在庫データがありません</p>
-            <p className="empty-state-hint">上のフォームから商品を追加してください</p>
-          </div>
+          <EmptyState icon="📦" text="在庫データがありません" hint="上のフォームから商品を追加してください" />
         ) : (
           <div className="inventory-table-wrap">
           <table className="records-table">

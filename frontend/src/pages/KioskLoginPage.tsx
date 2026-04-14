@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { kioskApi, saveKioskSession } from '../api/kioskClient';
+import { Button } from '../components/atoms/Button';
 
 interface Props {
   storeId: string;
@@ -27,12 +28,18 @@ export default function KioskLoginPage({ storeId, onLogin }: Props) {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.logo}>ITA<span style={{ color: '#4f8ef7' }}>MIN</span></div>
-        <p style={styles.subtitle}>店舗キオスクモード</p>
-        <form onSubmit={handleSubmit} style={styles.form}>
-          {error && <div style={styles.error}>{error}</div>}
+    <div className="flex min-h-screen items-center justify-center bg-[#f0f4ff]">
+      <div className="w-80 rounded-2xl bg-surface px-10 py-12 text-center shadow-[0_4px_24px_rgba(0,0,0,0.1)]">
+        <div className="mb-2 text-[32px] font-extrabold tracking-[2px]">
+          ITA<span className="text-[#4f8ef7]">MIN</span>
+        </div>
+        <p className="mb-8 text-sm text-text-muted">店舗キオスクモード</p>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {error && (
+            <div className="rounded-lg bg-error-bg px-3.5 py-2.5 text-sm text-error-fg">
+              {error}
+            </div>
+          )}
           <input
             type="password"
             inputMode="numeric"
@@ -40,81 +47,23 @@ export default function KioskLoginPage({ storeId, onLogin }: Props) {
             placeholder="PINを入力"
             value={pin}
             onChange={e => setPin(e.target.value)}
-            style={styles.pinInput}
+            className="rounded-lg border-2 border-border-light px-3.5 py-3.5 text-2xl tracking-[8px] text-center outline-none focus:border-[#4f8ef7]"
             autoFocus
             maxLength={8}
             data-testid="kiosk-pin-input"
           />
-          <button
+          <Button
             type="submit"
             disabled={loading || pin.length < 4}
-            style={styles.button}
+            size="lg"
+            fullWidth
+            className="bg-[#4f8ef7] hover:bg-[#3a7de0]"
             data-testid="kiosk-login-button"
           >
             {loading ? '...' : 'ログイン'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#f0f4ff',
-  },
-  card: {
-    background: '#fff',
-    borderRadius: 16,
-    padding: '48px 40px',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
-    textAlign: 'center',
-    width: 320,
-  },
-  logo: {
-    fontSize: 32,
-    fontWeight: 800,
-    letterSpacing: 2,
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: '#666',
-    fontSize: 14,
-    marginBottom: 32,
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16,
-  },
-  error: {
-    background: '#fff0f0',
-    color: '#d32f2f',
-    padding: '10px 14px',
-    borderRadius: 8,
-    fontSize: 14,
-  },
-  pinInput: {
-    fontSize: 24,
-    textAlign: 'center',
-    letterSpacing: 8,
-    padding: '14px',
-    border: '2px solid #ddd',
-    borderRadius: 8,
-    outline: 'none',
-  },
-  button: {
-    padding: '14px',
-    fontSize: 16,
-    fontWeight: 700,
-    background: '#4f8ef7',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 8,
-    cursor: 'pointer',
-  },
-};

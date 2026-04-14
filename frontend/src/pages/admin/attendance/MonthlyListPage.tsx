@@ -4,7 +4,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
+import { Badge } from '../../../components/atoms/Badge';
 import type { AdminMonthlySummary } from '../../../types/api';
+import { Loading } from '../../../components/atoms/Loading';
 
 interface Props {
   onSelectStaff: (userId: string) => void;
@@ -107,7 +109,7 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
       </div>
 
       {loading ? (
-        <div className="loading">読み込み中...</div>
+        <Loading />
       ) : (
         <table className="table admin-attendance-table">
           <thead>
@@ -128,7 +130,7 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
                 <td>{s.workDays}日</td>
                 <td>{s.totalWorkHours}h</td>
                 <td>{s.totalBreakMinutes}分</td>
-                <td>{s.correctionCount > 0 ? <span className="badge badge-pending">{s.correctionCount}件</span> : '—'}</td>
+                <td>{s.correctionCount > 0 ? <Badge variant="pending">{s.correctionCount}件</Badge> : '—'}</td>
                 <td>{s.estimatedSalary != null ? `¥${s.estimatedSalary.toLocaleString()}` : '—'}</td>
                 <td>
                   <button

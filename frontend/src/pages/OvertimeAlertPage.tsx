@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import type { StaffOvertimeInfo } from '../types/api';
+import { EmptyState } from '../components/molecules/EmptyState';
+import { SummaryCard } from '../components/molecules/SummaryCard';
 
 type StaffOvertime = StaffOvertimeInfo;
 
@@ -79,32 +81,27 @@ export default function OvertimeAlertPage() {
 
       {/* サマリー */}
       <div className="today-summary">
-        <div className="summary-card">
-          <div className="summary-number">{staffOvertime.length}</div>
-          <div className="summary-label">対象スタッフ</div>
-        </div>
-        <div className="summary-card" style={exceededCount > 0 ? { background: '#fef2f2' } : {}}>
-          <div className="summary-number" style={exceededCount > 0 ? { color: '#dc2626' } : {}}>{exceededCount}</div>
-          <div className="summary-label">上限超過</div>
-        </div>
-        <div className="summary-card" style={warningCount > 0 ? { background: '#fffbeb' } : {}}>
-          <div className="summary-number" style={warningCount > 0 ? { color: '#f59e0b' } : {}}>{warningCount}</div>
-          <div className="summary-label">注意（80%超）</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-number">{settings.monthlyLimitHours}h</div>
-          <div className="summary-label">月間上限</div>
-        </div>
+        <SummaryCard value={staffOvertime.length} label="対象スタッフ" />
+        <SummaryCard
+          value={exceededCount}
+          label="上限超過"
+          className={exceededCount > 0 ? 'bg-[#fef2f2]' : undefined}
+          valueClassName={exceededCount > 0 ? 'text-[#dc2626]' : undefined}
+        />
+        <SummaryCard
+          value={warningCount}
+          label="注意（80%超）"
+          className={warningCount > 0 ? 'bg-[#fffbeb]' : undefined}
+          valueClassName={warningCount > 0 ? 'text-[#f59e0b]' : undefined}
+        />
+        <SummaryCard value={`${settings.monthlyLimitHours}h`} label="月間上限" />
       </div>
 
       {/* 一覧テーブル */}
       <div className="records-section">
         <h3 style={{ marginBottom: 12 }}>スタッフ別残業時間</h3>
         {staffOvertime.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">⏰</div>
-            <p className="empty-state-text">今月の打刻データがありません</p>
-          </div>
+          <EmptyState icon="⏰" text="今月の打刻データがありません" />
         ) : (
           <table className="records-table">
             <thead>

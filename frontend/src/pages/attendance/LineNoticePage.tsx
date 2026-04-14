@@ -3,6 +3,7 @@
  * 店舗のお知らせを閲覧・既読マークする。
  */
 import { useState, useEffect, useCallback } from 'react';
+import { Loading } from '../../components/atoms/Loading';
 
 interface Props {
   lineUserId: string;
@@ -82,7 +83,7 @@ export default function LineNoticePage({ lineUserId, storeId }: Props) {
     }
   };
 
-  if (loading) return <div className="loading">読み込み中...</div>;
+  if (loading) return <Loading />;
   if (error) return <div className="attendance-home"><p style={{ color: '#ef4444' }}>{error}</p></div>;
 
   const unreadCount = notices.filter(n => !n.isRead).length;

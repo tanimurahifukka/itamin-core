@@ -2,8 +2,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { supabase } from '../api/supabase';
-import { showToast } from '../components/Toast';
+import { showToast } from '../components/molecules/Toast';
 import type { Notice, NoticeComment } from '../types/api';
+import { EmptyState } from '../components/molecules/EmptyState';
+import { SummaryCard } from '../components/molecules/SummaryCard';
 
 function linkifyText(text: string) {
   const parts = text.split(/(https?:\/\/[^\s]+)/g);
@@ -213,14 +215,13 @@ export default function NoticePage() {
     <div className="main-content">
       {/* サマリー */}
       <div className="today-summary">
-        <div className="summary-card">
-          <div className="summary-number">{notices.length}</div>
-          <div className="summary-label">投稿数</div>
-        </div>
-        <div className="summary-card" style={unreadCount > 0 ? { background: '#eff6ff' } : {}}>
-          <div className="summary-number" style={unreadCount > 0 ? { color: '#2563eb' } : {}}>{unreadCount}</div>
-          <div className="summary-label">未読</div>
-        </div>
+        <SummaryCard value={notices.length} label="投稿数" />
+        <SummaryCard
+          value={unreadCount}
+          label="未読"
+          className={unreadCount > 0 ? 'bg-[#eff6ff]' : undefined}
+          valueClassName={unreadCount > 0 ? 'text-[#2563eb]' : undefined}
+        />
       </div>
 
       {/* 投稿フォーム */}
@@ -290,11 +291,7 @@ export default function NoticePage() {
       <div className="records-section">
         <h3 style={{ marginBottom: 12 }}>投稿一覧</h3>
         {notices.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">💬</div>
-            <p className="empty-state-text">投稿がありません</p>
-            <p className="empty-state-hint">上のフォームから投稿してください</p>
-          </div>
+          <EmptyState icon="💬" text="投稿がありません" hint="上のフォームから投稿してください" />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {notices.map(n => (

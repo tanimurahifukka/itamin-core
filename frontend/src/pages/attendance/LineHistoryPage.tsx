@@ -3,6 +3,7 @@
  * 月別の自分の勤怠履歴を閲覧する。
  */
 import { useState, useEffect, useCallback } from 'react';
+import { Loading } from '../../components/atoms/Loading';
 
 interface Props {
   lineUserId: string;
@@ -125,7 +126,7 @@ export default function LineHistoryPage({ lineUserId, storeId, displayName }: Pr
       </div>
 
       {loading ? (
-        <div className="loading">読み込み中...</div>
+        <Loading />
       ) : error ? (
         <p style={{ color: '#ef4444' }}>{error}</p>
       ) : (

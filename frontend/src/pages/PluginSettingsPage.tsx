@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
-import { showToast } from '../components/Toast';
+import { showToast } from '../components/molecules/Toast';
 import type { PluginInfo as ApiPluginInfo, StoreAccount as ApiStoreAccount } from '../types/api';
 
 // プラグイン設定画面でプラグイン固有の追加 UI を差し込みたい場合は、

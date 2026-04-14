@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { showToast } from '../components/Toast';
+import { showToast } from '../components/molecules/Toast';
 
 export default function KioskLinkPage() {
   const { selectedStore } = useAuth();

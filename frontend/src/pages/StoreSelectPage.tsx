@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
+import { Loading } from '../components/atoms/Loading';
 
 const roleLabels: Record<string, string> = {
   owner: 'オーナー',
@@ -79,7 +80,7 @@ export default function StoreSelectPage() {
       {mode === 'select' && (
         <>
           {storesLoading ? (
-            <div className="loading">読み込み中...</div>
+            <Loading />
           ) : stores.length > 0 ? (
             <div className="store-list">
               {stores.map(store => (

@@ -46,6 +46,13 @@ import PublicSchoolBookingPage from './pages/reservation/PublicSchoolBookingPage
 import PublicEventBookingPage from './pages/reservation/PublicEventBookingPage';
 import CalendarAdminPage from './pages/CalendarAdminPage';
 import ShiftMultiPage from './pages/ShiftMultiPage';
+import { PageTitleBar } from './components/organisms/PageTitleBar';
+import { Header } from './components/organisms/Header';
+import { Sidebar } from './components/organisms/Sidebar';
+import { ProfileDropdown } from './components/organisms/ProfileDropdown';
+import { Button } from './components/atoms/Button';
+import { Loading } from './components/atoms/Loading';
+import { Alert } from './components/atoms/Alert';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -223,61 +230,7 @@ function KioskApp() {
   );
 }
 
-interface ProfileDropdownProps {
-  displayName: string;
-  picture?: string;
-  showProfileMenu: boolean;
-  setShowProfileMenu: (v: boolean) => void;
-  profileRef: React.RefObject<HTMLDivElement | null>;
-  user: { email?: string } | null;
-  selectedStore: { id: string; name: string } | null;
-  selectStore: (store: null) => void;
-  signOut: () => void;
-}
-
-function ProfileDropdown({
-  displayName,
-  picture,
-  showProfileMenu,
-  setShowProfileMenu,
-  profileRef,
-  user,
-  selectedStore,
-  selectStore,
-  signOut,
-}: ProfileDropdownProps) {
-  return (
-    <div className="profile-area" ref={profileRef}>
-      <button
-        className="profile-trigger"
-        onClick={() => setShowProfileMenu(!showProfileMenu)}
-      >
-        {picture ? (
-          <img src={picture} alt={displayName} className="profile-avatar" />
-        ) : (
-          <span className="profile-avatar-placeholder">
-            {displayName.charAt(0).toUpperCase()}
-          </span>
-        )}
-        <span className="profile-name">{displayName}</span>
-      </button>
-      {showProfileMenu && (
-        <div className="profile-dropdown">
-          <div className="profile-dropdown-name">{displayName}</div>
-          {user?.email && <div className="profile-dropdown-email">{user.email}</div>}
-          {selectedStore && (
-            <button className="profile-dropdown-switch" onClick={() => { selectStore(null); setShowProfileMenu(false); }}>
-              事業所を切り替え
-            </button>
-          )}
-          <button className="profile-dropdown-logout" onClick={signOut}>
-            ログアウト
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
+// ProfileDropdown extracted to components/organisms/ProfileDropdown.
 
 export default function App() {
   const { user, loading, selectedStore, selectStore, signOut, stores, requiresPasswordChange, changePassword } = useAuth();
@@ -558,7 +511,7 @@ export default function App() {
   const pathname = window.location.pathname;
   if (pathname === '/organizations' || pathname === '/platform' || pathname === '/shift-multi') {
     if (loading) {
-      return <div className="loading">読み込み中...</div>;
+      return <Loading />;
     }
     if (!user) {
       return <LoginPage />;
@@ -570,17 +523,12 @@ export default function App() {
         ? <ShiftMultiPage />
         : <PlatformDashboard />;
     return (
-      <div className="app">
-        <header className="header">
-          <div className="header-logo" style={{ cursor: 'pointer' }} onClick={() => { window.location.href = '/'; }}>
-            ITA<span>MIN</span>
-          </div>
-          <div className="header-user">
-            <span style={{ color: '#666', marginRight: 12 }}>{displayName}</span>
-            <button className="btn-secondary" onClick={signOut}>ログアウト</button>
-          </div>
-        </header>
-        <main className="main-content">
+      <div className="flex min-h-screen flex-col">
+        <Header onLogoClick={() => { window.location.href = '/'; }}>
+          <span className="mr-3 text-text-muted">{displayName}</span>
+          <Button variant="secondary" size="sm" onClick={signOut}>ログアウト</Button>
+        </Header>
+        <main className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7">
           {pageContent}
         </main>
       </div>
@@ -588,17 +536,15 @@ export default function App() {
   }
 
   if (loading || !liffMode.checked) {
-    return <div className="loading">読み込み中...</div>;
+    return <Loading />;
   }
 
   // LINE Login 経由
   if (liffMode.active && liffMode.lineUserId && liffMode.storeId) {
     // lineUserId + storeId がある → 連携済み → 打刻ページ
     return (
-      <div className="app">
-        <header className="header">
-          <div className="header-logo">ITA<span>MIN</span></div>
-        </header>
+      <div className="flex min-h-screen flex-col">
+        <Header />
         <LineMenuPage
           lineUserId={liffMode.lineUserId}
           storeId={liffMode.storeId}
@@ -612,10 +558,8 @@ export default function App() {
   if (liffMode.active) {
     // lineUserId はあるが未連携 → 連携コード入力ページ
     return (
-      <div className="app">
-        <header className="header">
-          <div className="header-logo">ITA<span>MIN</span></div>
-        </header>
+      <div className="flex min-h-screen flex-col">
+        <Header />
         <LineLinkPage
           lineUserId={liffMode.lineUserId || ''}
           displayName={liffMode.displayName}
@@ -637,16 +581,14 @@ export default function App() {
 
   if (liffMode.message || liffMode.error) {
     return (
-      <div className="app">
-        <header className="header">
-          <div className="header-logo">ITA<span>MIN</span></div>
-        </header>
+      <div className="flex min-h-screen flex-col">
+        <Header />
         <div className="attendance-link-page">
           <div className="attendance-link-card">
             <h2 className="attendance-link-title">LINEログイン</h2>
-            <div className={liffMode.error ? 'alert alert-error' : 'alert alert-success'}>
+            <Alert variant={liffMode.error ? 'error' : 'success'}>
               {liffMode.error || liffMode.message}
-            </div>
+            </Alert>
           </div>
         </div>
       </div>
@@ -666,23 +608,20 @@ export default function App() {
 
   if (!selectedStore) {
     return (
-      <div className="app">
-        <header className="header">
-          <div className="header-logo">ITA<span>MIN</span></div>
-          <div className="header-user">
-            <ProfileDropdown
-              displayName={displayName}
-              picture={picture}
-              showProfileMenu={showProfileMenu}
-              setShowProfileMenu={setShowProfileMenu}
-              profileRef={profileRef}
-              user={user}
-              selectedStore={selectedStore}
-              selectStore={selectStore}
-              signOut={signOut}
-            />
-          </div>
-        </header>
+      <div className="flex min-h-screen flex-col">
+        <Header>
+          <ProfileDropdown
+            displayName={displayName}
+            picture={picture}
+            showProfileMenu={showProfileMenu}
+            setShowProfileMenu={setShowProfileMenu}
+            profileRef={profileRef}
+            user={user}
+            selectedStore={selectedStore}
+            selectStore={selectStore}
+            signOut={signOut}
+          />
+        </Header>
         <StoreSelectPage />
       </div>
     );
@@ -700,30 +639,27 @@ export default function App() {
   const activeTabObj = tabs.find(t => t.name === activeTab);
 
   return (
-    <div className="app">
-      <header className="header">
-        <div className="header-logo">ITA<span>MIN</span></div>
-        <div className="header-user">
-          <span
-            className="store-name-link"
-            style={{ cursor: 'pointer' }}
-            onClick={() => selectStore(null)}
-          >
-            {selectedStore.name}
-          </span>
-          <ProfileDropdown
-              displayName={displayName}
-              picture={picture}
-              showProfileMenu={showProfileMenu}
-              setShowProfileMenu={setShowProfileMenu}
-              profileRef={profileRef}
-              user={user}
-              selectedStore={selectedStore}
-              selectStore={selectStore}
-              signOut={signOut}
-            />
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col">
+      <Header>
+        <button
+          type="button"
+          onClick={() => selectStore(null)}
+          className="cursor-pointer bg-transparent text-[0.85rem] text-text-muted transition-colors hover:text-text"
+        >
+          {selectedStore.name}
+        </button>
+        <ProfileDropdown
+          displayName={displayName}
+          picture={picture}
+          showProfileMenu={showProfileMenu}
+          setShowProfileMenu={setShowProfileMenu}
+          profileRef={profileRef}
+          user={user}
+          selectedStore={selectedStore}
+          selectStore={selectStore}
+          signOut={signOut}
+        />
+      </Header>
 
       {showMobileMenu ? (
         /* モバイルカードメニュー */
@@ -752,44 +688,26 @@ export default function App() {
         </div>
       ) : (
         /* 通常レイアウト */
-        <div className="app-body">
+        <div className="flex min-h-[calc(100vh-56px)] flex-1">
           {!isMobile && (
-            <nav className="sidebar">
-              {categorizedTabs.map(({ category, tabs: catTabs }) => (
-                <div key={category.key} className="sidebar-category">
-                  <div className="sidebar-category-label">{category.label}</div>
-                  <ul className="sidebar-nav">
-                    {catTabs.map(tab => (
-                      <li key={tab.name}>
-                        <button
-                          className={`sidebar-nav-item ${activeTab === tab.name ? 'active' : ''}`}
-                          onClick={() => setActiveTab(tab.name)}
-                        >
-                          <span className="sidebar-nav-icon">{tab.icon}</span>
-                          {tab.label}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </nav>
+            <Sidebar
+              categorizedTabs={categorizedTabs}
+              activeTab={activeTab}
+              onSelect={setActiveTab}
+            />
           )}
 
-          <main className="main-content">
+          <main className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7">
             {isMobile && (
               <button className="mobile-back-btn" onClick={handleBackToMenu}>
                 ← メニュー
               </button>
             )}
             {activeTabObj && (
-              <div className="page-title-bar">
-                <span className="page-title-icon">{activeTabObj.icon}</span>
-                <h1 className="page-title">{activeTabObj.label}</h1>
-              </div>
+              <PageTitleBar icon={activeTabObj.icon} title={activeTabObj.label} />
             )}
             {tabsLoading ? (
-              <div className="loading" style={{ minHeight: '40vh' }}>読み込み中...</div>
+              <Loading minHeight="40vh" />
             ) : ActiveComponent ? (
               <ActiveComponent />
             ) : (

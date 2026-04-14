@@ -4,7 +4,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
+import { Badge } from '../../../components/atoms/Badge';
 import type { AdminTodayStaff } from '../../../types/api';
+import { Loading } from '../../../components/atoms/Loading';
 
 const STATUS_LABELS: Record<string, string> = {
   not_clocked_in: '未出勤',
@@ -97,7 +99,7 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
       </div>
 
       {loading ? (
-        <div className="loading">読み込み中...</div>
+        <Loading />
       ) : (
         <table className="table admin-attendance-table">
           <thead>
@@ -117,9 +119,9 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
               <tr key={s.userId} data-testid="today-board-row">
                 <td className="admin-staff-name">{s.staffName}</td>
                 <td>
-                  <span className={`badge badge-${s.currentStatus}`}>
+                  <Badge variant={s.currentStatus}>
                     {STATUS_LABELS[s.currentStatus] || s.currentStatus}
-                  </span>
+                  </Badge>
                 </td>
                 <td>{s.shift ? `${s.shift.startTime}〜${s.shift.endTime}` : '—'}</td>
                 <td>{formatTime(s.clockInAt)}</td>

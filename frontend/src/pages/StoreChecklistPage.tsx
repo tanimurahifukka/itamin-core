@@ -13,6 +13,7 @@ import {
   Submission,
   SubmissionItemInput,
 } from '../api/checkApi';
+import { Loading } from '../components/atoms/Loading';
 
 type StoreTab = 'store_opening' | 'store_daily' | 'store_closing';
 
@@ -494,7 +495,7 @@ export default function StoreChecklistPage() {
         )}
 
         {loading ? (
-          <div className="loading">読み込み中...</div>
+          <Loading />
         ) : templates.length === 0 ? (
           <div style={{
             padding: 20, border: '1px dashed #cbd5e1', borderRadius: 10,
