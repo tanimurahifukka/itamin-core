@@ -31,10 +31,6 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Login Page styles migrated to pages/LoginPage.tsx (Tailwind + Button atom).
- * 下記の空ルールは e2e/password-store.spec.ts の CSS 存在チェックを満たすための
- * 暫定スタブ。E2E が data-testid ベースに更新されたら削除する。
- */
 .login-page { /* moved to Tailwind */ }
 
 /* .invite-page / .invite-card / .invite-card-icon / .invite-card-title /
@@ -60,10 +56,6 @@ body {
 /* .punch-clock / .punch-clock .current-time/.current-date / .punch-btn
  * (clock-in/clock-out/:hover/:active) / .punch-status (+ .since) migrated to
  * inline Tailwind constants in PunchClockPage.tsx. */
-
-/* .break-modal-* and .clock-out-report-modal migrated to Modal molecule +
- * BreakMinutesField molecule. The #e94560 focus / preset active color and
- * the dark-gradient punch-confirm button live inline at call sites. */
 
 /* ===== Records Table ===== */
 .records-section {
@@ -104,16 +96,9 @@ body {
 /* .role-badge / .role-badge.<role> / .role-badge.clickable / .role-select
  *   migrated to inline Tailwind constants in StaffPage.tsx. */
 
-/* .loading migrated to components/atoms/Loading; keyframes preserved for the
- * arbitrary animate-[loading-spin_...] class. */
 @keyframes loading-spin {
   to { transform: rotate(360deg); }
 }
-
-/* ===== Error / Success ===== */
-/* .error-msg migrated to components/atoms/ErrorMessage. */
-
-/* .success-msg was unused; removed. */
 
 /* .checklist-overlay / .checklist-modal / .checklist-header / .checklist-items /
  * .checklist-item / .checkbox / .checklist-text-* / .checklist-progress /
@@ -141,8 +126,6 @@ body {
 .admin-header h3 {
   font-size: 1.2rem;
 }
-
-/* .csv-export-btn was unused; removed. */
 
 .timing-tabs {
   display: flex;
@@ -189,33 +172,12 @@ body {
 /* .add-item-form / .add-item-type-selector / .type-toggle / .add-item-row /
  * .save-row were all unused in JSX; removed. */
 
-/* .save-btn was unused; removed. */
-
 /* .store-id-banner / .store-id-label / .store-id-row / .store-id-value /
  * .store-id-copy / .store-id-edit-input / .store-id-cancel / .store-id-hint
  *   migrated to inline Tailwind constants in StaffPage.tsx. */
 
-/* .invite-action-btn / .resend / .cancel migrated to inline Tailwind
- *   constants in StaffPage.tsx. */
-
 /* .inventory-add-row1 / .inventory-add-row2 / .inventory-table-wrap /
  * .inventory-status-select migrated to inline Tailwind in InventoryPage.tsx. */
-
-/* ===== Wage Display/Edit ===== */
-/* .wage-display / .wage-edit / .wage-yen / .wage-input / .wage-save migrated
- * to inline Tailwind constants in StaffPage.tsx. */
-
-/* ===== Remove Staff Button ===== */
-/* .remove-staff-btn was unused in JSX; removed. */
-
-/* .rehire-form-row / .rehire-input / .rehire-select / .rehire-btn migrated
- *   to inline Tailwind constants in StaffPage.tsx. */
-
-/* .remove-modal-* migrated to Modal molecule + Button + Input atoms. */
-
-/* .toast-container / .toast / .toast-icon / .toast-success/error/info migrated
- * to components/molecules/Toast (inline Tailwind). Keyframes below are still
- * referenced by the Toast component's animate-[...] arbitrary class. */
 
 @keyframes toastSlideIn {
   from { opacity: 0; transform: translateX(40px); }
@@ -234,13 +196,6 @@ body {
   gap: 12px;
   margin-bottom: 16px;
 }
-
-/* .summary-card / .summary-number / .summary-label / variant rules
- * migrated to components/molecules/SummaryCard. */
-
-/* ===== View Mode Tabs ===== */
-/* .view-mode-tabs / .view-mode-tab / .active migrated to
- * components/molecules/Tabs. */
 
 /* .month-nav / .month-nav-btn / .month-nav-label + .attendance-month-nav /
  * .attendance-month-label migrated to components/molecules/MonthNavigation. */
@@ -281,16 +236,11 @@ body {
   gap: 8px;
 }
 
-/* .status-dot migrated to StatusDot atom (state="working_pulse"). */
-
 @keyframes dotPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
 
-/* .punch-btn.punch-success migrated to PUNCH_BTN_SUCCESS inline in
- * PunchClockPage.tsx. Keep @keyframes punchSuccessPop (referenced via
- * Tailwind animate-[...] arbitrary). */
 @keyframes punchSuccessPop {
   0% { transform: scale(1); }
   30% { transform: scale(1.1); }
@@ -432,8 +382,6 @@ body {
   box-sizing: border-box;
 }
 
-/* .form-save-btn migrated to Button atom (variant primary, size sm). */
-
 /* .daily-report-form-grid / .daily-report-list / .daily-report-card /
  * .daily-report-card-header / .daily-report-date / .daily-report-weather /
  * .daily-report-card-body / .daily-report-stat / .daily-report-memo
@@ -481,7 +429,6 @@ body {
 
   /* .summary-number mobile + .toast-container / .toast mobile overrides
    * migrated to SummaryCard / Toast molecules (Tailwind responsive). */
-
 
   /* .store-id-* mobile overrides migrated to inline Tailwind in StaffPage. */
 
@@ -546,8 +493,6 @@ body {
   border-color: #2563eb;
   color: white;
 }
-
-/* .summary-card.labor migrated to SummaryCard molecule (variant="labor"). */
 
 /* 未退勤アラートバナー */
 .stale-alert {
@@ -655,9 +600,6 @@ body {
 /* .attendance-staff-tabs / .attendance-admin-tabs + their .active variants
  * migrated to components/molecules/Tabs with variant="underline". */
 
-/* .attendance-link-* (S01 LINE連携) migrated to inline Tailwind in
- * LineLinkPage.tsx + App.tsx (LINE login message fallback). */
-
 /* --- S02 打刻ホーム --- */
 .attendance-home {
   padding: 16px;
@@ -743,9 +685,6 @@ body {
   border: none;
 }
 
-/* .attendance-toast / .attendance-toast.success/error migrated to
- * components/molecules/InlineToast. Keep @keyframes toastIn for the
- * Tailwind animate-[toastIn_...] arbitrary class. */
 @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
 
 /* イベント履歴 */
@@ -768,7 +707,6 @@ body {
 
 /* --- S03 勤怠履歴 --- */
 .attendance-history { padding: 16px; }
-/* .attendance-month-nav / .attendance-month-label migrated to MonthNavigation molecule. */
 .attendance-empty {
   text-align: center;
   color: #9ca3af;
@@ -794,7 +732,6 @@ body {
 .attendance-record-detail { font-size: 13px; color: #6b7280; }
 
 /* --- バッジ --- */
-/* .badge / .badge-* migrated to components/atoms/Badge. */
 
 /* --- S04 修正申請 --- */
 .attendance-correction { padding: 16px; max-width: 600px; }
