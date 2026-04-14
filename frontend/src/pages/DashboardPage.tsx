@@ -300,18 +300,19 @@ export default function DashboardPage() {
     <>
       {/* 未退勤アラート */}
       {canEdit && staleRecords.length > 0 && (
-        <div className="stale-alert" data-testid="stale-alert-banner">
-          <div className="stale-alert-header">
-            <span className="stale-alert-icon">!</span>
+        <div className="mb-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3.5" data-testid="stale-alert-banner">
+          <div className="mb-2.5 flex items-center gap-2 text-[0.95rem] text-[#991b1b]">
+            <span className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-error text-[0.8rem] font-bold text-white">!</span>
             <strong>退勤未打刻が {staleRecords.length} 件あります</strong>
           </div>
-          <div className="stale-alert-list">
+          <div className="flex flex-col gap-1.5">
             {staleRecords.map((r) => (
-              <div key={r.id} className="stale-alert-item">
+              <div key={r.id} className="flex items-center gap-2 rounded-lg bg-surface px-2.5 py-2 text-[0.85rem] text-[#374151]">
                 <span>{r.date} {r.staffName || '—'}</span>
-                <span className="stale-alert-time">出勤 {formatTime(r.clockIn)}〜</span>
+                <span className="ml-auto text-[0.8rem] text-text-subtle">出勤 {formatTime(r.clockIn)}〜</span>
                 <button
-                  className="stale-alert-fix-btn"
+                  type="button"
+                  className="flex-shrink-0 cursor-pointer rounded-md border border-error bg-surface px-3 py-1 text-[0.8rem] font-semibold text-error font-sans hover:bg-[#fef2f2]"
                   onClick={() => openEditModal(r)}
                   data-testid={`stale-fix-btn-${r.id}`}
                 >
@@ -381,7 +382,7 @@ export default function DashboardPage() {
                 />
                 {canEdit && (
                   <button
-                    className="edit-record-btn"
+                    className="cursor-pointer rounded-md border border-border bg-surface px-2.5 py-1 text-[0.8rem] font-medium text-primary font-sans hover:bg-primary-bg"
                     onClick={openCreateModal}
                     data-testid="create-record-btn"
                     style={{ whiteSpace: 'nowrap' }}
@@ -438,7 +439,7 @@ export default function DashboardPage() {
                         {canEdit && (
                           <td>
                             <button
-                              className="edit-record-btn"
+                              className="cursor-pointer rounded-md border border-border bg-surface px-2.5 py-1 text-[0.8rem] font-medium text-primary font-sans hover:bg-primary-bg"
                               onClick={() => openEditModal(r)}
                               data-testid={`edit-record-btn-${r.id}`}
                             >
@@ -660,7 +661,7 @@ export default function DashboardPage() {
                           {canEdit && (
                             <td>
                               <button
-                                className="edit-record-btn"
+                                className="cursor-pointer rounded-md border border-border bg-surface px-2.5 py-1 text-[0.8rem] font-medium text-primary font-sans hover:bg-primary-bg"
                                 onClick={() => openEditModal(mapped)}
                                 data-testid={`edit-staff-record-btn-${r.id}`}
                               >
