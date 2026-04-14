@@ -7,6 +7,7 @@ import { BreakMinutesField } from '../components/molecules/BreakMinutesField';
 import { Button } from '../components/atoms/Button';
 import { StatusDot } from '../components/atoms/StatusDot';
 import { ErrorMessage } from '../components/atoms/ErrorMessage';
+import { SummaryCard } from '../components/molecules/SummaryCard';
 import type { TimeRecord, MonthlySummaryStaff, StaffMember, MonthlyRecordsResponse, MonthlyRawStaffRecord } from '../types/api';
 import { todayJST, formatDateJST, formatShortDateJST, formatTimeJST, currentJstYearMonth, isoToJstDateTimeLocalValue, jstDateTimeLocalValueToIso } from '../lib/dateUtils';
 import { EmptyState } from '../components/molecules/EmptyState';
@@ -348,37 +349,31 @@ export default function DashboardPage() {
           {/* サマリーカード */}
           {records.length > 0 && (
             <div className="today-summary" style={isOwner ? { gridTemplateColumns: 'repeat(4, 1fr)' } : undefined}>
-              {isToday && (
-                <div className="summary-card working">
-                  <div className="summary-number">{working.length}</div>
-                  <div className="summary-label">勤務中</div>
-                </div>
-              )}
-              <div className="summary-card finished">
-                <div className="summary-number">{finished.length}</div>
-                <div className="summary-label">退勤済み</div>
-              </div>
-              <div className="summary-card hours">
-                <div className="summary-number">{totalHoursToday.toFixed(1)}</div>
-                <div className="summary-label">合計時間</div>
-              </div>
+              {isToday && <SummaryCard variant="working" value={working.length} label="勤務中" />}
+              <SummaryCard variant="finished" value={finished.length} label="退勤済み" />
+              <SummaryCard variant="hours" value={totalHoursToday.toFixed(1)} label="合計時間" />
               {isOwner && (
-                <div className="summary-card labor" data-testid="daily-labor-cost">
-                  <div className="summary-number">¥{totalLaborCost.toLocaleString()}</div>
-                  <div className="summary-label">概算人件費</div>
-                </div>
+                <SummaryCard
+                  variant="labor"
+                  value={`¥${totalLaborCost.toLocaleString()}`}
+                  label="概算人件費"
+                  data-testid="daily-labor-cost"
+                />
               )}
               {isOwner && totalTransportFee > 0 && (
-                <div className="summary-card" data-testid="daily-transport-cost">
-                  <div className="summary-number">¥{totalTransportFee.toLocaleString()}</div>
-                  <div className="summary-label">交通費</div>
-                </div>
+                <SummaryCard
+                  value={`¥${totalTransportFee.toLocaleString()}`}
+                  label="交通費"
+                  data-testid="daily-transport-cost"
+                />
               )}
               {isOwner && (
-                <div className="summary-card" data-testid="daily-total-cost" style={{ borderLeft: '4px solid #ef4444' }}>
-                  <div className="summary-number">¥{totalDailyCost.toLocaleString()}</div>
-                  <div className="summary-label">1日コスト合計</div>
-                </div>
+                <SummaryCard
+                  value={`¥${totalDailyCost.toLocaleString()}`}
+                  label="1日コスト合計"
+                  data-testid="daily-total-cost"
+                  className="border-l-[#ef4444]"
+                />
               )}
             </div>
           )}
@@ -614,25 +609,21 @@ export default function DashboardPage() {
                 {/* スタッフサマリー */}
                 {staffSummary && (
                   <div className="today-summary" style={isOwner ? { gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 } : { marginBottom: 16 }}>
-                    <div className="summary-card finished">
-                      <div className="summary-number">{staffSummary.workDays}日</div>
-                      <div className="summary-label">出勤日数</div>
-                    </div>
-                    <div className="summary-card hours">
-                      <div className="summary-number">{Number(staffSummary.totalWorkHours).toFixed(1)}h</div>
-                      <div className="summary-label">合計時間</div>
-                    </div>
+                    <SummaryCard variant="finished" value={`${staffSummary.workDays}日`} label="出勤日数" />
+                    <SummaryCard variant="hours" value={`${Number(staffSummary.totalWorkHours).toFixed(1)}h`} label="合計時間" />
                     {isOwner && (
-                      <div className="summary-card labor">
-                        <div className="summary-number">¥{staffSummary.hourlyWage?.toLocaleString() || '—'}</div>
-                        <div className="summary-label">時給</div>
-                      </div>
+                      <SummaryCard
+                        variant="labor"
+                        value={`¥${staffSummary.hourlyWage?.toLocaleString() || '—'}`}
+                        label="時給"
+                      />
                     )}
                     {isOwner && (
-                      <div className="summary-card" style={{ borderLeftColor: '#2563eb' }}>
-                        <div className="summary-number">¥{Number(staffSummary.estimatedSalary).toLocaleString()}</div>
-                        <div className="summary-label">概算給与</div>
-                      </div>
+                      <SummaryCard
+                        value={`¥${Number(staffSummary.estimatedSalary).toLocaleString()}`}
+                        label="概算給与"
+                        className="border-l-[#2563eb]"
+                      />
                     )}
                   </div>
                 )}
