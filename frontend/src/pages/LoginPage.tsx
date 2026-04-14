@@ -16,6 +16,27 @@ const LOGIN_BTN_OVERRIDE = 'w-full bg-[#e94560] hover:bg-[#d53c55] text-white';
 const TOGGLE_LINK =
   'mt-4 bg-transparent text-sm text-white/70 underline hover:text-white cursor-pointer';
 
+// 招待 / リンク共有登録画面の共通クラス（旧 .invite-* の置き換え）
+const INVITE_PAGE = `${LOGIN_BG} px-5 py-10`;
+const INVITE_CARD =
+  'w-full max-w-[400px] rounded-2xl bg-surface p-8 text-text shadow-[0_4px_24px_rgba(0,0,0,0.15)]';
+const INVITE_CARD_ICON = 'mb-2 text-center text-[2.5rem]';
+const INVITE_CARD_TITLE = 'mb-2 text-center text-[1.3rem] font-bold';
+const INVITE_CARD_DESC =
+  'mb-4 text-center text-[0.9rem] leading-[1.7] text-text-muted';
+const INVITE_STORE_BADGE =
+  'mb-6 flex items-center justify-center gap-2 rounded-lg bg-[#f0f2f5] px-4 py-2.5 text-[0.9rem] font-semibold text-text';
+const INVITE_FORM = 'flex flex-col gap-4';
+const INVITE_FIELD = 'flex flex-col gap-1';
+const INVITE_LABEL = 'text-[0.8rem] font-semibold text-text-muted';
+const INVITE_INPUT =
+  'rounded-lg border-2 border-border-light px-3.5 py-3 text-[0.95rem] text-text font-sans transition-colors focus:border-primary focus:outline-none';
+const INVITE_INPUT_READONLY = 'bg-bg text-text-subtle cursor-not-allowed';
+const INVITE_INPUT_ERROR = 'border-[#dc2626]';
+const INVITE_FIELD_ERROR = 'text-[0.8rem] text-[#dc2626]';
+const INVITE_SUBMIT =
+  'mt-2 cursor-pointer rounded-[10px] border-none bg-primary px-4 py-3.5 text-base font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-[#a0a0a0] disabled:opacity-70';
+
 export default function LoginPage() {
   const { signIn, signUp, completeInvitedSignUp } = useAuth();
   const searchParams = new URLSearchParams(window.location.search);
@@ -180,52 +201,50 @@ function InviteRegisterPage({ email, defaultName, storeName, onComplete }: {
     }
   };
 
-  // invite-* 系クラスは本PRでは移行対象外のため既存クラスを維持する。
-  // 外側コンテナは .login-page を廃止し Tailwind で再現する。
   return (
-    <div className={`${LOGIN_BG} invite-page`}>
+    <div className={INVITE_PAGE}>
       <h1 className="mb-2 text-5xl tracking-[6px]">
         ITA<span className="text-[#e94560]">MIN</span>
       </h1>
 
-      <div className="invite-card">
-        <div className="invite-card-icon">🎉</div>
-        <h2 className="invite-card-title">スタッフ登録</h2>
-        <p className="invite-card-desc">
+      <div className={INVITE_CARD}>
+        <div className={INVITE_CARD_ICON}>🎉</div>
+        <h2 className={INVITE_CARD_TITLE}>スタッフ登録</h2>
+        <p className={INVITE_CARD_DESC}>
           <strong>{storeName}</strong> に招待されました。<br />
           以下の情報を入力して登録を完了してください。
         </p>
 
-        <div className="invite-store-badge">
-          <span className="invite-store-icon">🏠</span>
+        <div className={INVITE_STORE_BADGE}>
+          <span className="text-[1.1rem]">🏠</span>
           {storeName}
         </div>
 
-        <form onSubmit={handleSubmit} className="invite-form">
-          <div className="invite-field">
-            <label className="invite-label">メールアドレス</label>
+        <form onSubmit={handleSubmit} className={INVITE_FORM}>
+          <div className={INVITE_FIELD}>
+            <label className={INVITE_LABEL}>メールアドレス</label>
             <input
               type="email"
               value={email}
               readOnly
-              className="invite-input invite-input-readonly"
+              className={`${INVITE_INPUT} ${INVITE_INPUT_READONLY}`}
             />
           </div>
 
-          <div className="invite-field">
-            <label className="invite-label">お名前</label>
+          <div className={INVITE_FIELD}>
+            <label className={INVITE_LABEL}>お名前</label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="山田 太郎"
               required
-              className="invite-input"
+              className={INVITE_INPUT}
             />
           </div>
 
-          <div className="invite-field">
-            <label className="invite-label">パスワード（8文字以上）</label>
+          <div className={INVITE_FIELD}>
+            <label className={INVITE_LABEL}>パスワード（8文字以上）</label>
             <input
               type="password"
               value={password}
@@ -233,12 +252,12 @@ function InviteRegisterPage({ email, defaultName, storeName, onComplete }: {
               placeholder="••••••••"
               minLength={8}
               required
-              className="invite-input"
+              className={INVITE_INPUT}
             />
           </div>
 
-          <div className="invite-field">
-            <label className="invite-label">パスワード（確認）</label>
+          <div className={INVITE_FIELD}>
+            <label className={INVITE_LABEL}>パスワード（確認）</label>
             <input
               type="password"
               value={confirmPassword}
@@ -246,17 +265,17 @@ function InviteRegisterPage({ email, defaultName, storeName, onComplete }: {
               placeholder="••••••••"
               minLength={8}
               required
-              className={`invite-input ${confirmPassword && !passwordMatch ? 'invite-input-error' : ''}`}
+              className={`${INVITE_INPUT} ${confirmPassword && !passwordMatch ? INVITE_INPUT_ERROR : ''}`}
             />
             {confirmPassword && !passwordMatch && (
-              <span className="invite-field-error">パスワードが一致しません</span>
+              <span className={INVITE_FIELD_ERROR}>パスワードが一致しません</span>
             )}
           </div>
 
           {error && <ErrorMessage>{error}</ErrorMessage>}
 
           <button
-            className={`invite-submit ${passwordMatch ? '' : 'disabled'}`}
+            className={INVITE_SUBMIT}
             type="submit"
             disabled={!passwordMatch || loading}
           >
@@ -358,10 +377,10 @@ function JoinStorePage({ storeId, inviteToken }: { storeId: string; inviteToken:
         <h1 className="mb-2 text-5xl tracking-[6px]">
           ITA<span className="text-[#e94560]">MIN</span>
         </h1>
-        <div className="invite-card">
-          <div className="invite-card-icon">✅</div>
-          <h2 className="invite-card-title">登録完了</h2>
-          <p className="invite-card-desc">{success}</p>
+        <div className={INVITE_CARD}>
+          <div className={INVITE_CARD_ICON}>✅</div>
+          <h2 className={INVITE_CARD_TITLE}>登録完了</h2>
+          <p className={INVITE_CARD_DESC}>{success}</p>
           <Button
             size="lg"
             className={`login-btn mt-4 ${LOGIN_BTN_OVERRIDE}`}
@@ -375,44 +394,44 @@ function JoinStorePage({ storeId, inviteToken }: { storeId: string; inviteToken:
   }
 
   return (
-    <div className={`${LOGIN_BG} invite-page`}>
+    <div className={INVITE_PAGE}>
       <h1 className="mb-2 text-5xl tracking-[6px]">
         ITA<span className="text-[#e94560]">MIN</span>
       </h1>
 
-      <div className="invite-card">
-        <div className="invite-card-icon">👋</div>
-        <h2 className="invite-card-title">スタッフ登録</h2>
-        <p className="invite-card-desc">
+      <div className={INVITE_CARD}>
+        <div className={INVITE_CARD_ICON}>👋</div>
+        <h2 className={INVITE_CARD_TITLE}>スタッフ登録</h2>
+        <p className={INVITE_CARD_DESC}>
           <strong>{storeName}</strong> のスタッフとして登録します。
         </p>
 
-        <div className="invite-store-badge">
-          <span className="invite-store-icon">🏠</span>
+        <div className={INVITE_STORE_BADGE}>
+          <span className="text-[1.1rem]">🏠</span>
           {storeName}
         </div>
 
-        <form onSubmit={handleSubmit} className="invite-form">
-          <div className="invite-field">
-            <label className="invite-label">お名前</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} required className="invite-input" placeholder="谷村 太郎" />
+        <form onSubmit={handleSubmit} className={INVITE_FORM}>
+          <div className={INVITE_FIELD}>
+            <label className={INVITE_LABEL}>お名前</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} required className={INVITE_INPUT} placeholder="谷村 太郎" />
           </div>
-          <div className="invite-field">
-            <label className="invite-label">メールアドレス</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="invite-input" placeholder="you@example.com" />
+          <div className={INVITE_FIELD}>
+            <label className={INVITE_LABEL}>メールアドレス</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className={INVITE_INPUT} placeholder="you@example.com" />
           </div>
-          <div className="invite-field">
-            <label className="invite-label">パスワード（8文字以上）</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={8} required className="invite-input" />
+          <div className={INVITE_FIELD}>
+            <label className={INVITE_LABEL}>パスワード（8文字以上）</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={8} required className={INVITE_INPUT} />
           </div>
-          <div className="invite-field">
-            <label className="invite-label">パスワード（確認）</label>
-            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} minLength={8} required className="invite-input" />
+          <div className={INVITE_FIELD}>
+            <label className={INVITE_LABEL}>パスワード（確認）</label>
+            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} minLength={8} required className={INVITE_INPUT} />
           </div>
 
           {error && <ErrorMessage>{error}</ErrorMessage>}
 
-          <button className={`invite-submit ${passwordMatch ? 'active' : ''}`} type="submit" disabled={loading || !passwordMatch}>
+          <button className={INVITE_SUBMIT} type="submit" disabled={loading || !passwordMatch}>
             {loading ? '登録中...' : '登録する'}
           </button>
         </form>
