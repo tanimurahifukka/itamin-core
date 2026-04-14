@@ -581,64 +581,8 @@ body {
 }
 
 /* ===== Wage Display/Edit ===== */
-.wage-display {
-  padding: 4px 10px;
-  background: #f7f8fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  font-family: inherit;
-  color: #555;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-.wage-display:hover {
-  border-color: #2563eb;
-  color: #2563eb;
-  background: #eff6ff;
-}
-
-.wage-edit {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.wage-yen {
-  font-size: 0.85rem;
-  color: #888;
-  font-weight: 600;
-}
-
-.wage-input {
-  width: 70px;
-  padding: 4px 8px;
-  border: 2px solid #2563eb;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  font-family: inherit;
-  text-align: right;
-}
-
-.wage-input:focus {
-  outline: none;
-}
-
-.wage-save {
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: #2563eb;
-  color: white;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+/* .wage-display / .wage-edit / .wage-yen / .wage-input / .wage-save migrated
+ * to inline Tailwind constants in StaffPage.tsx. */
 
 /* ===== Remove Staff Button ===== */
 /* .remove-staff-btn was unused in JSX; removed. */

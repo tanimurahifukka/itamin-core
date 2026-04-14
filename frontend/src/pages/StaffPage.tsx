@@ -24,6 +24,16 @@ const BANNER_GHOST_BTN =
   'cursor-pointer whitespace-nowrap rounded-md border border-border bg-surface px-3.5 py-2 text-[0.8rem] font-medium text-text-muted font-sans transition-colors hover:bg-[#f0f2f5]';
 const BANNER_HINT = 'text-[0.78rem] text-text-subtle';
 
+// 旧 .wage-* 系
+const WAGE_DISPLAY =
+  'cursor-pointer whitespace-nowrap rounded-md border border-border-light bg-bg px-2.5 py-1 text-[0.78rem] text-text-muted font-sans transition-all hover:border-primary hover:bg-primary-bg hover:text-primary';
+const WAGE_EDIT = 'flex items-center gap-1';
+const WAGE_YEN = 'text-[0.85rem] font-semibold text-[#888]';
+const WAGE_INPUT =
+  'w-[70px] rounded border-2 border-primary px-2 py-1 text-[0.85rem] text-right font-sans focus:outline-none';
+const WAGE_SAVE =
+  'flex h-7 w-7 items-center justify-center rounded border-none bg-primary text-[0.85rem] text-white cursor-pointer';
+
 const roleLabels: Record<string, string> = {
   owner: 'オーナー',
   manager: 'マネージャー',
@@ -521,21 +531,22 @@ export default function StaffPage() {
               )}
               {isOwner && s.role !== 'owner' && (
                 editingWageId === s.id ? (
-                  <div className="wage-edit">
-                    <span className="wage-yen">¥</span>
+                  <div className={WAGE_EDIT}>
+                    <span className={WAGE_YEN}>¥</span>
                     <input
                       type="number"
-                      className="wage-input"
+                      className={WAGE_INPUT}
                       value={editWageValue}
                       onChange={e => setEditWageValue(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') handleSaveWage(s.id); if (e.key === 'Escape') setEditingWageId(null); }}
                       autoFocus
                     />
-                    <button className="wage-save" onClick={() => handleSaveWage(s.id)}>✓</button>
+                    <button type="button" className={WAGE_SAVE} onClick={() => handleSaveWage(s.id)}>✓</button>
                   </div>
                 ) : (
                   <button
-                    className="wage-display"
+                    type="button"
+                    className={WAGE_DISPLAY}
                     onClick={() => { setEditingWageId(s.id); setEditWageValue(String(s.hourlyWage || '')); }}
                     title="クリックして時給を編集"
                   >
@@ -545,22 +556,23 @@ export default function StaffPage() {
               )}
               {isOwner && s.role !== 'owner' && (
                 editingTransportId === s.id ? (
-                  <div className="wage-edit">
-                    <span className="wage-yen">¥</span>
+                  <div className={WAGE_EDIT}>
+                    <span className={WAGE_YEN}>¥</span>
                     <input
                       type="number"
-                      className="wage-input"
+                      className={WAGE_INPUT}
                       value={editTransportValue}
                       onChange={e => setEditTransportValue(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') handleSaveTransport(s.id); if (e.key === 'Escape') setEditingTransportId(null); }}
                       autoFocus
                       data-testid="transport-fee-input"
                     />
-                    <button className="wage-save" onClick={() => handleSaveTransport(s.id)}>✓</button>
+                    <button type="button" className={WAGE_SAVE} onClick={() => handleSaveTransport(s.id)}>✓</button>
                   </div>
                 ) : (
                   <button
-                    className="wage-display"
+                    type="button"
+                    className={WAGE_DISPLAY}
                     onClick={() => { setEditingTransportId(s.id); setEditTransportValue(String(s.transportFee || '')); }}
                     title="クリックして交通費を編集"
                     data-testid="transport-fee-display"
@@ -571,21 +583,22 @@ export default function StaffPage() {
               )}
               {isOwner && s.role !== 'owner' && (
                 editingJoinedId === s.id ? (
-                  <div className="wage-edit">
+                  <div className={WAGE_EDIT}>
                     <input
                       type="date"
-                      className="wage-input"
+                      className={WAGE_INPUT}
                       value={editJoinedValue}
                       onChange={e => setEditJoinedValue(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') handleSaveJoined(s.id); if (e.key === 'Escape') setEditingJoinedId(null); }}
                       autoFocus
                       data-testid="joined-at-input"
                     />
-                    <button className="wage-save" onClick={() => handleSaveJoined(s.id)}>✓</button>
+                    <button type="button" className={WAGE_SAVE} onClick={() => handleSaveJoined(s.id)}>✓</button>
                   </div>
                 ) : (
                   <button
-                    className="wage-display"
+                    type="button"
+                    className={WAGE_DISPLAY}
                     onClick={() => { setEditingJoinedId(s.id); setEditJoinedValue(s.joinedAt ? s.joinedAt.split('T')[0] : ''); }}
                     title="クリックして入社日を編集"
                     data-testid="joined-at-display"
