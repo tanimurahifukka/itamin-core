@@ -6,6 +6,23 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { checkApi, ActiveItem, SubmissionItemInput, CheckTiming } from '../../../api/checkApi';
+import { Modal } from '../../molecules/Modal';
+import { Button } from '../../atoms/Button';
+import { cn } from '../../../lib/cn';
+
+// 共通スタイル: 項目カード / チェックボックス / テキスト入力
+// 視覚アイデンティティ（緑=完了）は変えない。
+const ITEM_BASE =
+  'flex items-center gap-3.5 rounded-[10px] border-2 px-4 py-3.5 transition-colors select-none';
+const ITEM_DEFAULT = 'border-[#e8e8e8] hover:border-[#ccc]';
+const ITEM_DONE = 'border-[#34a853] bg-[#f0faf3]';
+const ITEM_TEXT_LAYOUT = 'items-start py-3 cursor-default';
+const CHECKBOX_BASE =
+  'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border-2 text-base font-bold text-white transition-colors';
+const CHECKBOX_DEFAULT = 'border-[#ccc]';
+const CHECKBOX_DONE = 'border-[#34a853] bg-[#34a853]';
+const TEXT_INPUT =
+  'w-full rounded-md border border-border px-3 py-2 text-sm font-sans transition-colors focus:border-primary focus:outline-none';
 
 interface Props {
   storeId: string;
@@ -146,128 +163,152 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
 
   if (loading) {
     return (
-      <div className="checklist-overlay">
-        <div className="checklist-modal">
-          <p>読み込み中...</p>
-        </div>
-      </div>
+      <Modal open onClose={onCancel} closeOnBackdrop={false} contentClassName="max-h-[90vh] overflow-y-auto p-7">
+        <p>読み込み中...</p>
+      </Modal>
     );
   }
 
   return (
-    <div className="checklist-overlay">
-      <div className="checklist-modal">
-        <div className="checklist-header">
-          <h2>{title}</h2>
-          <p>{subtitle}</p>
-        </div>
-
-        {error && <div className="error-msg">{error}</div>}
-
-        <div className="checklist-items">
-          {items.map(item => {
-            const v = values[item.id] ?? emptyValues();
-            const done = isItemComplete(item, v);
-            const hint = getThintText(item);
-
-            if (item.item_type === 'numeric') {
-              return (
-                <div key={item.id} className={`checklist-item text-input ${done ? 'checked' : ''}`}>
-                  <div className={`checkbox ${done ? 'checked' : ''}`}>{done && '✓'}</div>
-                  <div className="checklist-text-field">
-                    <span className="checklist-text-label">
-                      {item.label}
-                      {item.is_ccp && <span style={{ color: '#dc2626', marginLeft: 6, fontSize: '0.75rem', fontWeight: 700 }}>CCP</span>}
-                    </span>
-                    {hint && <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', marginBottom: 4 }}>{hint}</span>}
-                    <input
-                      type="number"
-                      className="checklist-text-input"
-                      placeholder="数値を入力"
-                      value={v.numeric_value}
-                      onChange={e => updateValue(item.id, { numeric_value: e.target.value })}
-                      onClick={e => e.stopPropagation()}
-                      step="0.1"
-                    />
-                  </div>
-                </div>
-              );
-            }
-
-            if (item.item_type === 'text') {
-              return (
-                <div key={item.id} className={`checklist-item text-input ${done ? 'checked' : ''}`}>
-                  <div className={`checkbox ${done ? 'checked' : ''}`}>{done && '✓'}</div>
-                  <div className="checklist-text-field">
-                    <span className="checklist-text-label">{item.label}</span>
-                    <input
-                      type="text"
-                      className="checklist-text-input"
-                      placeholder="入力してください"
-                      value={v.text_value}
-                      onChange={e => updateValue(item.id, { text_value: e.target.value })}
-                      onClick={e => e.stopPropagation()}
-                    />
-                  </div>
-                </div>
-              );
-            }
-
-            if (item.item_type === 'select') {
-              const opts: string[] = Array.isArray(item.options?.values) ? item.options.values as string[] : [];
-              return (
-                <div key={item.id} className={`checklist-item text-input ${done ? 'checked' : ''}`}>
-                  <div className={`checkbox ${done ? 'checked' : ''}`}>{done && '✓'}</div>
-                  <div className="checklist-text-field">
-                    <span className="checklist-text-label">{item.label}</span>
-                    <select
-                      className="checklist-text-input"
-                      value={v.select_value}
-                      onChange={e => updateValue(item.id, { select_value: e.target.value })}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <option value="">選択してください</option>
-                      {opts.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                  </div>
-                </div>
-              );
-            }
-
-            // checkbox（デフォルト）
-            return (
-              <label
-                key={item.id}
-                className={`checklist-item ${done ? 'checked' : ''}`}
-                onClick={() => updateValue(item.id, { bool_value: !v.bool_value })}
-              >
-                <div className={`checkbox ${done ? 'checked' : ''}`}>{done && '✓'}</div>
-                <span>
-                  {item.label}
-                  {item.is_ccp && <span style={{ color: '#dc2626', marginLeft: 6, fontSize: '0.75rem', fontWeight: 700 }}>CCP</span>}
-                </span>
-              </label>
-            );
-          })}
-        </div>
-
-        <div className="checklist-progress">
-          {completedCount} / {items.length} 完了
-        </div>
-
-        <div className="checklist-actions">
-          <button className="checklist-cancel" onClick={onCancel}>
+    <Modal
+      open
+      onClose={onCancel}
+      closeOnBackdrop={false}
+      contentClassName="max-w-[480px] max-h-[90vh] overflow-y-auto p-7"
+      actions={
+        <>
+          <Button variant="secondary" className="flex-1 rounded-[10px] py-3.5 text-base" onClick={onCancel}>
             キャンセル
-          </button>
-          <button
-            className={`checklist-submit ${allComplete ? 'active' : ''}`}
+          </Button>
+          <Button
+            className={cn(
+              'flex-[2] rounded-[10px] py-3.5 text-base font-semibold',
+              allComplete
+                ? 'bg-[#34a853] text-white hover:bg-[#2d9249]'
+                : 'bg-[#e0e0e0] text-[#999] cursor-not-allowed',
+            )}
             onClick={handleSubmit}
             disabled={!allComplete || submitting}
           >
             {submitting ? '記録中...' : allComplete ? '確認完了' : 'すべてチェックしてください'}
-          </button>
-        </div>
+          </Button>
+        </>
+      }
+    >
+      <div className="mb-6 text-center">
+        <h2 className="mb-1.5 text-[1.4rem] text-[#1a1a2e]">{title}</h2>
+        <p className="text-[0.85rem] text-[#888]">{subtitle}</p>
       </div>
-    </div>
+
+      {error && <div className="error-msg">{error}</div>}
+
+      <div className="mb-5 flex flex-col gap-2">
+        {items.map(item => {
+          const v = values[item.id] ?? emptyValues();
+          const done = isItemComplete(item, v);
+          const hint = getThintText(item);
+
+          if (item.item_type === 'numeric') {
+            return (
+              <div
+                key={item.id}
+                className={cn(ITEM_BASE, ITEM_TEXT_LAYOUT, done ? ITEM_DONE : ITEM_DEFAULT)}
+              >
+                <div className={cn(CHECKBOX_BASE, done ? CHECKBOX_DONE : CHECKBOX_DEFAULT)}>
+                  {done && '✓'}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span className="text-[0.9rem] font-medium text-text">
+                    {item.label}
+                    {item.is_ccp && <span className="ml-1.5 text-xs font-bold text-[#dc2626]">CCP</span>}
+                  </span>
+                  {hint && <span className="block mb-1 text-[0.78rem] text-[#64748b]">{hint}</span>}
+                  <input
+                    type="number"
+                    className={TEXT_INPUT}
+                    placeholder="数値を入力"
+                    value={v.numeric_value}
+                    onChange={e => updateValue(item.id, { numeric_value: e.target.value })}
+                    onClick={e => e.stopPropagation()}
+                    step="0.1"
+                  />
+                </div>
+              </div>
+            );
+          }
+
+          if (item.item_type === 'text') {
+            return (
+              <div
+                key={item.id}
+                className={cn(ITEM_BASE, ITEM_TEXT_LAYOUT, done ? ITEM_DONE : ITEM_DEFAULT)}
+              >
+                <div className={cn(CHECKBOX_BASE, done ? CHECKBOX_DONE : CHECKBOX_DEFAULT)}>
+                  {done && '✓'}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span className="text-[0.9rem] font-medium text-text">{item.label}</span>
+                  <input
+                    type="text"
+                    className={TEXT_INPUT}
+                    placeholder="入力してください"
+                    value={v.text_value}
+                    onChange={e => updateValue(item.id, { text_value: e.target.value })}
+                    onClick={e => e.stopPropagation()}
+                  />
+                </div>
+              </div>
+            );
+          }
+
+          if (item.item_type === 'select') {
+            const opts: string[] = Array.isArray(item.options?.values) ? item.options.values as string[] : [];
+            return (
+              <div
+                key={item.id}
+                className={cn(ITEM_BASE, ITEM_TEXT_LAYOUT, done ? ITEM_DONE : ITEM_DEFAULT)}
+              >
+                <div className={cn(CHECKBOX_BASE, done ? CHECKBOX_DONE : CHECKBOX_DEFAULT)}>
+                  {done && '✓'}
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span className="text-[0.9rem] font-medium text-text">{item.label}</span>
+                  <select
+                    className={TEXT_INPUT}
+                    value={v.select_value}
+                    onChange={e => updateValue(item.id, { select_value: e.target.value })}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <option value="">選択してください</option>
+                    {opts.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
+                </div>
+              </div>
+            );
+          }
+
+          // checkbox（デフォルト）
+          return (
+            <label
+              key={item.id}
+              className={cn(ITEM_BASE, done ? ITEM_DONE : ITEM_DEFAULT, 'cursor-pointer')}
+              onClick={() => updateValue(item.id, { bool_value: !v.bool_value })}
+            >
+              <div className={cn(CHECKBOX_BASE, done ? CHECKBOX_DONE : CHECKBOX_DEFAULT)}>
+                {done && '✓'}
+              </div>
+              <span>
+                {item.label}
+                {item.is_ccp && <span className="ml-1.5 text-xs font-bold text-[#dc2626]">CCP</span>}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+
+      <div className="mb-5 text-center text-[0.9rem] text-[#888]">
+        {completedCount} / {items.length} 完了
+      </div>
+    </Modal>
   );
 }

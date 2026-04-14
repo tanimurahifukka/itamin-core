@@ -11,6 +11,8 @@ export interface ModalProps {
   actions?: ReactNode;
   size?: ModalSize;
   closeOnBackdrop?: boolean;
+  /** ダイアログ本体に追加する Tailwind クラス（max-h / max-w オーバーライド等）。 */
+  contentClassName?: string;
 }
 
 const sizeClass: Record<ModalSize, string> = {
@@ -29,6 +31,7 @@ export const Modal = ({
   actions,
   size = 'md',
   closeOnBackdrop = true,
+  contentClassName,
 }: ModalProps) => {
   // Esc キーで閉じる
   useEffect(() => {
@@ -57,6 +60,7 @@ export const Modal = ({
         className={cn(
           'w-full rounded-lg bg-surface p-6 shadow-xl',
           sizeClass[size],
+          contentClassName,
         )}
         onClick={stop}
       >
