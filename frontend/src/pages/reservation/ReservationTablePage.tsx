@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
 import type { ReservationRow, ReservationTable } from '../../types/api';
+import { Loading } from '../../components/atoms/Loading';
 
 type Tab = 'list' | 'tables' | 'publish';
 
@@ -15,7 +16,7 @@ export default function ReservationTablePage() {
   const { selectedStore } = useAuth();
   const [tab, setTab] = useState<Tab>('list');
 
-  if (!selectedStore) return <div className="loading">店舗を選択してください</div>;
+  if (!selectedStore) return <Loading message="店舗を選択してください" />;
 
   return (
     <div style={{ padding: 20, maxWidth: 1100, margin: '0 auto' }}>

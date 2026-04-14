@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/atoms/Button';
 import { Input } from '../components/atoms/Input';
 import { ErrorMessage } from '../components/atoms/ErrorMessage';
+import { Loading } from '../components/atoms/Loading';
 
 // ログイン画面のテーマ（背景グラデーション・白文字・#e94560 ボタン）は
 // アプリ本体のデザイン言語と異なるため、ここではアプリ共通の
@@ -330,7 +331,7 @@ function JoinStorePage({ storeId, inviteToken }: { storeId: string; inviteToken:
   };
 
   if (storeLoading) {
-    return <div className={LOGIN_BG}><div className="loading">読み込み中...</div></div>;
+    return <div className={LOGIN_BG}><Loading /></div>;
   }
 
   if (storeError) {

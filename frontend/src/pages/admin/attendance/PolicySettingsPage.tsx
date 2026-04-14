@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
+import { Loading } from '../../../components/atoms/Loading';
 
 interface AttendancePolicy {
   timezone: string;
@@ -55,7 +56,7 @@ export default function PolicySettingsPage() {
     }
   };
 
-  if (loading) return <div className="loading">読み込み中...</div>;
+  if (loading) return <Loading />;
   if (!policy) return <div className="alert alert-error">ポリシーの取得に失敗しました</div>;
 
   return (

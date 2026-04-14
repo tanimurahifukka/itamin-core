@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
 import type { Customer, ReservationRow } from '../types/api';
+import { Loading } from '../components/atoms/Loading';
 
 const PAGE_LIMIT = 20;
 
@@ -368,7 +369,7 @@ export default function CustomersPage() {
       {/* テーブル */}
       <div className="records-section">
         {loading ? (
-          <div className="loading" style={{ minHeight: '30vh' }}>読み込み中...</div>
+          <Loading minHeight="30vh" />
         ) : customers.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">👤</div>

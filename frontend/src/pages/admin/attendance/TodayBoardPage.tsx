@@ -6,6 +6,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
 import { Badge } from '../../../components/atoms/Badge';
 import type { AdminTodayStaff } from '../../../types/api';
+import { Loading } from '../../../components/atoms/Loading';
 
 const STATUS_LABELS: Record<string, string> = {
   not_clocked_in: '未出勤',
@@ -98,7 +99,7 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
       </div>
 
       {loading ? (
-        <div className="loading">読み込み中...</div>
+        <Loading />
       ) : (
         <table className="table admin-attendance-table">
           <thead>

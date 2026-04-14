@@ -3,6 +3,7 @@
  * 出勤時・退勤時のチェックリストを閲覧・提出する。
  */
 import { useState, useEffect, useCallback } from 'react';
+import { Loading } from '../../components/atoms/Loading';
 
 interface Props {
   lineUserId: string;
@@ -124,7 +125,7 @@ export default function LineChecklistPage({ lineUserId, storeId }: Props) {
       </div>
 
       {loading ? (
-        <div className="loading">読み込み中...</div>
+        <Loading />
       ) : error ? (
         <p style={{ color: '#ef4444' }}>{error}</p>
       ) : items.length === 0 ? (

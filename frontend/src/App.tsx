@@ -51,6 +51,7 @@ import { Header } from './components/organisms/Header';
 import { Sidebar } from './components/organisms/Sidebar';
 import { ProfileDropdown } from './components/organisms/ProfileDropdown';
 import { Button } from './components/atoms/Button';
+import { Loading } from './components/atoms/Loading';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -509,7 +510,7 @@ export default function App() {
   const pathname = window.location.pathname;
   if (pathname === '/organizations' || pathname === '/platform' || pathname === '/shift-multi') {
     if (loading) {
-      return <div className="loading">読み込み中...</div>;
+      return <Loading />;
     }
     if (!user) {
       return <LoginPage />;
@@ -534,7 +535,7 @@ export default function App() {
   }
 
   if (loading || !liffMode.checked) {
-    return <div className="loading">読み込み中...</div>;
+    return <Loading />;
   }
 
   // LINE Login 経由
@@ -705,7 +706,7 @@ export default function App() {
               <PageTitleBar icon={activeTabObj.icon} title={activeTabObj.label} />
             )}
             {tabsLoading ? (
-              <div className="loading" style={{ minHeight: '40vh' }}>読み込み中...</div>
+              <Loading minHeight="40vh" />
             ) : ActiveComponent ? (
               <ActiveComponent />
             ) : (

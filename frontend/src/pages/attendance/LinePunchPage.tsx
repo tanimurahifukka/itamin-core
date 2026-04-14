@@ -3,6 +3,7 @@
  * LINE Login で取得した lineUserId で打刻操作を行う。
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Loading } from '../../components/atoms/Loading';
 
 const API_BASE = '/api';
 
@@ -104,7 +105,7 @@ export default function LinePunchPage({ lineUserId, storeId, displayName, pictur
     }
   };
 
-  if (loading) return <div className="loading">読み込み中...</div>;
+  if (loading) return <Loading />;
 
   const currentStatus = data?.currentStatus || 'not_clocked_in';
   const activeSession = data?.activeSession;

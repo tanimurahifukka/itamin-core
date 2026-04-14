@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { todayJST } from '../../lib/dateUtils';
+import { Loading } from '../../components/atoms/Loading';
 
 interface Props {
   lineUserId: string;
@@ -68,7 +69,7 @@ export default function LineShiftPage({ lineUserId, storeId, displayName }: Prop
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div className="loading">読み込み中...</div>;
+  if (loading) return <Loading />;
   if (error) return <div className="attendance-home"><p style={{ color: '#ef4444' }}>{error}</p></div>;
 
   // 今週と来週に分ける

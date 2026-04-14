@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
 import { Badge } from '../../components/atoms/Badge';
 import type { AttendanceHistoryRecord } from '../../types/api';
+import { Loading } from '../../components/atoms/Loading';
 
 type AttendanceRecord = AttendanceHistoryRecord;
 
@@ -78,7 +79,7 @@ export default function AttendanceHistoryPage({ onNavigate }: Props) {
       </div>
 
       {loading ? (
-        <div className="loading">読み込み中...</div>
+        <Loading />
       ) : records.length === 0 ? (
         <div className="attendance-empty">この月の記録はありません</div>
       ) : (

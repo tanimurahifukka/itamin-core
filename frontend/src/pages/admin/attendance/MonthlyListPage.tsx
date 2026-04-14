@@ -6,6 +6,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
 import { Badge } from '../../../components/atoms/Badge';
 import type { AdminMonthlySummary } from '../../../types/api';
+import { Loading } from '../../../components/atoms/Loading';
 
 interface Props {
   onSelectStaff: (userId: string) => void;
@@ -108,7 +109,7 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
       </div>
 
       {loading ? (
-        <div className="loading">読み込み中...</div>
+        <Loading />
       ) : (
         <table className="table admin-attendance-table">
           <thead>

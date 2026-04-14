@@ -6,6 +6,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
 import { Badge } from '../../../components/atoms/Badge';
 import type { AdminStaffAttendanceDetail, AdminStaffAttendanceRecord, AdminStaffCorrectionItem } from '../../../types/api';
+import { Loading } from '../../../components/atoms/Loading';
 
 type AttendanceRecord = AdminStaffAttendanceRecord;
 type CorrectionItem = AdminStaffCorrectionItem;
@@ -108,7 +109,7 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
     else setMonth(m => m + 1);
   };
 
-  if (loading) return <div className="loading">読み込み中...</div>;
+  if (loading) return <Loading />;
 
   return (
     <div className="admin-staff-detail">

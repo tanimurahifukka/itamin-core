@@ -6,6 +6,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
 import { Badge } from '../../../components/atoms/Badge';
 import type { LineLink } from '../../../types/api';
+import { Loading } from '../../../components/atoms/Loading';
 
 type StaffLineLinkItem = LineLink;
 
@@ -47,7 +48,7 @@ export default function LineLinkManagePage() {
       <h2>LINE 連携管理</h2>
 
       {loading ? (
-        <div className="loading">読み込み中...</div>
+        <Loading />
       ) : (
         <table className="table admin-attendance-table">
           <thead>

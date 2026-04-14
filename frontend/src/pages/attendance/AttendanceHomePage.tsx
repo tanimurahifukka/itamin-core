@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
 import type { AttendanceTodayResponse, AttendanceRawEvent } from '../../types/api';
+import { Loading } from '../../components/atoms/Loading';
 
 type AttendanceTodayData = AttendanceTodayResponse;
 type RawAttendanceEvent = AttendanceRawEvent;
@@ -116,7 +117,7 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
     '退勤しました'
   );
 
-  if (loading) return <div className="loading">読み込み中...</div>;
+  if (loading) return <Loading />;
   if (!data) return <div className="alert alert-error">勤怠情報の取得に失敗しました</div>;
 
   const { currentStatus, activeSession, recentEvents, todayShift, businessDate } = data;

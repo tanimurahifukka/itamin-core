@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { todayJST } from '../../lib/dateUtils';
+import { Loading } from '../../components/atoms/Loading';
 
 interface Props {
   lineUserId: string;
@@ -115,7 +116,7 @@ export default function LineDailyReportPage({ lineUserId, storeId }: Props) {
       </div>
 
       {loading ? (
-        <div className="loading">読み込み中...</div>
+        <Loading />
       ) : error ? (
         <p style={{ color: '#ef4444' }}>{error}</p>
       ) : (

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
 import { Badge } from '../../components/atoms/Badge';
+import { Loading } from '../../components/atoms/Loading';
 
 interface LineInfo {
   displayName?: string;
@@ -55,7 +56,7 @@ export default function AccountPage() {
     });
   };
 
-  if (loading) return <div className="loading">読み込み中...</div>;
+  if (loading) return <Loading />;
 
   return (
     <div className="attendance-account">
