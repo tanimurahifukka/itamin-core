@@ -25,22 +25,22 @@ function ChecklistBadge({ currentStatus, clockIn, clockOut }: {
   clockIn?: boolean;
   clockOut?: boolean;
 }) {
-  if (currentStatus === 'not_clocked_in') return <span className="checklist-na">—</span>;
+  if (currentStatus === 'not_clocked_in') return <span className="text-text-subtle">—</span>;
 
   const items: React.ReactElement[] = [];
   items.push(
-    <span key="in" className={`checklist-chip ${clockIn ? 'done' : 'missing'}`}>
+    <span key="in" className={`inline-block whitespace-nowrap rounded-lg px-2 py-0.5 text-[11px] font-semibold ${clockIn ? 'bg-success-bg text-success-fg' : 'bg-error-bg text-error-fg'}`}>
       出勤 {clockIn ? '済' : '未'}
     </span>
   );
   if (currentStatus === 'completed') {
     items.push(
-      <span key="out" className={`checklist-chip ${clockOut ? 'done' : 'missing'}`}>
+      <span key="out" className={`inline-block whitespace-nowrap rounded-lg px-2 py-0.5 text-[11px] font-semibold ${clockOut ? 'bg-success-bg text-success-fg' : 'bg-error-bg text-error-fg'}`}>
         退勤 {clockOut ? '済' : '未'}
       </span>
     );
   }
-  return <div className="checklist-badges">{items}</div>;
+  return <div className="flex flex-wrap gap-1">{items}</div>;
 }
 
 interface Props {
@@ -74,10 +74,10 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
   const statuses = ['', 'not_clocked_in', 'working', 'on_break', 'completed'];
 
   return (
-    <div className="admin-today-board">
-      <h2>今日の出勤ボード {data?.businessDate && <span className="admin-date">({data.businessDate})</span>}</h2>
+    <div className="p-4">
+      <h2>今日の出勤ボード {data?.businessDate && <span className="text-sm font-normal text-[#6b7280]">({data.businessDate})</span>}</h2>
 
-      <div className="admin-filters">
+      <div className="mb-3 flex flex-wrap gap-2">
         <select
           className="form-input"
           value={statusFilter}
@@ -101,7 +101,7 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
       {loading ? (
         <Loading />
       ) : (
-        <table className="table admin-attendance-table">
+        <table className="table w-full border-collapse text-sm">
           <thead>
             <tr>
               <th>スタッフ</th>
@@ -117,7 +117,7 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
           <tbody>
             {(data?.staff || []).map((s) => (
               <tr key={s.userId} data-testid="today-board-row">
-                <td className="admin-staff-name">{s.staffName}</td>
+                <td className="font-medium">{s.staffName}</td>
                 <td>
                   <Badge variant={s.currentStatus}>
                     {STATUS_LABELS[s.currentStatus] || s.currentStatus}
@@ -146,7 +146,7 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
               </tr>
             ))}
             {(!data?.staff || data.staff.length === 0) && (
-              <tr><td colSpan={8} className="admin-empty">スタッフがいません</td></tr>
+              <tr><td colSpan={8} className="p-4 text-center text-text-subtle">スタッフがいません</td></tr>
             )}
           </tbody>
         </table>

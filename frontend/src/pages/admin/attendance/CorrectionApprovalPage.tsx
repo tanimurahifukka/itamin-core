@@ -77,22 +77,22 @@ export default function CorrectionApprovalPage() {
   };
 
   return (
-    <div className="admin-correction-approval">
+    <div className="p-4">
       <h2>修正申請承認</h2>
 
       {loading ? (
         <Loading />
       ) : corrections.length === 0 ? (
-        <div className="admin-empty">申請はありません</div>
+        <div className="p-4 text-center text-text-subtle">申請はありません</div>
       ) : (
-        <div className="admin-correction-list">
+        <div className="flex flex-col gap-3">
           {corrections.map((c) => (
-            <div key={c.id} className={`admin-correction-item status-${c.status}`} data-testid="correction-item">
-              <div className="admin-correction-header">
-                <span className="admin-correction-applicant">{c.user?.name || c.user_id}</span>
+            <div key={c.id} className="rounded-lg bg-surface p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)]" data-testid="correction-item">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="font-semibold">{c.user?.name || c.user_id}</span>
                 <Badge variant={c.status}>{STATUS_LABELS[c.status]}</Badge>
               </div>
-              <div className="admin-correction-body">
+              <div className="mb-3 text-sm text-[#374151] [&>div]:mb-1">
                 <div><strong>対象日:</strong> {c.requested_business_date}</div>
                 <div><strong>種別:</strong> {c.request_type}</div>
                 <div><strong>理由:</strong> {c.reason}</div>
@@ -108,9 +108,9 @@ export default function CorrectionApprovalPage() {
               </div>
 
               {c.status === 'pending' && (
-                <div className="admin-correction-actions">
+                <div className="border-t border-[#f3f4f6] pt-3">
                   {actionId === c.id ? (
-                    <div className="admin-correction-comment-area">
+                    <div className="flex flex-col gap-2">
                       <input
                         className="form-input"
                         placeholder="コメント（任意）"
@@ -118,7 +118,7 @@ export default function CorrectionApprovalPage() {
                         onChange={e => setComment(e.target.value)}
                         data-testid="review-comment-input"
                       />
-                      <div className="admin-correction-buttons">
+                      <div className="flex gap-2">
                         <button
                           className="button button-primary"
                           onClick={() => handleApprove(c.id)}

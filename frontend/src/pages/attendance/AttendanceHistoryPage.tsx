@@ -70,7 +70,7 @@ export default function AttendanceHistoryPage({ onNavigate }: Props) {
   };
 
   return (
-    <div className="attendance-history">
+    <div className="p-4">
       <h2>勤怠履歴</h2>
 
       <MonthNavigation
@@ -85,22 +85,22 @@ export default function AttendanceHistoryPage({ onNavigate }: Props) {
       {loading ? (
         <Loading />
       ) : records.length === 0 ? (
-        <div className="attendance-empty">この月の記録はありません</div>
+        <div className="p-8 text-center text-text-subtle">この月の記録はありません</div>
       ) : (
-        <div className="attendance-record-list">
+        <div className="flex flex-col gap-2">
           {records.map((r) => (
-            <div key={r.id} className="attendance-record-card" data-testid="attendance-record-card">
-              <div className="attendance-record-date">{r.businessDate}</div>
-              <div className="attendance-record-times">
+            <div key={r.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-surface px-4 py-3 shadow-[0_1px_3px_rgba(0,0,0,0.06)]" data-testid="attendance-record-card">
+              <div className="min-w-[100px] font-semibold">{r.businessDate}</div>
+              <div className="tabular-nums">
                 <span>{formatTime(r.clockInAt)}</span>
                 <span> 〜 </span>
                 <span>{formatTime(r.clockOutAt)}</span>
               </div>
-              <div className="attendance-record-detail">
+              <div className="text-[13px] text-[#6b7280]">
                 <span>休憩 {r.breakMinutes}分</span>
                 <span>実働 {calcHours(r.clockInAt, r.clockOutAt, r.breakMinutes)}</span>
               </div>
-              <div className="attendance-record-status">
+              <div>
                 <Badge variant={r.status}>
                   {r.correctionStatus === 'pending' ? '申請中' : STATUS_LABELS[r.status] || r.status}
                 </Badge>

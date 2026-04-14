@@ -71,7 +71,7 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
 
   if (success) {
     return (
-      <div className="attendance-correction">
+      <div className="max-w-[600px] p-4">
         <Alert variant="success">修正申請を送信しました。管理者の承認をお待ちください。</Alert>
         <button className="button button-primary" onClick={onSubmitted} data-testid="back-to-home-button">
           ホームに戻る
@@ -81,10 +81,10 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
   }
 
   return (
-    <div className="attendance-correction">
+    <div className="max-w-[600px] p-4">
       <h2>修正を申請する</h2>
 
-      <form onSubmit={handleSubmit} className="attendance-correction-form">
+      <form onSubmit={handleSubmit} className="[&_.form-group]:mb-3">
         <div className="form-group">
           <label className="form-label">対象日</label>
           <input

@@ -113,7 +113,7 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
   if (loading) return <Loading />;
 
   return (
-    <div className="admin-staff-detail">
+    <div className="p-4">
       <button className="button" onClick={onBack} data-testid="back-button">← 戻る</button>
 
       <h2>{data?.staff?.name || 'スタッフ'} の勤怠詳細</h2>
@@ -125,7 +125,7 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
         onNext={nextMonth}
       />
 
-      <table className="table admin-attendance-table">
+      <table className="table w-full border-collapse text-sm">
         <thead>
           <tr>
             <th>日付</th>
@@ -144,12 +144,12 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
               {editingId === r.id ? (
                 <>
                   <td>{r.businessDate}</td>
-                  <td><input type="datetime-local" className="form-input form-input-sm" value={editClockIn} onChange={e => setEditClockIn(e.target.value)} data-testid="edit-clockin-input" /></td>
-                  <td><input type="datetime-local" className="form-input form-input-sm" value={editClockOut} onChange={e => setEditClockOut(e.target.value)} data-testid="edit-clockout-input" /></td>
+                  <td><input type="datetime-local" className="form-input max-w-[180px] text-[13px] px-2 py-1" value={editClockIn} onChange={e => setEditClockIn(e.target.value)} data-testid="edit-clockin-input" /></td>
+                  <td><input type="datetime-local" className="form-input max-w-[180px] text-[13px] px-2 py-1" value={editClockOut} onChange={e => setEditClockOut(e.target.value)} data-testid="edit-clockout-input" /></td>
                   <td>{r.breakMinutes}分</td>
                   <td>—</td>
                   <td>{r.status}</td>
-                  <td><input className="form-input form-input-sm" value={editNote} onChange={e => setEditNote(e.target.value)} data-testid="edit-note-input" /></td>
+                  <td><input className="form-input max-w-[180px] text-[13px] px-2 py-1" value={editNote} onChange={e => setEditNote(e.target.value)} data-testid="edit-note-input" /></td>
                   <td>
                     <button className="button button-small button-primary" onClick={() => saveEdit(r.id)} data-testid="save-edit-button">保存</button>
                     <button className="button button-small" onClick={() => setEditingId(null)}>取消</button>
@@ -175,7 +175,7 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
             </tr>
           ))}
           {(!data?.records || data.records.length === 0) && (
-            <tr><td colSpan={8} className="admin-empty">データなし</td></tr>
+            <tr><td colSpan={8} className="p-4 text-center text-text-subtle">データなし</td></tr>
           )}
         </tbody>
       </table>

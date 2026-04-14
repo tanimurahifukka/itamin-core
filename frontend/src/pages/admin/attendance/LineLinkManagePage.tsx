@@ -44,13 +44,13 @@ export default function LineLinkManagePage() {
   };
 
   return (
-    <div className="admin-line-links">
+    <div className="p-4">
       <h2>LINE 連携管理</h2>
 
       {loading ? (
         <Loading />
       ) : (
-        <table className="table admin-attendance-table">
+        <table className="table w-full border-collapse text-sm">
           <thead>
             <tr>
               <th>スタッフ</th>
@@ -78,7 +78,7 @@ export default function LineLinkManagePage() {
                 <td>{s.lineLink?.linkedAt ? new Date(s.lineLink.linkedAt).toLocaleDateString('ja-JP') : '—'}</td>
                 <td>
                   {s.activeToken ? (
-                    <div className="admin-link-code">
+                    <div className="flex flex-col gap-0.5">
                       <code data-testid="link-code-display">{s.activeToken.code}</code>
                       <small>期限: {new Date(s.activeToken.expiresAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</small>
                     </div>
@@ -99,7 +99,7 @@ export default function LineLinkManagePage() {
               </tr>
             ))}
             {staff.length === 0 && (
-              <tr><td colSpan={7} className="admin-empty">スタッフがいません</td></tr>
+              <tr><td colSpan={7} className="p-4 text-center text-text-subtle">スタッフがいません</td></tr>
             )}
           </tbody>
         </table>

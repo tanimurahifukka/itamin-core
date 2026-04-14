@@ -75,7 +75,7 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
   }, [storeId, year, month]);
 
   return (
-    <div className="admin-monthly-list">
+    <div className="p-4">
       <h2>月次勤怠一覧</h2>
 
       <MonthNavigation
@@ -115,7 +115,7 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
       {loading ? (
         <Loading />
       ) : (
-        <table className="table admin-attendance-table">
+        <table className="table w-full border-collapse text-sm">
           <thead>
             <tr>
               <th>スタッフ</th>
@@ -148,7 +148,7 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
               </tr>
             ))}
             {summary.length === 0 && (
-              <tr><td colSpan={7} className="admin-empty">データなし</td></tr>
+              <tr><td colSpan={7} className="p-4 text-center text-text-subtle">データなし</td></tr>
             )}
           </tbody>
         </table>

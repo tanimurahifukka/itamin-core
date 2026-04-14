@@ -61,7 +61,7 @@ export default function PolicySettingsPage() {
   if (!policy) return <Alert variant="error">ポリシーの取得に失敗しました</Alert>;
 
   return (
-    <div className="admin-policy-settings">
+    <div className="p-4">
       <h2>勤怠ポリシー設定</h2>
 
       {toast && <Alert variant="success">{toast}</Alert>}
