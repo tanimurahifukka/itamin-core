@@ -565,14 +565,7 @@ body {
 }
 
 /* ===== Error / Success ===== */
-.error-msg {
-  background: #fff0f0;
-  color: #e94560;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin: 12px 0;
-  font-size: 0.9rem;
-}
+/* .error-msg migrated to components/atoms/ErrorMessage. */
 
 /* .success-msg was unused; removed. */
 

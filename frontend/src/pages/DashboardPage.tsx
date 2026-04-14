@@ -6,6 +6,7 @@ import { Modal } from '../components/molecules/Modal';
 import { BreakMinutesField } from '../components/molecules/BreakMinutesField';
 import { Button } from '../components/atoms/Button';
 import { StatusDot } from '../components/atoms/StatusDot';
+import { ErrorMessage } from '../components/atoms/ErrorMessage';
 import type { TimeRecord, MonthlySummaryStaff, StaffMember, MonthlyRecordsResponse, MonthlyRawStaffRecord } from '../types/api';
 import { todayJST, formatDateJST, formatShortDateJST, formatTimeJST, currentJstYearMonth, isoToJstDateTimeLocalValue, jstDateTimeLocalValueToIso } from '../lib/dateUtils';
 
@@ -773,7 +774,7 @@ export default function DashboardPage() {
                 : `${editRecord?.staffName || '—'} さんの記録を修正します`}
             </p>
 
-            {editError && <div className="error-msg" style={{ marginBottom: 8 }}>{editError}</div>}
+            {editError && <ErrorMessage className="mb-2 mt-0">{editError}</ErrorMessage>}
 
             {isCreating && (
               <div style={{ marginBottom: 12 }}>

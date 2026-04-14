@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
 import { Button } from '../components/atoms/Button';
 import { Input } from '../components/atoms/Input';
+import { ErrorMessage } from '../components/atoms/ErrorMessage';
 import { Modal } from '../components/molecules/Modal';
 import type { StaffMember, Invitation, AuditLogEntry } from '../types/api';
 
@@ -687,7 +688,7 @@ export default function StaffPage() {
 
         <div style={{ marginTop: 24, borderTop: '1px solid #f0f0f0', paddingTop: 20 }}>
           <h4 style={{ marginBottom: 8 }}>スタッフを招待</h4>
-          {error && <div className="error-msg">{error}</div>}
+          {error && <ErrorMessage>{error}</ErrorMessage>}
           {success && <div style={{ color: '#22c55e', fontSize: '0.9rem', marginBottom: 8 }}>{success}</div>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <input

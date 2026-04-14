@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ErrorMessage } from '../components/atoms/ErrorMessage';
 
 interface Props {
   changePassword: (newPassword: string) => Promise<{ error?: string }>;
@@ -72,7 +73,7 @@ export default function PasswordChangePage({ changePassword, signOut }: Props) {
             )}
           </div>
 
-          {error && <div className="error-msg">{error}</div>}
+          {error && <ErrorMessage>{error}</ErrorMessage>}
 
           <button
             className={`invite-submit ${passwordMatch ? '' : 'disabled'}`}

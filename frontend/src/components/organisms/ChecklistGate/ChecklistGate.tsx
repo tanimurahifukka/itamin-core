@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { checkApi, ActiveItem, SubmissionItemInput, CheckTiming } from '../../../api/checkApi';
 import { Modal } from '../../molecules/Modal';
 import { Button } from '../../atoms/Button';
+import { ErrorMessage } from '../../atoms/ErrorMessage';
 import { cn } from '../../../lib/cn';
 
 // 共通スタイル: 項目カード / チェックボックス / テキスト入力
@@ -200,7 +201,7 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
         <p className="text-[0.85rem] text-[#888]">{subtitle}</p>
       </div>
 
-      {error && <div className="error-msg">{error}</div>}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
 
       <div className="mb-5 flex flex-col gap-2">
         {items.map(item => {

@@ -7,6 +7,7 @@ import { showToast } from '../components/molecules/Toast';
 import { Modal } from '../components/molecules/Modal';
 import { BreakMinutesField } from '../components/molecules/BreakMinutesField';
 import { Button } from '../components/atoms/Button';
+import { ErrorMessage } from '../components/atoms/ErrorMessage';
 import type { MenuItem, InventoryItem, DailyReportItem } from '../types/api';
 
 // 打刻テーマの濃紺グラデーション（旧 .break-confirm の配色）
@@ -343,7 +344,7 @@ export default function PunchClockPage() {
       <div className="current-time">{formatTime(time)}</div>
       <div className="current-date">{formatDate(time)}</div>
 
-      {error && <div className="error-msg">{error}</div>}
+      {error && <ErrorMessage>{error}</ErrorMessage>}
 
       <button
         className={`punch-btn ${isClockedIn ? 'clock-out' : 'clock-in'} ${punchSuccess ? 'punch-success' : ''}`}
@@ -409,7 +410,7 @@ export default function PunchClockPage() {
               {new Date(staleRecord.clockIn).toLocaleString('ja-JP')} に出勤した記録の退勤が打刻されていません。退勤時刻を入力してください。
             </p>
 
-            {error && <div className="error-msg" style={{ marginBottom: 8 }}>{error}</div>}
+            {error && <ErrorMessage className="mb-2 mt-0">{error}</ErrorMessage>}
 
             <div className="mb-3">
               <label className="form-label" style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600 }}>退勤時刻</label>
@@ -457,7 +458,7 @@ export default function PunchClockPage() {
           <h3 className="text-center text-[1.2rem] text-[#1a1a2e] mb-1">退勤レポート</h3>
             <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: 12 }}>日報と在庫を確認してから退勤します</p>
 
-            {error && <div className="error-msg" style={{ marginBottom: 8 }}>{error}</div>}
+            {error && <ErrorMessage className="mb-2 mt-0">{error}</ErrorMessage>}
 
             {/* 日報セクション */}
             <div style={{ marginBottom: 16 }}>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/atoms/Button';
 import { Input } from '../components/atoms/Input';
+import { ErrorMessage } from '../components/atoms/ErrorMessage';
 
 // ログイン画面のテーマ（背景グラデーション・白文字・#e94560 ボタン）は
 // アプリ本体のデザイン言語と異なるため、ここではアプリ共通の
@@ -122,7 +123,7 @@ function NormalLoginPage({ signIn, signUp }: {
           className={LOGIN_INPUT}
         />
 
-        {error && <div className="error-msg">{error}</div>}
+        {error && <ErrorMessage>{error}</ErrorMessage>}
 
         <Button
           type="submit"
@@ -251,7 +252,7 @@ function InviteRegisterPage({ email, defaultName, storeName, onComplete }: {
             )}
           </div>
 
-          {error && <div className="error-msg">{error}</div>}
+          {error && <ErrorMessage>{error}</ErrorMessage>}
 
           <button
             className={`invite-submit ${passwordMatch ? '' : 'disabled'}`}
@@ -338,7 +339,7 @@ function JoinStorePage({ storeId, inviteToken }: { storeId: string; inviteToken:
         <h1 className="mb-2 text-5xl tracking-[6px]">
           ITA<span className="text-[#e94560]">MIN</span>
         </h1>
-        <div className="error-msg" style={{ marginTop: 20 }}>{storeError}</div>
+        <ErrorMessage className="mt-5">{storeError}</ErrorMessage>
         <button
           type="button"
           className={`toggle-auth ${TOGGLE_LINK}`}
@@ -408,7 +409,7 @@ function JoinStorePage({ storeId, inviteToken }: { storeId: string; inviteToken:
             <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} minLength={8} required className="invite-input" />
           </div>
 
-          {error && <div className="error-msg">{error}</div>}
+          {error && <ErrorMessage>{error}</ErrorMessage>}
 
           <button className={`invite-submit ${passwordMatch ? 'active' : ''}`} type="submit" disabled={loading || !passwordMatch}>
             {loading ? '登録中...' : '登録する'}
