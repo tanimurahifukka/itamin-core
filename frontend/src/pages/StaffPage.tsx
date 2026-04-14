@@ -2,6 +2,9 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
+import { Button } from '../components/atoms/Button';
+import { Input } from '../components/atoms/Input';
+import { Modal } from '../components/molecules/Modal';
 import type { StaffMember, Invitation, AuditLogEntry } from '../types/api';
 
 const roleLabels: Record<string, string> = {
@@ -760,240 +763,201 @@ export default function StaffPage() {
       </div>
 
       {/* パスワードリセットモーダル */}
-      {resetTarget && (
-        <div className="remove-modal-overlay" onClick={() => !resetting && setResetTarget(null)}>
-          <div className="remove-modal" onClick={e => e.stopPropagation()}>
-            <div className="remove-modal-icon">🔑</div>
-            <h3 className="remove-modal-title">パスワードリセット</h3>
+      <Modal
+        open={!!resetTarget}
+        onClose={() => !resetting && setResetTarget(null)}
+        closeOnBackdrop={!resetting}
+        actions={
+          !resetResult ? (
+            <>
+              <Button variant="secondary" className="flex-1" onClick={() => setResetTarget(null)} disabled={resetting}>
+                キャンセル
+              </Button>
+              <Button
+                className="flex-[2] bg-[#f59e0b] hover:bg-[#d97706] text-white"
+                onClick={handleResetPassword}
+                disabled={resetting}
+              >
+                {resetting ? '処理中...' : 'リセットする'}
+              </Button>
+            </>
+          ) : (
+            <Button variant="danger" fullWidth onClick={() => setResetTarget(null)}>
+              閉じる
+            </Button>
+          )
+        }
+      >
+        {resetTarget && (
+          <>
+            <div className="text-center text-[2.5rem] mb-3">🔑</div>
+            <h3 className="text-center text-[1.15rem] text-text mb-2">パスワードリセット</h3>
             {!resetResult ? (
               <>
-                <p className="remove-modal-desc">
+                <p className="text-center text-sm text-text-muted leading-[1.7] mb-5">
                   <strong>{resetTarget.userName}</strong> さんのログインパスワードをリセットします。
                   空欄の場合は事業所の初期パスワードが使用されます。
                 </p>
-                <div className="remove-modal-confirm">
-                  <label className="remove-modal-label">
+                <div className="mb-5">
+                  <label className="block text-sm text-text-muted mb-2">
                     新しいパスワード（任意・6文字以上）
                   </label>
-                  <input
+                  <Input
                     type="text"
-                    className="remove-modal-input"
                     value={resetPasswordInput}
                     onChange={e => setResetPasswordInput(e.target.value)}
                     placeholder="空欄で初期パスワードを使用"
                     autoFocus
                   />
                 </div>
-                <div className="remove-modal-actions">
-                  <button
-                    className="remove-modal-cancel"
-                    onClick={() => setResetTarget(null)}
-                    disabled={resetting}
-                  >
-                    キャンセル
-                  </button>
-                  <button
-                    className="remove-modal-submit active"
-                    onClick={handleResetPassword}
-                    disabled={resetting}
-                    style={{ background: '#f59e0b' }}
-                  >
-                    {resetting ? '処理中...' : 'リセットする'}
-                  </button>
-                </div>
               </>
             ) : (
               <>
-                <p className="remove-modal-desc" style={{ color: '#22c55e' }}>
+                <p className="text-center text-sm text-[#22c55e] leading-[1.7] mb-5">
                   ✓ {resetResult.message}
                 </p>
-                <div className="remove-modal-confirm">
-                  <label className="remove-modal-label">新しいパスワード</label>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input
+                <div className="mb-5">
+                  <label className="block text-sm text-text-muted mb-2">新しいパスワード</label>
+                  <div className="flex items-center gap-2">
+                    <Input
                       type="text"
-                      className="remove-modal-input"
                       value={resetResult.password}
                       readOnly
-                      style={{ flex: 1, fontFamily: 'monospace', fontSize: '1.05rem' }}
+                      className="flex-1 font-mono text-[1.05rem]"
                     />
-                    <button
-                      onClick={handleCopyResetPassword}
-                      style={{ padding: '10px 14px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                    >
+                    <Button variant="primary" size="sm" onClick={handleCopyResetPassword}>
                       コピー
-                    </button>
+                    </Button>
                   </div>
-                  <p style={{ fontSize: '0.8rem', color: '#999', marginTop: 8 }}>
+                  <p className="text-xs text-text-subtle mt-2">
                     このパスワードを本人に伝えてください。次回ログイン時に変更が求められます。
                   </p>
                 </div>
-                <div className="remove-modal-actions">
-                  <button
-                    className="remove-modal-submit active"
-                    onClick={() => setResetTarget(null)}
-                  >
-                    閉じる
-                  </button>
-                </div>
               </>
             )}
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
 
       {/* リセット履歴モーダル */}
-      {historyOpen && (
-        <div className="remove-modal-overlay" onClick={() => setHistoryOpen(false)}>
-          <div
-            className="remove-modal"
-            onClick={e => e.stopPropagation()}
-            style={{ maxWidth: 560, width: '92%' }}
-          >
-            <div className="remove-modal-icon">📋</div>
-            <h3 className="remove-modal-title">パスワードリセット履歴</h3>
-            <p className="remove-modal-desc" style={{ textAlign: 'left' }}>
-              直近 50 件までのパスワードリセット記録を表示します。
-            </p>
-            <div style={{ maxHeight: 360, overflowY: 'auto', marginTop: 8, border: '1px solid #e2e8f0', borderRadius: 6 }}>
-              {historyLoading ? (
-                <div style={{ padding: 24, textAlign: 'center', color: '#64748b' }}>読み込み中...</div>
-              ) : historyEntries.length === 0 ? (
-                <div style={{ padding: 24, textAlign: 'center', color: '#64748b' }}>履歴はまだありません</div>
-              ) : (
-                historyEntries.map((entry) => {
-                  const meta = entry.metadata || {};
-                  const custom = Boolean((meta as Record<string, unknown>).custom_password_used);
-                  return (
-                    <div
-                      key={entry.id}
-                      style={{
-                        padding: '12px 14px',
-                        borderBottom: '1px solid #f1f5f9',
-                        fontSize: '0.88rem',
-                        textAlign: 'left',
-                      }}
-                    >
-                      <div style={{ color: '#0f172a', marginBottom: 4 }}>
-                        <strong>{entry.target_name || '(削除済みスタッフ)'}</strong>
-                        <span style={{ color: '#64748b', marginLeft: 8 }}>
-                          ← {entry.actor_name || '(不明)'}
-                          {entry.actor_role ? ` (${roleLabels[entry.actor_role] || entry.actor_role})` : ''}
-                        </span>
-                      </div>
-                      <div style={{ color: '#64748b', fontSize: '0.8rem' }}>
-                        {new Date(entry.created_at).toLocaleString('ja-JP')}
-                        {custom ? ' · カスタムパスワード' : ' · 初期パスワード'}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-            <div className="remove-modal-actions" style={{ marginTop: 16 }}>
-              <button
-                className="remove-modal-submit active"
-                onClick={() => setHistoryOpen(false)}
-              >
-                閉じる
-              </button>
-            </div>
-          </div>
+      <Modal
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        size="lg"
+        actions={
+          <Button variant="primary" fullWidth onClick={() => setHistoryOpen(false)}>
+            閉じる
+          </Button>
+        }
+      >
+        <div className="text-center text-[2.5rem] mb-3">📋</div>
+        <h3 className="text-center text-[1.15rem] text-text mb-2">パスワードリセット履歴</h3>
+        <p className="text-left text-sm text-text-muted leading-[1.7] mb-2">
+          直近 50 件までのパスワードリセット記録を表示します。
+        </p>
+        <div className="mt-2 max-h-[360px] overflow-y-auto rounded-md border border-[#e2e8f0]">
+          {historyLoading ? (
+            <div className="p-6 text-center text-[#64748b]">読み込み中...</div>
+          ) : historyEntries.length === 0 ? (
+            <div className="p-6 text-center text-[#64748b]">履歴はまだありません</div>
+          ) : (
+            historyEntries.map((entry) => {
+              const meta = entry.metadata || {};
+              const custom = Boolean((meta as Record<string, unknown>).custom_password_used);
+              return (
+                <div
+                  key={entry.id}
+                  className="border-b border-[#f1f5f9] px-3.5 py-3 text-left text-[0.88rem]"
+                >
+                  <div className="mb-1 text-[#0f172a]">
+                    <strong>{entry.target_name || '(削除済みスタッフ)'}</strong>
+                    <span className="ml-2 text-[#64748b]">
+                      ← {entry.actor_name || '(不明)'}
+                      {entry.actor_role ? ` (${roleLabels[entry.actor_role] || entry.actor_role})` : ''}
+                    </span>
+                  </div>
+                  <div className="text-xs text-[#64748b]">
+                    {new Date(entry.created_at).toLocaleString('ja-JP')}
+                    {custom ? ' · カスタムパスワード' : ' · 初期パスワード'}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
-      )}
+      </Modal>
 
       {/* スタッフ PIN 発行結果モーダル */}
-      {pinResult && (
-        <div className="remove-modal-overlay" onClick={() => setPinResult(null)}>
-          <div
-            className="remove-modal"
-            onClick={e => e.stopPropagation()}
-            style={{ maxWidth: 420, width: '92%' }}
-          >
-            <div className="remove-modal-icon">🔢</div>
-            <h3 className="remove-modal-title">PIN を再発行しました</h3>
-            <p className="remove-modal-desc">
+      <Modal
+        open={!!pinResult}
+        onClose={() => setPinResult(null)}
+        actions={null}
+      >
+        {pinResult && (
+          <>
+            <div className="text-center text-[2.5rem] mb-3">🔢</div>
+            <h3 className="text-center text-[1.15rem] text-text mb-2">PIN を再発行しました</h3>
+            <p className="text-center text-sm text-text-muted leading-[1.7] mb-5">
               <strong>{pinResult.staffName}</strong> さんの新しい PIN です。
               NFC チェックインと NFC 打刻の両方で使用します。
             </p>
-            <div
-              style={{
-                margin: '16px 0',
-                padding: '20px',
-                background: '#f1f5f9',
-                borderRadius: 10,
-                textAlign: 'center',
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: 'monospace',
-                  fontSize: '2rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.4em',
-                  color: '#0f172a',
-                }}
-              >
+            <div className="my-4 rounded-[10px] bg-[#f1f5f9] p-5 text-center">
+              <div className="font-mono text-[2rem] font-bold tracking-[0.4em] text-[#0f172a]">
                 {pinResult.pin}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={handleCopyStaffPin}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: '#2563eb',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
+            <div className="flex gap-2">
+              <Button variant="primary" className="flex-1" onClick={handleCopyStaffPin}>
                 PIN をコピー
-              </button>
-              <button
-                onClick={() => setPinResult(null)}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: '#e2e8f0',
-                  color: '#0f172a',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
+              </Button>
+              <Button variant="secondary" className="flex-1 bg-[#e2e8f0]" onClick={() => setPinResult(null)}>
                 閉じる
-              </button>
+              </Button>
             </div>
-            <p style={{ fontSize: '0.8rem', color: '#999', marginTop: 12 }}>
+            <p className="text-xs text-text-subtle mt-3">
               この PIN を本人に伝えてください。再発行すると旧 PIN は無効になります。
             </p>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
 
       {/* 他店舗に追加モーダル */}
-      {assignTarget && (
-        <div className="remove-modal-overlay" onClick={() => !assigning && setAssignTarget(null)}>
-          <div className="remove-modal" onClick={e => e.stopPropagation()}>
-            <div className="remove-modal-icon">🏪</div>
-            <h3 className="remove-modal-title">他店舗に追加</h3>
-            <p className="remove-modal-desc">
+      <Modal
+        open={!!assignTarget}
+        onClose={() => !assigning && setAssignTarget(null)}
+        closeOnBackdrop={!assigning}
+        actions={
+          <>
+            <Button variant="secondary" className="flex-1" onClick={() => setAssignTarget(null)} disabled={assigning}>
+              キャンセル
+            </Button>
+            <Button
+              variant="primary"
+              className="flex-[2]"
+              onClick={handleAssignToStore}
+              disabled={!assignStoreId || assigning}
+            >
+              {assigning ? '追加中...' : '追加する'}
+            </Button>
+          </>
+        }
+      >
+        {assignTarget && (
+          <>
+            <div className="text-center text-[2.5rem] mb-3">🏪</div>
+            <h3 className="text-center text-[1.15rem] text-text mb-2">他店舗に追加</h3>
+            <p className="text-center text-sm text-text-muted leading-[1.7] mb-5">
               <strong>{assignTarget.userName}</strong> さんを別の事業所にも追加します。
             </p>
 
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: '#475569', marginBottom: 4 }}>
+            <div className="mb-3">
+              <label className="block text-[0.85rem] text-[#475569] mb-1">
                 追加先の事業所
               </label>
               <select
                 value={assignStoreId}
                 onChange={e => setAssignStoreId(e.target.value)}
-                style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', fontSize: '0.95rem' }}
+                className="w-full rounded-md border border-[#cbd5e1] bg-surface px-2.5 py-2 text-[0.95rem]"
               >
                 <option value="">選択してください</option>
                 {otherManagedStores.map(s => (
@@ -1002,85 +966,69 @@ export default function StaffPage() {
               </select>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: '#475569', marginBottom: 4 }}>
+            <div className="mb-4">
+              <label className="block text-[0.85rem] text-[#475569] mb-1">
                 ロール
               </label>
               <select
                 value={assignRole}
                 onChange={e => setAssignRole(e.target.value)}
-                style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', fontSize: '0.95rem' }}
+                className="w-full rounded-md border border-[#cbd5e1] bg-surface px-2.5 py-2 text-[0.95rem]"
               >
                 {assignableRoles.map(r => (
                   <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </select>
             </div>
-
-            <div className="remove-modal-actions">
-              <button
-                className="remove-modal-cancel"
-                onClick={() => setAssignTarget(null)}
-                disabled={assigning}
-              >
-                キャンセル
-              </button>
-              <button
-                className={`remove-modal-submit ${assignStoreId ? 'active' : ''}`}
-                onClick={handleAssignToStore}
-                disabled={!assignStoreId || assigning}
-              >
-                {assigning ? '追加中...' : '追加する'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
 
       {/* 退職確認モーダル */}
-      {removeTarget && (
-        <div className="remove-modal-overlay" onClick={() => !removing && setRemoveTarget(null)}>
-          <div className="remove-modal" onClick={e => e.stopPropagation()}>
-            <div className="remove-modal-icon">⚠️</div>
-            <h3 className="remove-modal-title">スタッフの退職処理</h3>
-            <p className="remove-modal-desc">
+      <Modal
+        open={!!removeTarget}
+        onClose={() => !removing && setRemoveTarget(null)}
+        closeOnBackdrop={!removing}
+        actions={
+          <>
+            <Button variant="secondary" className="flex-1" onClick={() => setRemoveTarget(null)} disabled={removing}>
+              キャンセル
+            </Button>
+            <Button
+              variant="danger"
+              className="flex-[2]"
+              onClick={handleRemove}
+              disabled={!confirmMatch || removing}
+            >
+              {removing ? '処理中...' : '退職させる'}
+            </Button>
+          </>
+        }
+      >
+        {removeTarget && (
+          <>
+            <div className="text-center text-[2.5rem] mb-3">⚠️</div>
+            <h3 className="text-center text-[1.15rem] text-text mb-2">スタッフの退職処理</h3>
+            <p className="text-center text-sm text-text-muted leading-[1.7] mb-5">
               <strong>{removeTarget.userName}</strong> さんをこの事業所から削除します。
               この操作は取り消せません。関連するシフト希望なども削除されます。
             </p>
 
-            <div className="remove-modal-confirm">
-              <label className="remove-modal-label">
+            <div className="mb-5">
+              <label className="block text-sm text-text-muted mb-2">
                 確認のため事業所名 <strong>{storeName}</strong> を入力してください
               </label>
-              <input
+              <Input
                 type="text"
-                className="remove-modal-input"
                 value={confirmInput}
                 onChange={e => setConfirmInput(e.target.value)}
                 placeholder={storeName}
                 autoFocus
               />
             </div>
-
-            <div className="remove-modal-actions">
-              <button
-                className="remove-modal-cancel"
-                onClick={() => setRemoveTarget(null)}
-                disabled={removing}
-              >
-                キャンセル
-              </button>
-              <button
-                className={`remove-modal-submit ${confirmMatch ? 'active' : ''}`}
-                onClick={handleRemove}
-                disabled={!confirmMatch || removing}
-              >
-                {removing ? '処理中...' : '退職させる'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
     </div>
   );
 }

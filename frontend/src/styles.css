@@ -1698,130 +1698,7 @@ body {
   font-size: 0.9rem;
 }
 
-/* ===== Remove Staff Modal ===== */
-.remove-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  animation: overlayFadeIn 0.2s ease;
-}
-
-.remove-modal {
-  background: white;
-  border-radius: 16px;
-  padding: 28px;
-  width: 100%;
-  max-width: 440px;
-  animation: modalSlideUp 0.2s ease;
-}
-
-.remove-modal-icon {
-  text-align: center;
-  font-size: 2.5rem;
-  margin-bottom: 12px;
-}
-
-.remove-modal-title {
-  text-align: center;
-  font-size: 1.15rem;
-  color: #1a1a1a;
-  margin-bottom: 8px;
-}
-
-.remove-modal-desc {
-  text-align: center;
-  font-size: 0.9rem;
-  color: #666;
-  line-height: 1.7;
-  margin-bottom: 20px;
-}
-
-.remove-modal-confirm {
-  margin-bottom: 20px;
-}
-
-.remove-modal-label {
-  display: block;
-  font-size: 0.85rem;
-  color: #555;
-  margin-bottom: 8px;
-}
-
-.remove-modal-input {
-  width: 100%;
-  padding: 10px 14px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-family: inherit;
-  color: #1a1a1a;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
-}
-
-.remove-modal-input:focus {
-  outline: none;
-  border-color: #dc2626;
-}
-
-.remove-modal-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.remove-modal-cancel {
-  flex: 1;
-  padding: 12px;
-  border: 2px solid #e0e0e0;
-  background: white;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  cursor: pointer;
-  color: #666;
-  font-family: inherit;
-  transition: border-color 0.2s;
-}
-
-.remove-modal-cancel:hover {
-  border-color: #ccc;
-}
-
-.remove-modal-submit {
-  flex: 2;
-  padding: 12px;
-  border: none;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: not-allowed;
-  background: #e0e0e0;
-  color: #999;
-  transition: all 0.2s;
-}
-
-.remove-modal-submit.active {
-  background: #dc2626;
-  color: white;
-  cursor: pointer;
-}
-
-.remove-modal-submit.active:hover {
-  background: #b91c1c;
-}
-
-.remove-modal-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+/* .remove-modal-* migrated to Modal molecule + Button + Input atoms. */
 
 /* ===== Toast Notifications ===== */
 .toast-container {
@@ -2553,14 +2430,7 @@ body {
     text-align: center;
   }
 
-  .remove-modal {
-    padding: 20px;
-    margin: 12px;
-  }
-
-  .remove-modal-actions {
-    flex-direction: column;
-  }
+  /* remove-modal mobile overrides migrated to Modal molecule (uses responsive Tailwind). */
 
   .invite-card {
     padding: 24px 20px;
