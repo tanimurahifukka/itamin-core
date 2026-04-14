@@ -89,8 +89,6 @@ body {
  *   Visual identity (#34a853 completion green, #dc2626 CCP red) is retained
  *   inline in the organism. */
 
-
-
 /* .admin-items / .admin-item / .item-order / .item-label / .item-type-badge /
  * .item-actions / .item-edit-form / .item-edit-type-selector were all unused; removed.
  * .item-edit-input remains because InventoryPage uses it. */
@@ -129,7 +127,6 @@ body {
   to { opacity: 0; transform: translateY(-10px); }
 }
 
-
 /* .month-nav / .month-nav-btn / .month-nav-label + .attendance-month-nav /
  * .attendance-month-label migrated to components/molecules/MonthNavigation. */
 
@@ -138,7 +135,6 @@ body {
 /* ===== Empty State ===== */
 /* .empty-state / .empty-state-icon / .empty-state-text / .empty-state-hint
  * migrated to components/molecules/EmptyState. */
-
 
 @keyframes dotPulse {
   0%, 100% { opacity: 1; }
@@ -302,14 +298,12 @@ body {
 
 /* ===== Mobile Responsive ===== */
 @media (max-width: 768px) {
-  /* .mobile-card-grid migrated to MobileCardMenu organism (Tailwind grid-cols-2). */
 
   .main-content {
     padding: 16px 14px;
   }
 
-  /* .punch-clock / .punch-btn mobile overrides migrated to max-md: Tailwind
-   * in PunchClockPage.tsx. */
+  
 
   /* checklist-admin / records-section / staff-section mobile padding handled by Tailwind max-md: at the call sites. */
 
@@ -319,18 +313,7 @@ body {
     font-size: 0.85rem;
   }
 
-  /* break-modal / break-presets mobile overrides migrated to Modal / BreakMinutesField molecules. */
-
-
-  /* .staff-item / .staff-item-meta mobile overrides migrated to
-   * Tailwind max-md: in StaffPage. (meta uses max-md:pl-0) */
-
-  /* .rehire-* mobile overrides migrated to inline Tailwind in StaffPage. */
-  /* remove-modal mobile overrides migrated to Modal molecule (uses responsive Tailwind). */
-
-  /* .invite-card mobile padding migrated to LoginPage constants. */
-
-  /* .inventory-* mobile overrides migrated to max-md: Tailwind in InventoryPage. */
+  
 
   /* .timing-tabs mobile flex-wrap / .daily-report-form-grid mobile columns
    * migrated to max-md: Tailwind at call sites where relevant. */
@@ -654,5 +637,4 @@ body {
   .admin-attendance-table th,
   .admin-attendance-table td { padding: 6px 8px; }
   .admin-filters .form-input { max-width: 100%; }
-  /* .attendance-action-btn mobile override migrated to max-md: Tailwind in AttendanceHomePage. */
 }
