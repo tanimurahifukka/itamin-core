@@ -90,29 +90,6 @@ body {
  *   inline in the organism. */
 
 
-.timing-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.timing-tab {
-  flex: 1;
-  padding: 10px;
-  border: 2px solid #e0e0e0;
-  background: white;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  cursor: pointer;
-  text-align: center;
-  transition: border-color 0.2s, color 0.2s;
-}
-
-.timing-tab.active {
-  border-color: #e94560;
-  color: #e94560;
-  font-weight: 500;
-}
 
 /* .admin-items / .admin-item / .item-order / .item-label / .item-type-badge /
  * .item-actions / .item-edit-form / .item-edit-type-selector were all unused; removed.
@@ -355,13 +332,8 @@ body {
 
   /* .inventory-* mobile overrides migrated to max-md: Tailwind in InventoryPage. */
 
-  .timing-tabs {
-    flex-wrap: wrap;
-  }
-
-  .daily-report-form-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+  /* .timing-tabs mobile flex-wrap / .daily-report-form-grid mobile columns
+   * migrated to max-md: Tailwind at call sites where relevant. */
 }
 
 /* スタッフ名リンク（月別集計テーブル内） */

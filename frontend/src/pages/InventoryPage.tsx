@@ -266,9 +266,9 @@ export default function InventoryPage() {
 
       {/* カテゴリフィルタ */}
       {categories.length > 0 && (
-        <div className="timing-tabs" style={{ marginBottom: 16 }}>
+        <div className="mb-5 flex gap-2" style={{ marginBottom: 16 }}>
           <button
-            className={`timing-tab ${activeCategory === '' ? 'active' : ''}`}
+            className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeCategory === '' ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
             onClick={() => setActiveCategory('')}
           >
             すべて
@@ -276,7 +276,7 @@ export default function InventoryPage() {
           {categories.map(cat => (
             <button
               key={cat}
-              className={`timing-tab ${activeCategory === cat ? 'active' : ''}`}
+              className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeCategory === cat ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
               onClick={() => setActiveCategory(cat)}
             >
               {cat}

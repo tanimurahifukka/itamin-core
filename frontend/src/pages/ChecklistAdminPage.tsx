@@ -329,11 +329,11 @@ function TemplatesTab({ storeId }: { storeId: string }) {
   return (
     <div>
       {/* scope タブ */}
-      <div className="timing-tabs" style={{ marginBottom: 20 }}>
+      <div className="mb-5 flex gap-2" style={{ marginBottom: 20 }}>
         {(['personal', 'store'] as CheckScope[]).map(sc => (
           <button
             key={sc}
-            className={`timing-tab ${scopeTab === sc ? 'active' : ''}`}
+            className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${scopeTab === sc ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
             onClick={() => { setScopeTab(sc); setSelectedTpl(null); setEditItems([]); }}
           >
             {SCOPE_LABEL[sc]}チェック
@@ -826,9 +826,9 @@ export default function ChecklistAdminPage() {
         </div>
 
         {/* タブ */}
-        <div className="timing-tabs" style={{ marginBottom: 24 }}>
+        <div className="mb-5 flex gap-2" style={{ marginBottom: 24 }}>
           <button
-            className={`timing-tab ${activeTab === 'store_check' ? 'active' : ''}`}
+            className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeTab === 'store_check' ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
             onClick={() => setActiveTab('store_check')}
           >
             今日の店舗チェック
@@ -836,13 +836,13 @@ export default function ChecklistAdminPage() {
           {isManager && (
             <>
               <button
-                className={`timing-tab ${activeTab === 'templates' ? 'active' : ''}`}
+                className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeTab === 'templates' ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
                 onClick={() => setActiveTab('templates')}
               >
                 テンプレート管理
               </button>
               <button
-                className={`timing-tab ${activeTab === 'assignments' ? 'active' : ''}`}
+                className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeTab === 'assignments' ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
                 onClick={() => setActiveTab('assignments')}
               >
                 割当管理

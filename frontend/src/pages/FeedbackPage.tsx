@@ -189,16 +189,16 @@ export default function FeedbackPage() {
 
       {/* フィルタ */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-        <div className="timing-tabs">
-          <button className={`timing-tab ${filterStatus === '' ? 'active' : ''}`} onClick={() => setFilterStatus('')}>すべて</button>
+        <div className="mb-5 flex gap-2">
+          <button className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterStatus === '' ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`} onClick={() => setFilterStatus('')}>すべて</button>
           {STATUS_OPTIONS.map(s => (
-            <button key={s} className={`timing-tab ${filterStatus === s ? 'active' : ''}`} onClick={() => setFilterStatus(s)}>{s}</button>
+            <button key={s} className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterStatus === s ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`} onClick={() => setFilterStatus(s)}>{s}</button>
           ))}
         </div>
-        <div className="timing-tabs">
-          <button className={`timing-tab ${filterType === '' ? 'active' : ''}`} onClick={() => setFilterType('')}>全種別</button>
+        <div className="mb-5 flex gap-2">
+          <button className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterType === '' ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`} onClick={() => setFilterType('')}>全種別</button>
           {TYPE_OPTIONS.map(t => (
-            <button key={t.value} className={`timing-tab ${filterType === t.value ? 'active' : ''}`} onClick={() => setFilterType(t.value)}>{t.label}</button>
+            <button key={t.value} className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterType === t.value ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`} onClick={() => setFilterType(t.value)}>{t.label}</button>
           ))}
         </div>
       </div>

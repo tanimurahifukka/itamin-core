@@ -476,11 +476,11 @@ export default function StoreChecklistPage() {
         <h3 style={{ fontWeight: 700, marginBottom: 16 }}>今日の店舗チェック</h3>
 
         {/* タブ */}
-        <div className="timing-tabs" style={{ marginBottom: 20 }}>
+        <div className="mb-5 flex gap-2" style={{ marginBottom: 20 }}>
           {(Object.keys(TAB_LABELS) as StoreTab[]).map(tab => (
             <button
               key={tab}
-              className={`timing-tab ${activeTab === tab ? 'active' : ''}`}
+              className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeTab === tab ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
               {TAB_LABELS[tab]}
