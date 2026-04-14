@@ -9,18 +9,18 @@ const SELECTOR = 'px-5 py-[60px] text-center';
 const TITLE = 'mb-6 text-[1.3rem]';
 const STORE_LIST = 'mx-auto flex max-w-[400px] flex-col gap-3';
 const STORE_CARD =
-  'cursor-pointer rounded-xl border-2 border-border-light bg-surface p-5 text-left transition-all hover:border-[#e94560] hover:shadow-[0_2px_12px_rgba(233,69,96,0.1)]';
+  'cursor-pointer rounded-xl border-2 border-border-light bg-surface p-5 text-left transition-all hover:border-magenta-500 hover:shadow-[0_2px_12px_rgba(233,69,96,0.1)]';
 const STORE_NAME = 'mb-1 text-[1.1rem]';
 const STORE_ROLE = 'text-[0.85rem] text-text-subtle';
 const CREATE_CONTAINER = 'mx-auto mt-6 max-w-[400px]';
 const CREATE_INPUT =
   'mb-2 w-full rounded-lg border-2 border-border-light px-4 py-3 text-base';
 const CREATE_BTN =
-  'w-full cursor-pointer rounded-lg border-none bg-[#e94560] px-4 py-3 text-base font-medium text-white transition-colors hover:bg-[#d13a54] disabled:cursor-not-allowed disabled:opacity-50';
+  'w-full cursor-pointer rounded-lg border-none bg-magenta-500 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-magenta-700 disabled:cursor-not-allowed disabled:opacity-50';
 const STORE_ACTION_BTN =
-  'w-full cursor-pointer rounded-lg border-none bg-[#e94560] px-4 py-3 text-base font-medium text-white transition-colors hover:bg-[#d13a54]';
+  'w-full cursor-pointer rounded-lg border-none bg-magenta-500 px-4 py-3 text-base font-medium text-white transition-colors hover:bg-magenta-700';
 const STORE_ACTION_SECONDARY =
-  'w-full cursor-pointer rounded-lg border-2 border-border-light bg-surface px-4 py-3 text-base font-medium text-[#374151] transition-colors hover:border-[#e94560] hover:text-[#e94560]';
+  'w-full cursor-pointer rounded-lg border-2 border-border-light bg-surface px-4 py-3 text-base font-medium text-sumi-600 transition-colors hover:border-magenta-500 hover:text-magenta-500';
 
 const roleLabels: Record<string, string> = {
   owner: 'オーナー',

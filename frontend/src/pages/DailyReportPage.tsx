@@ -9,7 +9,7 @@ import { SummaryCard } from '../components/molecules/SummaryCard';
 const DR_FORM_GRID = 'grid gap-2 [grid-template-columns:140px_1fr_1fr_120px]';
 const DR_LIST = 'flex flex-col gap-2';
 const DR_CARD =
-  'cursor-pointer rounded-lg border border-[#e5e7eb] p-3 transition-colors hover:bg-[#f8fafc]';
+  'cursor-pointer rounded-lg border border-border-light p-3 transition-colors hover:bg-background-subtle';
 const DR_CARD_HEADER = 'mb-1.5 flex items-center justify-between';
 const DR_DATE = 'text-[0.9rem] font-semibold';
 const DR_WEATHER = 'text-[0.85rem] text-text-muted';
@@ -175,21 +175,21 @@ export default function DailyReportPage() {
         <h3 style={{ marginBottom: 12 }}>日報入力</h3>
         <div className={DR_FORM_GRID}>
           <div>
-            <label className="mb-0.5 block text-[0.8rem] text-[#666]">日付</label>
+            <label className="mb-0.5 block text-[0.8rem] text-text-description">日付</label>
             <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
           </div>
           {inputMode === 'manual' && (
             <div>
-              <label className="mb-0.5 block text-[0.8rem] text-[#666]">売上（円）</label>
+              <label className="mb-0.5 block text-[0.8rem] text-text-description">売上（円）</label>
               <input type="number" placeholder="0" value={formSales} onChange={e => setFormSales(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
             </div>
           )}
           <div>
-            <label className="mb-0.5 block text-[0.8rem] text-[#666]">来客数</label>
+            <label className="mb-0.5 block text-[0.8rem] text-text-description">来客数</label>
             <input type="number" placeholder="0" value={formCustomers} onChange={e => setFormCustomers(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
           </div>
           <div>
-            <label className="mb-0.5 block text-[0.8rem] text-[#666]">天気</label>
+            <label className="mb-0.5 block text-[0.8rem] text-text-description">天気</label>
             <select value={formWeather} onChange={e => setFormWeather(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans">
               {WEATHER_OPTIONS.map(w => <option key={w} value={w}>{w}</option>)}
             </select>
@@ -252,7 +252,7 @@ export default function DailyReportPage() {
         )}
 
         <div style={{ marginTop: 8 }}>
-          <label className="mb-0.5 block text-[0.8rem] text-[#666]">メモ</label>
+          <label className="mb-0.5 block text-[0.8rem] text-text-description">メモ</label>
           <input type="text" placeholder="一言メモ" value={formMemo} onChange={e => setFormMemo(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
         </div>
 

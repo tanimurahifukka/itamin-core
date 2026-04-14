@@ -37,7 +37,7 @@ export const MonthNavigation = ({
       type="button"
       onClick={onPrev}
       data-testid={prevTestId}
-      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-[0.9rem] font-sans transition-colors hover:bg-[#f0f2f5]"
+      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-[0.9rem] font-sans transition-colors hover:bg-background-subtle"
       aria-label="前月"
     >
       ◀
@@ -56,7 +56,7 @@ export const MonthNavigation = ({
       type="button"
       onClick={onNext}
       data-testid={nextTestId}
-      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-[0.9rem] font-sans transition-colors hover:bg-[#f0f2f5]"
+      className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-[0.9rem] font-sans transition-colors hover:bg-background-subtle"
       aria-label="翌月"
     >
       ▶

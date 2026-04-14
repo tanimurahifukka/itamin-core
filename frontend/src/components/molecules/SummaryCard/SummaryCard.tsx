@@ -25,8 +25,8 @@ const variantBorderClass: Record<SummaryCardVariant, string> = {
 // バリアント別の数値色
 const variantNumberColor: Record<SummaryCardVariant, string> = {
   default: 'text-text',
-  working: 'text-[#16a34a]',
-  finished: 'text-[#2563eb]',
+  working: 'text-green-700',
+  finished: 'text-primary',
   hours: 'text-[#d97706]',
   labor: 'text-[#7c3aed]',
 };
@@ -60,6 +60,6 @@ export const SummaryCard = ({
     >
       {value}
     </div>
-    <div className="mt-1 text-[0.8rem] text-[#888]">{label}</div>
+    <div className="mt-1 text-[0.8rem] text-text-description">{label}</div>
   </div>
 );

@@ -31,7 +31,7 @@ const PUNCH_BTN_OUT =
 const PUNCH_BTN_SUCCESS =
   '!bg-gradient-to-br !from-[#22c55e] !to-[#16a34a] !shadow-[0_8px_32px_rgba(34,197,94,0.4)] animate-[punchSuccessPop_0.4s_ease]';
 const PUNCH_STATUS = 'mt-6 text-base text-text-muted';
-const PUNCH_SINCE = 'font-medium text-[#e94560]';
+const PUNCH_SINCE = 'font-medium text-magenta-500';
 import { todayJST } from '../lib/dateUtils';
 
 const WEATHER_OPTIONS = ['晴れ', '曇り', '雨', '雪'];
@@ -401,8 +401,8 @@ export default function PunchClockPage() {
           </>
         }
       >
-        <h3 className="text-center text-[1.2rem] text-[#1a1a2e] mb-1">休憩時間を入力</h3>
-        <p className="text-center text-[0.85rem] text-[#888] mb-5">退勤前に休憩時間を入力してください</p>
+        <h3 className="text-center text-[1.2rem] text-text-body mb-1">休憩時間を入力</h3>
+        <p className="text-center text-[0.85rem] text-text-description mb-5">退勤前に休憩時間を入力してください</p>
         <BreakMinutesField value={breakMinutes} onChange={setBreakMinutes} className="mb-2" />
       </Modal>
 
@@ -429,15 +429,15 @@ export default function PunchClockPage() {
       >
         {staleRecord && (
           <div data-testid="stale-record-modal">
-            <h3 className="text-center text-[1.2rem] text-[#1a1a2e] mb-1">前回の退勤が未記録です</h3>
-            <p className="text-center text-[0.85rem] text-[#888] mb-5">
+            <h3 className="text-center text-[1.2rem] text-text-body mb-1">前回の退勤が未記録です</h3>
+            <p className="text-center text-[0.85rem] text-text-description mb-5">
               {new Date(staleRecord.clockIn).toLocaleString('ja-JP')} に出勤した記録の退勤が打刻されていません。退勤時刻を入力してください。
             </p>
 
             {error && <ErrorMessage className="mb-2 mt-0">{error}</ErrorMessage>}
 
             <div className="mb-3">
-              <label className="mb-0.5 block text-[0.8rem] text-[#666]" style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600 }}>退勤時刻</label>
+              <label className="mb-0.5 block text-[0.8rem] text-text-description" style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600 }}>退勤時刻</label>
               <input
                 type="datetime-local"
                 value={staleClockOut}
@@ -449,7 +449,7 @@ export default function PunchClockPage() {
             </div>
 
             <div className="mb-3">
-              <label className="mb-0.5 block text-[0.8rem] text-[#666]" style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600 }}>休憩時間</label>
+              <label className="mb-0.5 block text-[0.8rem] text-text-description" style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600 }}>休憩時間</label>
               <BreakMinutesField
                 value={staleBreakMinutes}
                 onChange={setStaleBreakMinutes}
@@ -479,7 +479,7 @@ export default function PunchClockPage() {
         size="lg"
       >
         <div className="max-h-[80vh] overflow-y-auto">
-          <h3 className="text-center text-[1.2rem] text-[#1a1a2e] mb-1">退勤レポート</h3>
+          <h3 className="text-center text-[1.2rem] text-text-body mb-1">退勤レポート</h3>
             <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: 12 }}>日報と在庫を確認してから退勤します</p>
 
             {error && <ErrorMessage className="mb-2 mt-0">{error}</ErrorMessage>}
@@ -490,16 +490,16 @@ export default function PunchClockPage() {
               <div className="grid gap-2 [grid-template-columns:140px_1fr_1fr_120px]">
                 {reportInputMode === 'manual' && (
                   <div>
-                    <label className="mb-0.5 block text-[0.8rem] text-[#666]">売上（円）</label>
+                    <label className="mb-0.5 block text-[0.8rem] text-text-description">売上（円）</label>
                     <input type="number" placeholder="0" value={reportSales} onChange={e => setReportSales(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
                   </div>
                 )}
                 <div>
-                  <label className="mb-0.5 block text-[0.8rem] text-[#666]">来客数</label>
+                  <label className="mb-0.5 block text-[0.8rem] text-text-description">来客数</label>
                   <input type="number" placeholder="0" value={reportCustomers} onChange={e => setReportCustomers(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
                 </div>
                 <div>
-                  <label className="mb-0.5 block text-[0.8rem] text-[#666]">天気</label>
+                  <label className="mb-0.5 block text-[0.8rem] text-text-description">天気</label>
                   <select value={reportWeather} onChange={e => setReportWeather(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans">
                     {WEATHER_OPTIONS.map(w => <option key={w} value={w}>{w}</option>)}
                   </select>
@@ -563,7 +563,7 @@ export default function PunchClockPage() {
               )}
 
               <div style={{ marginTop: 8 }}>
-                <label className="mb-0.5 block text-[0.8rem] text-[#666]">メモ</label>
+                <label className="mb-0.5 block text-[0.8rem] text-text-description">メモ</label>
                 <input type="text" placeholder="一言メモ" value={reportMemo} onChange={e => setReportMemo(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
               </div>
             </div>

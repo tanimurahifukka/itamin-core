@@ -96,7 +96,7 @@ export default function AttendanceHistoryPage({ onNavigate }: Props) {
                 <span> 〜 </span>
                 <span>{formatTime(r.clockOutAt)}</span>
               </div>
-              <div className="text-[13px] text-[#6b7280]">
+              <div className="text-[13px] text-sumi-600">
                 <span>休憩 {r.breakMinutes}分</span>
                 <span>実働 {calcHours(r.clockInAt, r.clockOutAt, r.breakMinutes)}</span>
               </div>

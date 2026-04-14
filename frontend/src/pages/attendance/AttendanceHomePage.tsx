@@ -16,32 +16,32 @@ import { InlineToast } from '../../components/molecules/InlineToast';
 // .attendance-events / .attendance-event-item / .attendance-event-time /
 // .attendance-nav-links の置き換え。
 const HOME = 'mx-auto max-w-[480px] p-4 text-center';
-const DATE = 'text-sm text-[#6b7280]';
+const DATE = 'text-sm text-sumi-600';
 const CLOCK = 'text-[36px] font-bold leading-[1.2] tabular-nums';
 const SHIFT_INFO =
-  'mb-3 rounded-lg bg-[#f0f9ff] px-3 py-2 text-[13px] text-[#1e40af]';
+  'mb-3 rounded-lg bg-[#f0f9ff] px-3 py-2 text-[13px] text-info-fg';
 const STATUS_BADGE =
   'mb-2 inline-block rounded-[20px] px-6 py-2 text-base font-semibold';
 const STATUS_COLORS: Record<string, string> = {
-  not_clocked_in: 'bg-[#f3f4f6] text-[#6b7280]',
-  working: 'bg-[#dcfce7] text-[#166534]',
-  on_break: 'bg-[#fef3c7] text-[#92400e]',
-  completed: 'bg-[#dbeafe] text-[#1e40af]',
+  not_clocked_in: 'bg-background-subtle text-sumi-600',
+  working: 'bg-success-bg text-success-fg',
+  on_break: 'bg-warning-bg text-warning-fg',
+  completed: 'bg-info-bg text-info-fg',
 };
-const ELAPSED = 'mb-5 text-sm text-[#6b7280]';
+const ELAPSED = 'mb-5 text-sm text-sumi-600';
 const ACTIONS = 'mb-6 flex flex-col gap-3';
 const ACTION_BASE =
   'min-h-[56px] rounded-xl border-none px-6 py-4 text-lg font-semibold text-white max-md:min-h-12 max-md:text-base disabled:opacity-60';
 const ACTION_CLOCK_IN =
-  'bg-[#22c55e] hover:enabled:bg-[#16a34a]';
+  'bg-green-500 hover:enabled:bg-green-700';
 const ACTION_BREAK_START =
-  'bg-[#f59e0b] hover:enabled:bg-[#d97706]';
-const ACTION_BREAK_END = 'bg-[#3b82f6]';
-const ACTION_CLOCK_OUT = 'bg-[#ef4444]';
+  'bg-warning-fill hover:enabled:bg-yellow-700';
+const ACTION_BREAK_END = 'bg-blue-500';
+const ACTION_CLOCK_OUT = 'bg-error-fill';
 const EVENTS = 'mb-4 text-left';
-const EVENTS_TITLE = 'mb-2 text-sm text-[#6b7280]';
+const EVENTS_TITLE = 'mb-2 text-sm text-sumi-600';
 const EVENT_ITEM = 'flex gap-2 py-1 text-sm';
-const EVENT_TIME = 'text-[#6b7280] tabular-nums';
+const EVENT_TIME = 'text-sumi-600 tabular-nums';
 const NAV_LINKS = 'flex justify-center gap-2';
 
 type AttendanceTodayData = AttendanceTodayResponse;

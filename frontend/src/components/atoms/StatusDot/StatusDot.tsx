@@ -19,7 +19,7 @@ const stateClass: Record<StatusDotState, string> = {
   working: 'h-2.5 w-2.5 bg-success-bg',
   on_break: 'h-2.5 w-2.5 bg-warn-bg',
   completed: 'h-2.5 w-2.5 bg-info-bg',
-  working_pulse: 'h-2 w-2 bg-[#22c55e] animate-[dotPulse_2s_ease-in-out_infinite]',
+  working_pulse: 'h-2 w-2 bg-green-500 animate-[dotPulse_2s_ease-in-out_infinite]',
 };
 
 export const StatusDot = ({ state, className, ...props }: StatusDotProps) => (

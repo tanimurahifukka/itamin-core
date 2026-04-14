@@ -15,13 +15,13 @@ import { cn } from '../../../lib/cn';
 // 視覚アイデンティティ（緑=完了）は変えない。
 const ITEM_BASE =
   'flex items-center gap-3.5 rounded-[10px] border-2 px-4 py-3.5 transition-colors select-none';
-const ITEM_DEFAULT = 'border-[#e8e8e8] hover:border-[#ccc]';
-const ITEM_DONE = 'border-[#34a853] bg-[#f0faf3]';
+const ITEM_DEFAULT = 'border-[#e8e8e8] hover:border-border-divider';
+const ITEM_DONE = 'border-green-700 bg-[#f0faf3]';
 const ITEM_TEXT_LAYOUT = 'items-start py-3 cursor-default';
 const CHECKBOX_BASE =
   'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border-2 text-base font-bold text-white transition-colors';
-const CHECKBOX_DEFAULT = 'border-[#ccc]';
-const CHECKBOX_DONE = 'border-[#34a853] bg-[#34a853]';
+const CHECKBOX_DEFAULT = 'border-border-divider';
+const CHECKBOX_DONE = 'border-green-700 bg-[#34a853]';
 const TEXT_INPUT =
   'w-full rounded-md border border-border px-3 py-2 text-sm font-sans transition-colors focus:border-primary focus:outline-none';
 
@@ -185,8 +185,8 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
             className={cn(
               'flex-[2] rounded-[10px] py-3.5 text-base font-semibold',
               allComplete
-                ? 'bg-[#34a853] text-white hover:bg-[#2d9249]'
-                : 'bg-[#e0e0e0] text-[#999] cursor-not-allowed',
+                ? 'bg-[#34a853] text-white hover:bg-green-700'
+                : 'bg-[#e0e0e0] text-text-disabled cursor-not-allowed',
             )}
             onClick={handleSubmit}
             disabled={!allComplete || submitting}
@@ -197,8 +197,8 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
       }
     >
       <div className="mb-6 text-center">
-        <h2 className="mb-1.5 text-[1.4rem] text-[#1a1a2e]">{title}</h2>
-        <p className="text-[0.85rem] text-[#888]">{subtitle}</p>
+        <h2 className="mb-1.5 text-[1.4rem] text-text-body">{title}</h2>
+        <p className="text-[0.85rem] text-text-description">{subtitle}</p>
       </div>
 
       {error && <ErrorMessage>{error}</ErrorMessage>}
@@ -221,9 +221,9 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span className="text-[0.9rem] font-medium text-text">
                     {item.label}
-                    {item.is_ccp && <span className="ml-1.5 text-xs font-bold text-[#dc2626]">CCP</span>}
+                    {item.is_ccp && <span className="ml-1.5 text-xs font-bold text-red-700">CCP</span>}
                   </span>
-                  {hint && <span className="block mb-1 text-[0.78rem] text-[#64748b]">{hint}</span>}
+                  {hint && <span className="block mb-1 text-[0.78rem] text-sumi-600">{hint}</span>}
                   <input
                     type="number"
                     className={TEXT_INPUT}
@@ -300,14 +300,14 @@ export default function ChecklistGate({ storeId, staffId, timing, onComplete, on
               </div>
               <span>
                 {item.label}
-                {item.is_ccp && <span className="ml-1.5 text-xs font-bold text-[#dc2626]">CCP</span>}
+                {item.is_ccp && <span className="ml-1.5 text-xs font-bold text-red-700">CCP</span>}
               </span>
             </label>
           );
         })}
       </div>
 
-      <div className="mb-5 text-center text-[0.9rem] text-[#888]">
+      <div className="mb-5 text-center text-[0.9rem] text-text-description">
         {completedCount} / {items.length} 完了
       </div>
     </Modal>

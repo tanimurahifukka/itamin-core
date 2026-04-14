@@ -85,14 +85,14 @@ export default function OvertimeAlertPage() {
         <SummaryCard
           value={exceededCount}
           label="上限超過"
-          className={exceededCount > 0 ? 'bg-[#fef2f2]' : undefined}
-          valueClassName={exceededCount > 0 ? 'text-[#dc2626]' : undefined}
+          className={exceededCount > 0 ? 'bg-error-bg' : undefined}
+          valueClassName={exceededCount > 0 ? 'text-red-700' : undefined}
         />
         <SummaryCard
           value={warningCount}
           label="注意（80%超）"
-          className={warningCount > 0 ? 'bg-[#fffbeb]' : undefined}
-          valueClassName={warningCount > 0 ? 'text-[#f59e0b]' : undefined}
+          className={warningCount > 0 ? 'bg-warning-bg' : undefined}
+          valueClassName={warningCount > 0 ? 'text-warning-fill' : undefined}
         />
         <SummaryCard value={`${settings.monthlyLimitHours}h`} label="月間上限" />
       </div>
@@ -103,7 +103,7 @@ export default function OvertimeAlertPage() {
         {staffOvertime.length === 0 ? (
           <EmptyState icon="⏰" text="今月の打刻データがありません" />
         ) : (
-          <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-[#f0f0f0] [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-[#888] [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-[#f0f0f0] [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
+          <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-sumi-300 [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-text-description [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-sumi-300 [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
             <thead>
               <tr>
                 <th>スタッフ名</th>

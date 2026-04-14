@@ -21,7 +21,7 @@ export const Loading = ({
 }: LoadingProps) => (
   <div
     className={cn(
-      'flex flex-col items-center justify-center bg-bg text-[0.95rem] text-[#888]',
+      'flex flex-col items-center justify-center bg-bg text-[0.95rem] text-text-description',
       !minHeight && 'min-h-screen',
       className,
     )}

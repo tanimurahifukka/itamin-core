@@ -17,10 +17,10 @@ const FIELD = 'flex flex-col gap-1';
 const LABEL = 'text-[0.8rem] font-semibold text-text-muted';
 const INPUT =
   'rounded-lg border-2 border-border-light px-3.5 py-3 text-[0.95rem] text-text font-sans transition-colors focus:border-primary focus:outline-none';
-const INPUT_ERROR = 'border-[#dc2626]';
-const FIELD_ERROR = 'text-[0.8rem] text-[#dc2626]';
+const INPUT_ERROR = 'border-red-700';
+const FIELD_ERROR = 'text-[0.8rem] text-red-700';
 const SUBMIT =
-  'mt-2 cursor-pointer rounded-[10px] border-none bg-primary px-4 py-3.5 text-base font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-[#a0a0a0] disabled:opacity-70';
+  'mt-2 cursor-pointer rounded-[10px] border-none bg-primary px-4 py-3.5 text-base font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-text-disabled disabled:opacity-70';
 
 export default function PasswordChangePage({ changePassword, signOut }: Props) {
   const [password, setPassword] = useState('');
@@ -46,7 +46,7 @@ export default function PasswordChangePage({ changePassword, signOut }: Props) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] text-white">
       <h1 className="mb-2 text-5xl tracking-[6px]">
-        ITA<span className="text-[#e94560]">MIN</span>
+        ITA<span className="text-magenta-500">MIN</span>
       </h1>
 
       <div className={CARD}>

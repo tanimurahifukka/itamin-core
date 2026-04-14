@@ -108,7 +108,7 @@ export default function PaidLeavePage() {
         {summary.length === 0 ? (
           <EmptyState icon="🏖️" text="有給データがありません" hint="下のフォームから有給を付与してください" />
         ) : (
-          <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-[#f0f0f0] [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-[#888] [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-[#f0f0f0] [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
+          <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-sumi-300 [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-text-description [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-sumi-300 [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
             <thead>
               <tr>
                 <th>スタッフ名</th>
@@ -244,7 +244,7 @@ export default function PaidLeavePage() {
         {records.length === 0 ? (
           <p style={{ color: '#888', fontSize: '0.9rem' }}>取得記録はありません</p>
         ) : (
-          <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-[#f0f0f0] [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-[#888] [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-[#f0f0f0] [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
+          <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-sumi-300 [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-text-description [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-sumi-300 [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
             <thead>
               <tr>
                 <th>日付</th>

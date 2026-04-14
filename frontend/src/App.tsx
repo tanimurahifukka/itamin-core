@@ -688,7 +688,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleBackToMenu}
-                className="mb-3 inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[#e2e8f0] bg-[#f1f5f9] px-3.5 py-2 text-[0.85rem] font-medium text-[#475569] transition-colors hover:bg-[#e2e8f0]"
+                className="mb-3 inline-flex cursor-pointer items-center gap-1 rounded-lg border border-border-light bg-background-subtle px-3.5 py-2 text-[0.85rem] font-medium text-sumi-600 transition-colors hover:bg-sumi-200"
               >
                 ← メニュー
               </button>

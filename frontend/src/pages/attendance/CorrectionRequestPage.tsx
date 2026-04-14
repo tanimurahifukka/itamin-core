@@ -86,7 +86,7 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
 
       <form onSubmit={handleSubmit} className="[&_.form-group]:mb-3">
         <div className="form-group">
-          <label className="mb-0.5 block text-[0.8rem] text-[#666]">対象日</label>
+          <label className="mb-0.5 block text-[0.8rem] text-text-description">対象日</label>
           <input
             className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
             type="date"
@@ -97,7 +97,7 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
         </div>
 
         <div className="form-group">
-          <label className="mb-0.5 block text-[0.8rem] text-[#666]">申請種別</label>
+          <label className="mb-0.5 block text-[0.8rem] text-text-description">申請種別</label>
           <select
             className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
             value={requestType}
@@ -111,7 +111,7 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
         </div>
 
         <div className="form-group">
-          <label className="mb-0.5 block text-[0.8rem] text-[#666]">修正後の出勤時刻</label>
+          <label className="mb-0.5 block text-[0.8rem] text-text-description">修正後の出勤時刻</label>
           <input
             className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
             type="time"
@@ -122,7 +122,7 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
         </div>
 
         <div className="form-group">
-          <label className="mb-0.5 block text-[0.8rem] text-[#666]">修正後の退勤時刻</label>
+          <label className="mb-0.5 block text-[0.8rem] text-text-description">修正後の退勤時刻</label>
           <input
             className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
             type="time"
@@ -133,7 +133,7 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
         </div>
 
         <div className="form-group">
-          <label className="mb-0.5 block text-[0.8rem] text-[#666]">理由（必須）</label>
+          <label className="mb-0.5 block text-[0.8rem] text-text-description">理由（必須）</label>
           <textarea
             className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
             rows={3}

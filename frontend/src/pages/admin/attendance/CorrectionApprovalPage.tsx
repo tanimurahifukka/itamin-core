@@ -92,7 +92,7 @@ export default function CorrectionApprovalPage() {
                 <span className="font-semibold">{c.user?.name || c.user_id}</span>
                 <Badge variant={c.status}>{STATUS_LABELS[c.status]}</Badge>
               </div>
-              <div className="mb-3 text-sm text-[#374151] [&>div]:mb-1">
+              <div className="mb-3 text-sm text-sumi-600 [&>div]:mb-1">
                 <div><strong>対象日:</strong> {c.requested_business_date}</div>
                 <div><strong>種別:</strong> {c.request_type}</div>
                 <div><strong>理由:</strong> {c.reason}</div>
@@ -108,7 +108,7 @@ export default function CorrectionApprovalPage() {
               </div>
 
               {c.status === 'pending' && (
-                <div className="border-t border-[#f3f4f6] pt-3">
+                <div className="border-t border-sumi-100 pt-3">
                   {actionId === c.id ? (
                     <div className="flex flex-col gap-2">
                       <input

@@ -215,19 +215,19 @@ export default function SalesCapturePage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
             <div>
-              <label className="mb-0.5 block text-[0.8rem] text-[#666]">総売上</label>
+              <label className="mb-0.5 block text-[0.8rem] text-text-description">総売上</label>
               <input type="number" className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" value={grossSales} onChange={e => setGrossSales(e.target.value)} placeholder="0" data-testid="gross-sales-input" />
             </div>
             <div>
-              <label className="mb-0.5 block text-[0.8rem] text-[#666]">純売上</label>
+              <label className="mb-0.5 block text-[0.8rem] text-text-description">純売上</label>
               <input type="number" className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" value={netSales} onChange={e => setNetSales(e.target.value)} placeholder="0" data-testid="net-sales-input" />
             </div>
             <div>
-              <label className="mb-0.5 block text-[0.8rem] text-[#666]">消費税</label>
+              <label className="mb-0.5 block text-[0.8rem] text-text-description">消費税</label>
               <input type="number" className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" value={taxAmount} onChange={e => setTaxAmount(e.target.value)} placeholder="0" />
             </div>
             <div>
-              <label className="mb-0.5 block text-[0.8rem] text-[#666]">レシート件数</label>
+              <label className="mb-0.5 block text-[0.8rem] text-text-description">レシート件数</label>
               <input type="number" className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" value={receiptCount} onChange={e => setReceiptCount(e.target.value)} placeholder="0" />
             </div>
           </div>
@@ -235,15 +235,15 @@ export default function SalesCapturePage() {
           <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: 8 }}>支払方法別</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
             <div>
-              <label className="mb-0.5 block text-[0.8rem] text-[#666]">現金</label>
+              <label className="mb-0.5 block text-[0.8rem] text-text-description">現金</label>
               <input type="number" className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" value={cashSales} onChange={e => setCashSales(e.target.value)} placeholder="0" data-testid="cash-sales-input" />
             </div>
             <div>
-              <label className="mb-0.5 block text-[0.8rem] text-[#666]">カード</label>
+              <label className="mb-0.5 block text-[0.8rem] text-text-description">カード</label>
               <input type="number" className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" value={cardSales} onChange={e => setCardSales(e.target.value)} placeholder="0" />
             </div>
             <div>
-              <label className="mb-0.5 block text-[0.8rem] text-[#666]">QR決済</label>
+              <label className="mb-0.5 block text-[0.8rem] text-text-description">QR決済</label>
               <input type="number" className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" value={qrSales} onChange={e => setQrSales(e.target.value)} placeholder="0" />
             </div>
           </div>
@@ -330,11 +330,11 @@ export default function SalesCapturePage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
             <div>
-              <label className="mb-0.5 block text-[0.8rem] text-[#666]">レジ精算額（期待値）</label>
+              <label className="mb-0.5 block text-[0.8rem] text-text-description">レジ精算額（期待値）</label>
               <input type="number" className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" value={expectedCash} onChange={e => setExpectedCash(e.target.value)} placeholder="0" data-testid="expected-cash-input" />
             </div>
             <div>
-              <label className="mb-0.5 block text-[0.8rem] text-[#666]">実数カウント</label>
+              <label className="mb-0.5 block text-[0.8rem] text-text-description">実数カウント</label>
               <input type="number" className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" value={countedCash} onChange={e => setCountedCash(e.target.value)} placeholder="0" data-testid="counted-cash-input" />
             </div>
           </div>
@@ -360,7 +360,7 @@ export default function SalesCapturePage() {
           )}
 
           <div style={{ marginBottom: 16 }}>
-            <label className="mb-0.5 block text-[0.8rem] text-[#666]">メモ</label>
+            <label className="mb-0.5 block text-[0.8rem] text-text-description">メモ</label>
             <input type="text" className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" value={cashNote} onChange={e => setCashNote(e.target.value)} placeholder="過不足の理由など" data-testid="cash-note-input" />
           </div>
 

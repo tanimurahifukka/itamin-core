@@ -12,7 +12,7 @@ const LINK_PAGE =
 const LINK_CARD =
   'w-full max-w-[400px] rounded-xl bg-surface p-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.08)]';
 const LINK_TITLE = 'mb-2 text-[20px]';
-const LINK_DESC = 'mb-5 text-sm text-[#6b7280]';
+const LINK_DESC = 'mb-5 text-sm text-sumi-600';
 const LINK_PROFILE = 'mb-4 flex items-center justify-center gap-2';
 const LINK_AVATAR = 'h-10 w-10 rounded-full';
 const LINK_FORM = 'text-left';
@@ -69,7 +69,7 @@ export default function LineLinkPage({ lineUserId, displayName, pictureUrl, onLi
         )}
 
         <form onSubmit={handleSubmit} className={LINK_FORM}>
-          <label className="mb-0.5 block text-[0.8rem] text-[#666]" htmlFor="link-code">連携コード</label>
+          <label className="mb-0.5 block text-[0.8rem] text-text-description" htmlFor="link-code">連携コード</label>
           <input
             id="link-code"
             data-testid="link-code-input"

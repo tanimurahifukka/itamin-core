@@ -18,7 +18,7 @@ export const PageTitleBar = ({ icon, title, actions, className }: PageTitleBarPr
     )}
   >
     {icon && <span className="text-[1.3rem] leading-none">{icon}</span>}
-    <h1 className="m-0 flex-1 text-[1.2rem] font-bold tracking-[0.02em] text-[#1a1a2e]">
+    <h1 className="m-0 flex-1 text-[1.2rem] font-bold tracking-[0.02em] text-text-body">
       {title}
     </h1>
     {actions && <div className="flex items-center gap-2">{actions}</div>}

@@ -62,30 +62,30 @@ export default function AccountPage() {
     <div className="max-w-[600px] p-4">
       <h2>アカウント / 連携状態</h2>
 
-      <div className="mb-4 rounded-lg bg-surface p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] [&>h3]:mb-2 [&>h3]:text-sm [&>h3]:text-[#6b7280]">
+      <div className="mb-4 rounded-lg bg-surface p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] [&>h3]:mb-2 [&>h3]:text-sm [&>h3]:text-sumi-600">
         <h3>ITAMIN アカウント</h3>
-        <div className="flex justify-between border-b border-[#f3f4f6] py-1.5">
-          <span className="text-sm text-[#6b7280]">表示名</span>
+        <div className="flex justify-between border-b border-sumi-100 py-1.5">
+          <span className="text-sm text-sumi-600">表示名</span>
           <span>{profile?.name || user?.user_metadata?.full_name || '—'}</span>
         </div>
-        <div className="flex justify-between border-b border-[#f3f4f6] py-1.5">
-          <span className="text-sm text-[#6b7280]">メール</span>
+        <div className="flex justify-between border-b border-sumi-100 py-1.5">
+          <span className="text-sm text-sumi-600">メール</span>
           <span>{user?.email || '—'}</span>
         </div>
       </div>
 
-      <div className="mb-4 rounded-lg bg-surface p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] [&>h3]:mb-2 [&>h3]:text-sm [&>h3]:text-[#6b7280]">
+      <div className="mb-4 rounded-lg bg-surface p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] [&>h3]:mb-2 [&>h3]:text-sm [&>h3]:text-sumi-600">
         <h3>NFC 打刻 / チェック PIN</h3>
         <p style={{ fontSize: 13, color: '#64748b', marginTop: -4, marginBottom: 10 }}>
           店舗入口の NFC タグをかざして打刻するとき、またはNFCチェックのときに使う 4 桁 PIN です。
           他人に知られないように管理してください。
         </p>
         {pinLoading ? (
-          <div className="flex justify-between border-b border-[#f3f4f6] py-1.5">
+          <div className="flex justify-between border-b border-sumi-100 py-1.5">
             <span>読み込み中...</span>
           </div>
         ) : pinError ? (
-          <div className="flex justify-between border-b border-[#f3f4f6] py-1.5" style={{ color: '#b91c1c' }}>
+          <div className="flex justify-between border-b border-sumi-100 py-1.5" style={{ color: '#b91c1c' }}>
             {pinError}
           </div>
         ) : pin ? (
@@ -134,22 +134,22 @@ export default function AccountPage() {
         )}
       </div>
 
-      <div className="mb-4 rounded-lg bg-surface p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] [&>h3]:mb-2 [&>h3]:text-sm [&>h3]:text-[#6b7280]">
+      <div className="mb-4 rounded-lg bg-surface p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] [&>h3]:mb-2 [&>h3]:text-sm [&>h3]:text-sumi-600">
         <h3>LINE連携</h3>
         {lineInfo ? (
           <>
-            <div className="flex justify-between border-b border-[#f3f4f6] py-1.5">
-              <span className="text-sm text-[#6b7280]">LINE表示名</span>
+            <div className="flex justify-between border-b border-sumi-100 py-1.5">
+              <span className="text-sm text-sumi-600">LINE表示名</span>
               <span>{lineInfo.displayName || '—'}</span>
             </div>
-            <div className="flex justify-between border-b border-[#f3f4f6] py-1.5">
-              <span className="text-sm text-[#6b7280]">連携状態</span>
+            <div className="flex justify-between border-b border-sumi-100 py-1.5">
+              <span className="text-sm text-sumi-600">連携状態</span>
               <Badge variant={lineInfo.status || 'inactive'}>
                 {lineInfo.status === 'active' ? '連携済み' : '無効'}
               </Badge>
             </div>
-            <div className="flex justify-between border-b border-[#f3f4f6] py-1.5">
-              <span className="text-sm text-[#6b7280]">連携日時</span>
+            <div className="flex justify-between border-b border-sumi-100 py-1.5">
+              <span className="text-sm text-sumi-600">連携日時</span>
               <span>{lineInfo.linkedAt ? new Date(lineInfo.linkedAt).toLocaleString('ja-JP') : '—'}</span>
             </div>
           </>

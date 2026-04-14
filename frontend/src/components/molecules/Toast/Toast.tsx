@@ -18,15 +18,15 @@ export function showToast(message: string, type: ToastType = 'info') {
 
 // バリアント別の背景・テキスト・ボーダー（旧 .toast-success/error/info の配色を踏襲）
 const toastClass: Record<ToastType, string> = {
-  success: 'bg-[#f0fdf4] text-[#166534] border border-[#bbf7d0]',
-  error: 'bg-[#fef2f2] text-[#991b1b] border border-[#fecaca]',
-  info: 'bg-[#eff6ff] text-[#1e40af] border border-[#bfdbfe]',
+  success: 'bg-success-bg text-success-fg border border-green-500',
+  error: 'bg-error-bg text-error-fg border border-red-200',
+  info: 'bg-info-bg text-info-fg border border-blue-200',
 };
 
 const iconClass: Record<ToastType, string> = {
-  success: 'bg-[#22c55e] text-white',
-  error: 'bg-[#ef4444] text-white',
-  info: 'bg-[#3b82f6] text-white',
+  success: 'bg-green-500 text-white',
+  error: 'bg-error-fill text-white',
+  info: 'bg-blue-500 text-white',
 };
 
 const iconChar: Record<ToastType, string> = {

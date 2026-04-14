@@ -13,9 +13,9 @@ import LineDailyReportPage from './LineDailyReportPage';
 
 // 旧 .line-menu-* の代替。LINE 用アイコン+ラベル 2 段タブ。
 const LINE_TABS =
-  'flex touch-pan-x gap-0.5 overflow-x-auto whitespace-nowrap bg-[#f3f4f6] px-1 pt-1';
+  'flex touch-pan-x gap-0.5 overflow-x-auto whitespace-nowrap bg-background-subtle px-1 pt-1';
 const LINE_TAB_BASE =
-  'inline-flex min-w-[52px] flex-shrink-0 cursor-pointer flex-col items-center gap-0.5 whitespace-nowrap border-none border-b-2 border-transparent bg-transparent px-2.5 py-2 text-[11px] text-[#6b7280] font-sans';
+  'inline-flex min-w-[52px] flex-shrink-0 cursor-pointer flex-col items-center gap-0.5 whitespace-nowrap border-none border-b-2 border-transparent bg-transparent px-2.5 py-2 text-[11px] text-sumi-600 font-sans';
 const LINE_TAB_ACTIVE =
   'border-b-primary bg-surface font-semibold text-primary';
 

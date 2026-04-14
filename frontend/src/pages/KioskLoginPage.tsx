@@ -47,7 +47,7 @@ export default function KioskLoginPage({ storeId, onLogin }: Props) {
             placeholder="PINを入力"
             value={pin}
             onChange={e => setPin(e.target.value)}
-            className="rounded-lg border-2 border-border-light px-3.5 py-3.5 text-2xl tracking-[8px] text-center outline-none focus:border-[#4f8ef7]"
+            className="rounded-lg border-2 border-border-light px-3.5 py-3.5 text-2xl tracking-[8px] text-center outline-none focus:border-fill-primary"
             autoFocus
             maxLength={8}
             data-testid="kiosk-pin-input"
@@ -57,7 +57,7 @@ export default function KioskLoginPage({ storeId, onLogin }: Props) {
             disabled={loading || pin.length < 4}
             size="lg"
             fullWidth
-            className="bg-[#4f8ef7] hover:bg-[#3a7de0]"
+            className="bg-[#4f8ef7] hover:bg-fill-primary-hover"
             data-testid="kiosk-login-button"
           >
             {loading ? '...' : 'ログイン'}

@@ -35,7 +35,7 @@ export const Tabs = <T extends string>({
     return (
       <div
         className={cn(
-          'mb-4 flex gap-1 overflow-x-auto border-b-2 border-[#e5e7eb]',
+          'mb-4 flex gap-1 overflow-x-auto border-b-2 border-border-light',
           className,
         )}
       >
@@ -51,7 +51,7 @@ export const Tabs = <T extends string>({
                 'cursor-pointer whitespace-nowrap border-none border-b-2 border-transparent bg-transparent px-4 py-2 font-sans text-sm transition-colors -mb-0.5',
                 active
                   ? 'border-b-primary font-semibold text-primary'
-                  : 'text-[#6b7280]',
+                  : 'text-sumi-600',
               )}
             >
               {item.label}
@@ -64,7 +64,7 @@ export const Tabs = <T extends string>({
   return (
     <div
       className={cn(
-        'mb-4 inline-flex w-fit gap-1 rounded-lg bg-[#e8edf3] p-[3px]',
+        'mb-4 inline-flex w-fit gap-1 rounded-lg bg-background-subtle p-[3px]',
         className,
       )}
     >

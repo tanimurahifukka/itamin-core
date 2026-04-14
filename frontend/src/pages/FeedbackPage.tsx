@@ -118,17 +118,17 @@ export default function FeedbackPage() {
         <SummaryCard
           value={allItems.filter(i => i.status === '未対応').length}
           label="未対応"
-          valueClassName="text-[#dc2626]"
+          valueClassName="text-red-700"
         />
         <SummaryCard
           value={allItems.filter(i => i.status === '対応中').length}
           label="対応中"
-          valueClassName="text-[#f59e0b]"
+          valueClassName="text-warning-fill"
         />
         <SummaryCard
           value={allItems.filter(i => i.status === '完了').length}
           label="完了"
-          valueClassName="text-[#22c55e]"
+          valueClassName="text-green-500"
         />
       </div>
 
@@ -190,15 +190,15 @@ export default function FeedbackPage() {
       {/* フィルタ */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
         <div className="mb-5 flex gap-2">
-          <button className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterStatus === '' ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`} onClick={() => setFilterStatus('')}>すべて</button>
+          <button className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterStatus === '' ? 'border-magenta-500 font-medium text-magenta-500' : ''}`} onClick={() => setFilterStatus('')}>すべて</button>
           {STATUS_OPTIONS.map(s => (
-            <button key={s} className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterStatus === s ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`} onClick={() => setFilterStatus(s)}>{s}</button>
+            <button key={s} className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterStatus === s ? 'border-magenta-500 font-medium text-magenta-500' : ''}`} onClick={() => setFilterStatus(s)}>{s}</button>
           ))}
         </div>
         <div className="mb-5 flex gap-2">
-          <button className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterType === '' ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`} onClick={() => setFilterType('')}>全種別</button>
+          <button className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterType === '' ? 'border-magenta-500 font-medium text-magenta-500' : ''}`} onClick={() => setFilterType('')}>全種別</button>
           {TYPE_OPTIONS.map(t => (
-            <button key={t.value} className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterType === t.value ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`} onClick={() => setFilterType(t.value)}>{t.label}</button>
+            <button key={t.value} className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterType === t.value ? 'border-magenta-500 font-medium text-magenta-500' : ''}`} onClick={() => setFilterType(t.value)}>{t.label}</button>
           ))}
         </div>
       </div>

@@ -12,7 +12,7 @@ const LOGIN_BG =
   'flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] text-white';
 const LOGIN_INPUT =
   'rounded-lg border-0 px-4 py-3.5 text-base text-text placeholder:text-text-subtle';
-const LOGIN_BTN_OVERRIDE = 'w-full bg-[#e94560] hover:bg-[#d53c55] text-white';
+const LOGIN_BTN_OVERRIDE = 'w-full bg-magenta-500 hover:bg-magenta-700 text-white';
 const TOGGLE_LINK =
   'mt-4 bg-transparent text-sm text-white/70 underline hover:text-white cursor-pointer';
 
@@ -25,17 +25,17 @@ const INVITE_CARD_TITLE = 'mb-2 text-center text-[1.3rem] font-bold';
 const INVITE_CARD_DESC =
   'mb-4 text-center text-[0.9rem] leading-[1.7] text-text-muted';
 const INVITE_STORE_BADGE =
-  'mb-6 flex items-center justify-center gap-2 rounded-lg bg-[#f0f2f5] px-4 py-2.5 text-[0.9rem] font-semibold text-text';
+  'mb-6 flex items-center justify-center gap-2 rounded-lg bg-background-subtle px-4 py-2.5 text-[0.9rem] font-semibold text-text';
 const INVITE_FORM = 'flex flex-col gap-4';
 const INVITE_FIELD = 'flex flex-col gap-1';
 const INVITE_LABEL = 'text-[0.8rem] font-semibold text-text-muted';
 const INVITE_INPUT =
   'rounded-lg border-2 border-border-light px-3.5 py-3 text-[0.95rem] text-text font-sans transition-colors focus:border-primary focus:outline-none';
 const INVITE_INPUT_READONLY = 'bg-bg text-text-subtle cursor-not-allowed';
-const INVITE_INPUT_ERROR = 'border-[#dc2626]';
-const INVITE_FIELD_ERROR = 'text-[0.8rem] text-[#dc2626]';
+const INVITE_INPUT_ERROR = 'border-red-700';
+const INVITE_FIELD_ERROR = 'text-[0.8rem] text-red-700';
 const INVITE_SUBMIT =
-  'mt-2 cursor-pointer rounded-[10px] border-none bg-primary px-4 py-3.5 text-base font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-[#a0a0a0] disabled:opacity-70';
+  'mt-2 cursor-pointer rounded-[10px] border-none bg-primary px-4 py-3.5 text-base font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-text-disabled disabled:opacity-70';
 
 export default function LoginPage() {
   const { signIn, signUp, completeInvitedSignUp } = useAuth();
@@ -99,7 +99,7 @@ function NormalLoginPage({ signIn, signUp }: {
   return (
     <div className={LOGIN_BG}>
       <h1 className="mb-2 text-5xl tracking-[6px]">
-        ITA<span className="text-[#e94560]">MIN</span>
+        ITA<span className="text-magenta-500">MIN</span>
       </h1>
       <p className="mb-12 text-lg opacity-80">痛みを取って、人を育てる。</p>
 
@@ -204,7 +204,7 @@ function InviteRegisterPage({ email, defaultName, storeName, onComplete }: {
   return (
     <div className={INVITE_PAGE}>
       <h1 className="mb-2 text-5xl tracking-[6px]">
-        ITA<span className="text-[#e94560]">MIN</span>
+        ITA<span className="text-magenta-500">MIN</span>
       </h1>
 
       <div className={INVITE_CARD}>
@@ -357,7 +357,7 @@ function JoinStorePage({ storeId, inviteToken }: { storeId: string; inviteToken:
     return (
       <div className={LOGIN_BG}>
         <h1 className="mb-2 text-5xl tracking-[6px]">
-          ITA<span className="text-[#e94560]">MIN</span>
+          ITA<span className="text-magenta-500">MIN</span>
         </h1>
         <ErrorMessage className="mt-5">{storeError}</ErrorMessage>
         <button
@@ -375,7 +375,7 @@ function JoinStorePage({ storeId, inviteToken }: { storeId: string; inviteToken:
     return (
       <div className={LOGIN_BG}>
         <h1 className="mb-2 text-5xl tracking-[6px]">
-          ITA<span className="text-[#e94560]">MIN</span>
+          ITA<span className="text-magenta-500">MIN</span>
         </h1>
         <div className={INVITE_CARD}>
           <div className={INVITE_CARD_ICON}>✅</div>
@@ -396,7 +396,7 @@ function JoinStorePage({ storeId, inviteToken }: { storeId: string; inviteToken:
   return (
     <div className={INVITE_PAGE}>
       <h1 className="mb-2 text-5xl tracking-[6px]">
-        ITA<span className="text-[#e94560]">MIN</span>
+        ITA<span className="text-magenta-500">MIN</span>
       </h1>
 
       <div className={INVITE_CARD}>

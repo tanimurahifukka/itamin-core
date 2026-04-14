@@ -49,7 +49,7 @@ export const Sidebar = ({ categorizedTabs, activeTab, onSelect, className }: Sid
                   onClick={() => onSelect(tab.name)}
                   className={cn(
                     'relative flex w-full items-center gap-2 rounded-md border-none bg-transparent px-3 py-2 text-left text-[0.88rem] font-medium leading-[1.5] tracking-[0.04em] text-text-muted transition-colors',
-                    'hover:bg-[#f0f2f5] hover:text-text',
+                    'hover:bg-background-subtle hover:text-text',
                     active && 'bg-primary-bg text-primary-hover font-semibold',
                     active &&
                       'before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r-sm before:bg-primary',

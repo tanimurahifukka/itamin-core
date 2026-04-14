@@ -30,7 +30,7 @@ export const BreakMinutesField = ({
         value={value}
         onChange={e => onChange(Math.max(0, parseInt(e.target.value) || 0))}
         data-testid={inputTestId}
-        className="w-[100px] rounded-[10px] border-2 border-border-light px-3 py-3 text-center text-2xl font-semibold text-[#1a1a2e] focus:border-[#e94560] focus:outline-none"
+        className="w-[100px] rounded-[10px] border-2 border-border-light px-3 py-3 text-center text-2xl font-semibold text-text-body focus:border-magenta-500 focus:outline-none"
       />
       <span className="text-lg text-text-muted">分</span>
     </div>
@@ -43,8 +43,8 @@ export const BreakMinutesField = ({
           className={cn(
             'rounded-full border px-3.5 py-2 text-sm transition-colors',
             value === m
-              ? 'border-[#e94560] bg-[#e94560] text-white'
-              : 'border-border-light bg-surface text-text-muted hover:border-[#e94560] hover:text-[#e94560]',
+              ? 'border-magenta-500 bg-magenta-500 text-white'
+              : 'border-border-light bg-surface text-text-muted hover:border-magenta-500 hover:text-magenta-500',
           )}
         >
           {m}分

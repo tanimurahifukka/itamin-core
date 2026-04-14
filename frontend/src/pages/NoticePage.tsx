@@ -219,8 +219,8 @@ export default function NoticePage() {
         <SummaryCard
           value={unreadCount}
           label="未読"
-          className={unreadCount > 0 ? 'bg-[#eff6ff]' : undefined}
-          valueClassName={unreadCount > 0 ? 'text-[#2563eb]' : undefined}
+          className={unreadCount > 0 ? 'bg-info-bg' : undefined}
+          valueClassName={unreadCount > 0 ? 'text-primary' : undefined}
         />
       </div>
 

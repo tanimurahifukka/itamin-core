@@ -180,8 +180,8 @@ export default function InventoryPage() {
         <SummaryCard
           value={lowStockCount}
           label="在庫不足"
-          className={lowStockCount > 0 ? 'bg-[#fef2f2]' : undefined}
-          valueClassName={lowStockCount > 0 ? 'text-[#dc2626]' : undefined}
+          className={lowStockCount > 0 ? 'bg-error-bg' : undefined}
+          valueClassName={lowStockCount > 0 ? 'text-red-700' : undefined}
         />
         <SummaryCard
           value={`¥${totalValue.toLocaleString()}`}
@@ -268,7 +268,7 @@ export default function InventoryPage() {
       {categories.length > 0 && (
         <div className="mb-5 flex gap-2" style={{ marginBottom: 16 }}>
           <button
-            className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeCategory === '' ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
+            className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeCategory === '' ? 'border-magenta-500 font-medium text-magenta-500' : ''}`}
             onClick={() => setActiveCategory('')}
           >
             すべて
@@ -276,7 +276,7 @@ export default function InventoryPage() {
           {categories.map(cat => (
             <button
               key={cat}
-              className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeCategory === cat ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
+              className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeCategory === cat ? 'border-magenta-500 font-medium text-magenta-500' : ''}`}
               onClick={() => setActiveCategory(cat)}
             >
               {cat}
@@ -292,7 +292,7 @@ export default function InventoryPage() {
           <EmptyState icon="📦" text="在庫データがありません" hint="上のフォームから商品を追加してください" />
         ) : (
           <div className="touch-pan-x overflow-x-auto max-md:-mx-4 max-md:px-4">
-          <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-[#f0f0f0] [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-[#888] [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-[#f0f0f0] [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
+          <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-sumi-300 [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-text-description [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-sumi-300 [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
             <thead>
               <tr>
                 <th>商品名</th>

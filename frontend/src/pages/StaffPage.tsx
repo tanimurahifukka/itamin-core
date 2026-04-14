@@ -12,7 +12,7 @@ import type { StaffMember, Invitation, AuditLogEntry } from '../types/api';
 const BANNER =
   'mb-4 rounded-xl border-2 border-dashed border-border bg-surface px-5 py-4';
 const BANNER_LABEL =
-  'mb-2 text-[0.8rem] font-semibold uppercase tracking-[0.5px] text-[#888]';
+  'mb-2 text-[0.8rem] font-semibold uppercase tracking-[0.5px] text-text-description';
 const BANNER_ROW = 'mb-1.5 flex items-center gap-2.5';
 const BANNER_VALUE =
   'flex-1 select-all rounded-md border border-border-light bg-bg px-3 py-2 font-mono text-[0.85rem] text-text break-all';
@@ -21,14 +21,14 @@ const BANNER_EDIT_INPUT =
 const BANNER_PRIMARY_BTN =
   'cursor-pointer whitespace-nowrap rounded-md border-none bg-primary px-4 py-2 text-[0.8rem] font-semibold text-white font-sans transition-colors hover:bg-primary-hover';
 const BANNER_GHOST_BTN =
-  'cursor-pointer whitespace-nowrap rounded-md border border-border bg-surface px-3.5 py-2 text-[0.8rem] font-medium text-text-muted font-sans transition-colors hover:bg-[#f0f2f5]';
+  'cursor-pointer whitespace-nowrap rounded-md border border-border bg-surface px-3.5 py-2 text-[0.8rem] font-medium text-text-muted font-sans transition-colors hover:bg-background-subtle';
 const BANNER_HINT = 'text-[0.78rem] text-text-subtle';
 
 // 旧 .wage-* 系
 const WAGE_DISPLAY =
   'cursor-pointer whitespace-nowrap rounded-md border border-border-light bg-bg px-2.5 py-1 text-[0.78rem] text-text-muted font-sans transition-all hover:border-primary hover:bg-primary-bg hover:text-primary';
 const WAGE_EDIT = 'flex items-center gap-1';
-const WAGE_YEN = 'text-[0.85rem] font-semibold text-[#888]';
+const WAGE_YEN = 'text-[0.85rem] font-semibold text-text-description';
 const WAGE_INPUT =
   'w-[70px] rounded border-2 border-primary px-2 py-1 text-[0.85rem] text-right font-sans focus:outline-none';
 const WAGE_SAVE =
@@ -41,14 +41,14 @@ const ROLE_BADGE_COLORS: Record<string, string> = {
   owner: 'bg-[#1a1a1a] text-white',
   manager: 'bg-primary text-white',
   leader: 'bg-primary text-white',
-  full_time: 'bg-[#e8edf3] text-text',
-  part_time: 'bg-[#f0f0f0] text-text-muted',
-  staff: 'bg-[#f0f0f0] text-text-muted',
+  full_time: 'bg-background-subtle text-text',
+  part_time: 'bg-background-subtle text-text-muted',
+  staff: 'bg-background-subtle text-text-muted',
 };
 const ROLE_BADGE_CLICKABLE =
-  'cursor-pointer border border-dashed border-[#cbd5e1] hover:opacity-80';
+  'cursor-pointer border border-dashed border-border-divider hover:opacity-80';
 const ROLE_SELECT =
-  'cursor-pointer rounded-xl border-2 border-primary bg-primary-bg px-2 py-1 text-[0.75rem] font-semibold text-[#1a1a2e] font-sans outline-none';
+  'cursor-pointer rounded-xl border-2 border-primary bg-primary-bg px-2 py-1 text-[0.75rem] font-semibold text-text-body font-sans outline-none';
 
 function roleBadgeClass(role: string, clickable = false) {
   return `${ROLE_BADGE_BASE} ${ROLE_BADGE_COLORS[role] ?? ROLE_BADGE_COLORS.staff}${clickable ? ` ${ROLE_BADGE_CLICKABLE}` : ''}`;
@@ -60,7 +60,7 @@ const INVITE_ACTION_BASE =
 const INVITE_ACTION_RESEND =
   'border-primary bg-surface text-primary hover:bg-primary-bg disabled:cursor-not-allowed disabled:opacity-50';
 const INVITE_ACTION_CANCEL =
-  'border-[#fca5a5] bg-surface text-[#dc2626] hover:border-[#dc2626] hover:bg-[#fef2f2]';
+  'border-red-200 bg-surface text-red-700 hover:border-red-700 hover:bg-error-bg';
 
 // 旧 .rehire-* 系
 const REHIRE_ROW = 'flex items-center gap-2';
@@ -76,14 +76,14 @@ const REHIRE_BTN =
 const STAFF_SECTION =
   'mt-5 rounded-xl bg-surface p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)]';
 const STAFF_ITEM_CARD =
-  '-mx-3 flex flex-col gap-2 rounded-lg border-b border-[#f0f0f0] px-3 py-3.5 transition-colors last:border-b-0 hover:bg-[#fafafa]';
+  '-mx-3 flex flex-col gap-2 rounded-lg border-b border-sumi-300 px-3 py-3.5 transition-colors last:border-b-0 hover:bg-background-subtle';
 const STAFF_ITEM_ROW =
-  '-mx-3 flex items-center gap-3.5 rounded-lg border-b border-[#f0f0f0] px-3 py-3.5 transition-colors last:border-b-0 hover:bg-[#fafafa]';
+  '-mx-3 flex items-center gap-3.5 rounded-lg border-b border-sumi-300 px-3 py-3.5 transition-colors last:border-b-0 hover:bg-background-subtle';
 const STAFF_ITEM_TOP = 'flex items-center gap-3';
 const STAFF_ITEM_META = 'flex flex-wrap items-center gap-2 pl-[52px] max-md:pl-0';
 const STAFF_INFO = 'min-w-0 flex-1 overflow-hidden';
 const STAFF_NAME =
-  'truncate font-medium text-[#1a1a2e]';
+  'truncate font-medium text-text-body';
 const STAFF_EMAIL =
   'truncate text-[0.8rem] text-text-subtle';
 
@@ -861,7 +861,7 @@ export default function StaffPage() {
                 キャンセル
               </Button>
               <Button
-                className="flex-[2] bg-[#f59e0b] hover:bg-[#d97706] text-white"
+                className="flex-[2] bg-warning-fill hover:bg-yellow-700 text-white"
                 onClick={handleResetPassword}
                 disabled={resetting}
               >
@@ -900,7 +900,7 @@ export default function StaffPage() {
               </>
             ) : (
               <>
-                <p className="text-center text-sm text-[#22c55e] leading-[1.7] mb-5">
+                <p className="text-center text-sm text-green-500 leading-[1.7] mb-5">
                   ✓ {resetResult.message}
                 </p>
                 <div className="mb-5">
@@ -942,11 +942,11 @@ export default function StaffPage() {
         <p className="text-left text-sm text-text-muted leading-[1.7] mb-2">
           直近 50 件までのパスワードリセット記録を表示します。
         </p>
-        <div className="mt-2 max-h-[360px] overflow-y-auto rounded-md border border-[#e2e8f0]">
+        <div className="mt-2 max-h-[360px] overflow-y-auto rounded-md border border-border-light">
           {historyLoading ? (
-            <div className="p-6 text-center text-[#64748b]">読み込み中...</div>
+            <div className="p-6 text-center text-sumi-600">読み込み中...</div>
           ) : historyEntries.length === 0 ? (
-            <div className="p-6 text-center text-[#64748b]">履歴はまだありません</div>
+            <div className="p-6 text-center text-sumi-600">履歴はまだありません</div>
           ) : (
             historyEntries.map((entry) => {
               const meta = entry.metadata || {};
@@ -954,16 +954,16 @@ export default function StaffPage() {
               return (
                 <div
                   key={entry.id}
-                  className="border-b border-[#f1f5f9] px-3.5 py-3 text-left text-[0.88rem]"
+                  className="border-b border-sumi-100 px-3.5 py-3 text-left text-[0.88rem]"
                 >
-                  <div className="mb-1 text-[#0f172a]">
+                  <div className="mb-1 text-text-body">
                     <strong>{entry.target_name || '(削除済みスタッフ)'}</strong>
-                    <span className="ml-2 text-[#64748b]">
+                    <span className="ml-2 text-sumi-600">
                       ← {entry.actor_name || '(不明)'}
                       {entry.actor_role ? ` (${roleLabels[entry.actor_role] || entry.actor_role})` : ''}
                     </span>
                   </div>
-                  <div className="text-xs text-[#64748b]">
+                  <div className="text-xs text-sumi-600">
                     {new Date(entry.created_at).toLocaleString('ja-JP')}
                     {custom ? ' · カスタムパスワード' : ' · 初期パスワード'}
                   </div>
@@ -988,8 +988,8 @@ export default function StaffPage() {
               <strong>{pinResult.staffName}</strong> さんの新しい PIN です。
               NFC チェックインと NFC 打刻の両方で使用します。
             </p>
-            <div className="my-4 rounded-[10px] bg-[#f1f5f9] p-5 text-center">
-              <div className="font-mono text-[2rem] font-bold tracking-[0.4em] text-[#0f172a]">
+            <div className="my-4 rounded-[10px] bg-background-subtle p-5 text-center">
+              <div className="font-mono text-[2rem] font-bold tracking-[0.4em] text-text-body">
                 {pinResult.pin}
               </div>
             </div>
@@ -1038,13 +1038,13 @@ export default function StaffPage() {
             </p>
 
             <div className="mb-3">
-              <label className="block text-[0.85rem] text-[#475569] mb-1">
+              <label className="block text-[0.85rem] text-sumi-600 mb-1">
                 追加先の事業所
               </label>
               <select
                 value={assignStoreId}
                 onChange={e => setAssignStoreId(e.target.value)}
-                className="w-full rounded-md border border-[#cbd5e1] bg-surface px-2.5 py-2 text-[0.95rem]"
+                className="w-full rounded-md border border-border-divider bg-surface px-2.5 py-2 text-[0.95rem]"
               >
                 <option value="">選択してください</option>
                 {otherManagedStores.map(s => (
@@ -1054,13 +1054,13 @@ export default function StaffPage() {
             </div>
 
             <div className="mb-4">
-              <label className="block text-[0.85rem] text-[#475569] mb-1">
+              <label className="block text-[0.85rem] text-sumi-600 mb-1">
                 ロール
               </label>
               <select
                 value={assignRole}
                 onChange={e => setAssignRole(e.target.value)}
-                className="w-full rounded-md border border-[#cbd5e1] bg-surface px-2.5 py-2 text-[0.95rem]"
+                className="w-full rounded-md border border-border-divider bg-surface px-2.5 py-2 text-[0.95rem]"
               >
                 {assignableRoles.map(r => (
                   <option key={r.value} value={r.value}>{r.label}</option>

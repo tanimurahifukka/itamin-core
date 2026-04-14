@@ -333,7 +333,7 @@ function TemplatesTab({ storeId }: { storeId: string }) {
         {(['personal', 'store'] as CheckScope[]).map(sc => (
           <button
             key={sc}
-            className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${scopeTab === sc ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
+            className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${scopeTab === sc ? 'border-magenta-500 font-medium text-magenta-500' : ''}`}
             onClick={() => { setScopeTab(sc); setSelectedTpl(null); setEditItems([]); }}
           >
             {SCOPE_LABEL[sc]}チェック
@@ -828,7 +828,7 @@ export default function ChecklistAdminPage() {
         {/* タブ */}
         <div className="mb-5 flex gap-2" style={{ marginBottom: 24 }}>
           <button
-            className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeTab === 'store_check' ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
+            className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeTab === 'store_check' ? 'border-magenta-500 font-medium text-magenta-500' : ''}`}
             onClick={() => setActiveTab('store_check')}
           >
             今日の店舗チェック
@@ -836,13 +836,13 @@ export default function ChecklistAdminPage() {
           {isManager && (
             <>
               <button
-                className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeTab === 'templates' ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
+                className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeTab === 'templates' ? 'border-magenta-500 font-medium text-magenta-500' : ''}`}
                 onClick={() => setActiveTab('templates')}
               >
                 テンプレート管理
               </button>
               <button
-                className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeTab === 'assignments' ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
+                className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeTab === 'assignments' ? 'border-magenta-500 font-medium text-magenta-500' : ''}`}
                 onClick={() => setActiveTab('assignments')}
               >
                 割当管理

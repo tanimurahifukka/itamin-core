@@ -480,7 +480,7 @@ export default function StoreChecklistPage() {
           {(Object.keys(TAB_LABELS) as StoreTab[]).map(tab => (
             <button
               key={tab}
-              className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeTab === tab ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
+              className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${activeTab === tab ? 'border-magenta-500 font-medium text-magenta-500' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
               {TAB_LABELS[tab]}

@@ -11,7 +11,7 @@ export const ErrorMessage = ({ className, children, ...props }: ErrorMessageProp
   <div
     role="alert"
     className={cn(
-      'my-3 rounded-lg bg-[#fff0f0] px-4 py-3 text-[0.9rem] text-[#e94560]',
+      'my-3 rounded-lg bg-error-bg px-4 py-3 text-[0.9rem] text-magenta-500',
       className,
     )}
     {...props}

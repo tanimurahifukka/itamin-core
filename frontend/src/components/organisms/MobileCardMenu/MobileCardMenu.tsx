@@ -29,7 +29,7 @@ export const MobileCardMenu = ({
   onSelect,
 }: MobileCardMenuProps) => (
   <div className="mx-auto max-w-[500px] px-4 py-5">
-    <div className="mb-5 px-1 text-[1.1rem] font-semibold text-[#1a1a2e]">
+    <div className="mb-5 px-1 text-[1.1rem] font-semibold text-text-body">
       {greeting}
     </div>
 
@@ -44,10 +44,10 @@ export const MobileCardMenu = ({
               key={tab.name}
               type="button"
               onClick={() => onSelect(tab.name)}
-              className="flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] border border-border-light bg-surface px-3 py-3.5 text-left font-sans transition-all hover:border-[#cbd5e1] hover:bg-[#f8fafc] active:scale-[0.98]"
+              className="flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] border border-border-light bg-surface px-3 py-3.5 text-left font-sans transition-all hover:border-border-divider hover:bg-background-subtle active:scale-[0.98]"
             >
               <span className="flex-shrink-0 text-[1.3rem] leading-none">{tab.icon}</span>
-              <span className="text-[0.88rem] font-semibold leading-tight text-[#1a1a2e]">
+              <span className="text-[0.88rem] font-semibold leading-tight text-text-body">
                 {tab.label}
               </span>
             </button>

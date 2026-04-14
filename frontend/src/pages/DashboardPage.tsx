@@ -300,19 +300,19 @@ export default function DashboardPage() {
     <>
       {/* 未退勤アラート */}
       {canEdit && staleRecords.length > 0 && (
-        <div className="mb-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3.5" data-testid="stale-alert-banner">
-          <div className="mb-2.5 flex items-center gap-2 text-[0.95rem] text-[#991b1b]">
+        <div className="mb-4 rounded-xl border border-red-200 bg-error-bg px-4 py-3.5" data-testid="stale-alert-banner">
+          <div className="mb-2.5 flex items-center gap-2 text-[0.95rem] text-error-fg">
             <span className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-error text-[0.8rem] font-bold text-white">!</span>
             <strong>退勤未打刻が {staleRecords.length} 件あります</strong>
           </div>
           <div className="flex flex-col gap-1.5">
             {staleRecords.map((r) => (
-              <div key={r.id} className="flex items-center gap-2 rounded-lg bg-surface px-2.5 py-2 text-[0.85rem] text-[#374151]">
+              <div key={r.id} className="flex items-center gap-2 rounded-lg bg-surface px-2.5 py-2 text-[0.85rem] text-sumi-600">
                 <span>{r.date} {r.staffName || '—'}</span>
                 <span className="ml-auto text-[0.8rem] text-text-subtle">出勤 {formatTime(r.clockIn)}〜</span>
                 <button
                   type="button"
-                  className="flex-shrink-0 cursor-pointer rounded-md border border-error bg-surface px-3 py-1 text-[0.8rem] font-semibold text-error font-sans hover:bg-[#fef2f2]"
+                  className="flex-shrink-0 cursor-pointer rounded-md border border-error bg-surface px-3 py-1 text-[0.8rem] font-semibold text-error font-sans hover:bg-error-bg"
                   onClick={() => openEditModal(r)}
                   data-testid={`stale-fix-btn-${r.id}`}
                 >
@@ -396,7 +396,7 @@ export default function DashboardPage() {
             {records.length === 0 ? (
               <EmptyState icon="📋" text={isToday ? 'まだ出勤記録がありません' : 'この日の記録はありません'} hint={isToday ? 'スタッフが出勤すると自動的に表示されます' : '日付を変更して別の日の記録を確認できます'} />
             ) : (
-              <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-[#f0f0f0] [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-[#888] [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-[#f0f0f0] [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
+              <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-sumi-300 [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-text-description [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-sumi-300 [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
                 <thead>
                   <tr>
                     <th>スタッフ</th>
@@ -413,7 +413,7 @@ export default function DashboardPage() {
                   {records.map((r) => {
                     const cost = calcLaborCost(r);
                     return (
-                      <tr key={r.id} className={!r.clockOut ? 'bg-[#f0fdf4]' : ''}>
+                      <tr key={r.id} className={!r.clockOut ? 'bg-success-bg' : ''}>
                         <td>
                           <span className="inline-flex items-center gap-2">{r.staffName || '—'}</span>
                           {!r.clockOut && <StatusDot state="working_pulse" title="勤務中" />}
@@ -423,7 +423,7 @@ export default function DashboardPage() {
                           {r.clockOut ? formatTime(r.clockOut) : '未打刻'}
                         </td>
                         <td>{r.breakMinutes}分</td>
-                        <td className={!r.clockOut ? 'font-semibold text-[#16a34a]' : ''}>
+                        <td className={!r.clockOut ? 'font-semibold text-green-700' : ''}>
                           {calcHoursStr(r)}
                         </td>
                         {isOwner && (
@@ -485,7 +485,7 @@ export default function DashboardPage() {
 
           {monthlyData?.summary && monthlyData.summary.length > 0 ? (
             <>
-            <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-[#f0f0f0] [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-[#888] [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-[#f0f0f0] [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
+            <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-sumi-300 [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-text-description [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-sumi-300 [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
               <thead>
                 <tr>
                   <th>スタッフ</th>
@@ -571,7 +571,7 @@ export default function DashboardPage() {
               {monthlyData.summary.map((s) => (
                 <button
                   key={s.staffId}
-                  className={`cursor-pointer rounded-full border border-border bg-surface px-3.5 py-1.5 text-[0.85rem] text-[#374151] transition-all hover:border-primary hover:text-primary ${selectedStaff?.staffId === s.staffId ? 'border-primary bg-primary text-white' : ''}`}
+                  className={`cursor-pointer rounded-full border border-border bg-surface px-3.5 py-1.5 text-[0.85rem] text-sumi-600 transition-all hover:border-primary hover:text-primary ${selectedStaff?.staffId === s.staffId ? 'border-primary bg-primary text-white' : ''}`}
                   onClick={() => setSelectedStaff({ staffId: s.staffId, staffName: s.staffName })}
                   data-testid={`staff-chip-${s.staffId}`}
                 >
@@ -619,7 +619,7 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-[#f0f0f0] [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-[#888] [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-[#f0f0f0] [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
+                <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-sumi-300 [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-text-description [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-sumi-300 [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
                   <thead>
                     <tr>
                       <th>日付</th>
@@ -645,7 +645,7 @@ export default function DashboardPage() {
                       const cost = h !== null && mapped.hourlyWage ? Math.round(h * mapped.hourlyWage) : null;
                       const dateStr = formatShortDateJST(r.clock_in);
                       return (
-                        <tr key={r.id} className={!r.clock_out ? 'bg-[#f0fdf4]' : ''}>
+                        <tr key={r.id} className={!r.clock_out ? 'bg-success-bg' : ''}>
                           <td>{dateStr}</td>
                           <td>{formatTime(r.clock_in)}</td>
                           <td className={!r.clock_out ? 'text-unpaired' : ''}>
@@ -729,10 +729,10 @@ export default function DashboardPage() {
       >
         {(editRecord || isCreating) && (
           <div data-testid="edit-record-modal">
-            <h3 className="text-center text-[1.2rem] text-[#1a1a2e] mb-1">
+            <h3 className="text-center text-[1.2rem] text-text-body mb-1">
               {isCreating ? '勤怠記録の新規作成' : '勤怠記録の修正'}
             </h3>
-            <p className="text-center text-[0.85rem] text-[#888] mb-5">
+            <p className="text-center text-[0.85rem] text-text-description mb-5">
               {isCreating
                 ? 'スタッフと時刻を選択して作成します'
                 : `${editRecord?.staffName || '—'} さんの記録を修正します`}

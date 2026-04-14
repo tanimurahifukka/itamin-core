@@ -67,7 +67,7 @@ export default function PolicySettingsPage() {
       {toast && <Alert variant="success">{toast}</Alert>}
 
       <div className="form-group">
-        <label className="mb-0.5 block text-[0.8rem] text-[#666]">タイムゾーン</label>
+        <label className="mb-0.5 block text-[0.8rem] text-text-description">タイムゾーン</label>
         <input
           className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
           value={policy.timezone}
@@ -77,7 +77,7 @@ export default function PolicySettingsPage() {
       </div>
 
       <div className="form-group">
-        <label className="mb-0.5 block text-[0.8rem] text-[#666]">営業日切替時刻（0〜23）</label>
+        <label className="mb-0.5 block text-[0.8rem] text-text-description">営業日切替時刻（0〜23）</label>
         <input
           className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
           type="number"
@@ -90,7 +90,7 @@ export default function PolicySettingsPage() {
       </div>
 
       <div className="form-group">
-        <label className="mb-0.5 block text-[0.8rem] text-[#666]">丸め単位（分）</label>
+        <label className="mb-0.5 block text-[0.8rem] text-text-description">丸め単位（分）</label>
         <input
           className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
           type="number"
@@ -102,7 +102,7 @@ export default function PolicySettingsPage() {
       </div>
 
       <div className="form-group">
-        <label className="mb-0.5 block text-[0.8rem] text-[#666]">丸め方式</label>
+        <label className="mb-0.5 block text-[0.8rem] text-text-description">丸め方式</label>
         <select
           className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
           value={policy.rounding_mode}
@@ -117,7 +117,7 @@ export default function PolicySettingsPage() {
       </div>
 
       <div className="form-group">
-        <label className="mb-0.5 block text-[0.8rem] text-[#666]">
+        <label className="mb-0.5 block text-[0.8rem] text-text-description">
           <input
             type="checkbox"
             checked={!!policy.auto_close_break_before_clock_out}
@@ -129,7 +129,7 @@ export default function PolicySettingsPage() {
       </div>
 
       <div className="form-group">
-        <label className="mb-0.5 block text-[0.8rem] text-[#666]">
+        <label className="mb-0.5 block text-[0.8rem] text-text-description">
           <input
             type="checkbox"
             checked={!!policy.require_manager_approval}

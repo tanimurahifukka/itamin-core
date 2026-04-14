@@ -75,7 +75,7 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
 
   return (
     <div className="p-4">
-      <h2>今日の出勤ボード {data?.businessDate && <span className="text-sm font-normal text-[#6b7280]">({data.businessDate})</span>}</h2>
+      <h2>今日の出勤ボード {data?.businessDate && <span className="text-sm font-normal text-sumi-600">({data.businessDate})</span>}</h2>
 
       <div className="mb-3 flex flex-wrap gap-2">
         <select

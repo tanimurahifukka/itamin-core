@@ -232,7 +232,7 @@ export default function ExpensePage() {
       {/* カテゴリフィルタ */}
       <div className="mb-5 flex gap-2" style={{ marginBottom: 16 }}>
         <button
-          className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterCategory === '' ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
+          className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterCategory === '' ? 'border-magenta-500 font-medium text-magenta-500' : ''}`}
           onClick={() => setFilterCategory('')}
         >
           すべて
@@ -240,7 +240,7 @@ export default function ExpensePage() {
         {CATEGORIES.map(cat => (
           <button
             key={cat}
-            className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterCategory === cat ? 'border-[#e94560] font-medium text-[#e94560]' : ''}`}
+            className={`flex-1 cursor-pointer rounded-lg border-2 border-border-light bg-surface px-2.5 py-2.5 text-center text-[0.95rem] font-sans transition-colors ${filterCategory === cat ? 'border-magenta-500 font-medium text-magenta-500' : ''}`}
             onClick={() => setFilterCategory(cat)}
           >
             {cat}
@@ -254,7 +254,7 @@ export default function ExpensePage() {
         {expenses.length === 0 ? (
           <EmptyState icon="💰" text="この月の経費データはありません" hint="上のフォームから経費を追加してください" />
         ) : (
-          <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-[#f0f0f0] [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-[#888] [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-[#f0f0f0] [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
+          <table className="w-full border-collapse [&_th]:px-3 [&_th]:py-2.5 [&_th]:border-b [&_th]:border-sumi-300 [&_th]:text-left [&_th]:text-[0.85rem] [&_th]:font-medium [&_th]:text-text-description [&_td]:px-3 [&_td]:py-2.5 [&_td]:border-b [&_td]:border-sumi-300 [&_td]:text-left max-md:[&_th]:px-1.5 max-md:[&_th]:py-2 max-md:[&_th]:text-[0.85rem] max-md:[&_td]:px-1.5 max-md:[&_td]:py-2 max-md:[&_td]:text-[0.85rem]">
             <thead>
               <tr>
                 <th>日付</th>

@@ -31,7 +31,7 @@ export const ProfileDropdown = ({
   <div className="relative" ref={profileRef}>
     <button
       type="button"
-      className="flex items-center gap-2 rounded-full border border-border bg-transparent p-1 text-text transition-colors hover:border-[#999] md:py-1 md:pl-1 md:pr-3"
+      className="flex items-center gap-2 rounded-full border border-border bg-transparent p-1 text-text transition-colors hover:border-sumi-500 md:py-1 md:pl-1 md:pr-3"
       onClick={() => setShowProfileMenu(!showProfileMenu)}
     >
       {picture ? (
@@ -49,7 +49,7 @@ export const ProfileDropdown = ({
       <div className="absolute right-0 top-[calc(100%+8px)] z-[200] min-w-[200px] animate-[dropdownFadeIn_0.15s_ease] rounded-[10px] bg-surface p-4 shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
         <div className="mb-0.5 text-[0.95rem] font-semibold text-text">{displayName}</div>
         {user?.email && (
-          <div className="mb-3 break-all text-[0.8rem] text-[#888]">{user.email}</div>
+          <div className="mb-3 break-all text-[0.8rem] text-text-description">{user.email}</div>
         )}
         {selectedStore && (
           <button
