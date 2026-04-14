@@ -112,7 +112,7 @@ export default function CorrectionApprovalPage() {
                   {actionId === c.id ? (
                     <div className="flex flex-col gap-2">
                       <input
-                        className="form-input"
+                        className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
                         placeholder="コメント（任意）"
                         value={comment}
                         onChange={e => setComment(e.target.value)}

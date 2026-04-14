@@ -243,23 +243,6 @@ body {
   font-weight: 600;
 }
 
-/* ===== Daily Report ===== */
-.form-label {
-  font-size: 0.8rem;
-  color: #666;
-  margin-bottom: 2px;
-  display: block;
-}
-
-.form-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #d4d9df;
-  border-radius: 6px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  box-sizing: border-box;
-}
 
 /* .daily-report-form-grid / .daily-report-list / .daily-report-card /
  * .daily-report-card-header / .daily-report-date / .daily-report-weather /

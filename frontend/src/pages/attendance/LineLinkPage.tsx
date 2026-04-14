@@ -69,11 +69,11 @@ export default function LineLinkPage({ lineUserId, displayName, pictureUrl, onLi
         )}
 
         <form onSubmit={handleSubmit} className={LINK_FORM}>
-          <label className="form-label" htmlFor="link-code">連携コード</label>
+          <label className="mb-0.5 block text-[0.8rem] text-[#666]" htmlFor="link-code">連携コード</label>
           <input
             id="link-code"
             data-testid="link-code-input"
-            className={`form-input ${LINK_INPUT_EXTRA}`}
+            className={`box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans ${LINK_INPUT_EXTRA}`}
             type="text"
             inputMode="numeric"
             maxLength={6}

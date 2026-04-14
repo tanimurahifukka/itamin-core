@@ -115,10 +115,10 @@ export default function MenuPage() {
               placeholder="商品名 *"
               value={name}
               onChange={e => setName(e.target.value)}
-              className="form-input"
+              className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
               style={{ flex: 2, minWidth: 150 }}
             />
-            <select value={category} onChange={e => setCategory(e.target.value)} className="form-input" style={{ flex: 1, minWidth: 100 }}>
+            <select value={category} onChange={e => setCategory(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" style={{ flex: 1, minWidth: 100 }}>
               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <input
@@ -126,7 +126,7 @@ export default function MenuPage() {
               placeholder="価格（円）"
               value={price}
               onChange={e => setPrice(e.target.value)}
-              className="form-input"
+              className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
               style={{ flex: 1, minWidth: 100 }}
             />
           </div>

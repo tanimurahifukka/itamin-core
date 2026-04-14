@@ -437,19 +437,19 @@ export default function PunchClockPage() {
             {error && <ErrorMessage className="mb-2 mt-0">{error}</ErrorMessage>}
 
             <div className="mb-3">
-              <label className="form-label" style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600 }}>退勤時刻</label>
+              <label className="mb-0.5 block text-[0.8rem] text-[#666]" style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600 }}>退勤時刻</label>
               <input
                 type="datetime-local"
                 value={staleClockOut}
                 onChange={e => setStaleClockOut(e.target.value)}
-                className="form-input"
+                className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
                 data-testid="stale-clock-out-input"
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontSize: '1rem' }}
               />
             </div>
 
             <div className="mb-3">
-              <label className="form-label" style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600 }}>休憩時間</label>
+              <label className="mb-0.5 block text-[0.8rem] text-[#666]" style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600 }}>休憩時間</label>
               <BreakMinutesField
                 value={staleBreakMinutes}
                 onChange={setStaleBreakMinutes}
@@ -490,17 +490,17 @@ export default function PunchClockPage() {
               <div className="grid gap-2 [grid-template-columns:140px_1fr_1fr_120px]">
                 {reportInputMode === 'manual' && (
                   <div>
-                    <label className="form-label">売上（円）</label>
-                    <input type="number" placeholder="0" value={reportSales} onChange={e => setReportSales(e.target.value)} className="form-input" />
+                    <label className="mb-0.5 block text-[0.8rem] text-[#666]">売上（円）</label>
+                    <input type="number" placeholder="0" value={reportSales} onChange={e => setReportSales(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
                   </div>
                 )}
                 <div>
-                  <label className="form-label">来客数</label>
-                  <input type="number" placeholder="0" value={reportCustomers} onChange={e => setReportCustomers(e.target.value)} className="form-input" />
+                  <label className="mb-0.5 block text-[0.8rem] text-[#666]">来客数</label>
+                  <input type="number" placeholder="0" value={reportCustomers} onChange={e => setReportCustomers(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
                 </div>
                 <div>
-                  <label className="form-label">天気</label>
-                  <select value={reportWeather} onChange={e => setReportWeather(e.target.value)} className="form-input">
+                  <label className="mb-0.5 block text-[0.8rem] text-[#666]">天気</label>
+                  <select value={reportWeather} onChange={e => setReportWeather(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans">
                     {WEATHER_OPTIONS.map(w => <option key={w} value={w}>{w}</option>)}
                   </select>
                 </div>
@@ -563,8 +563,8 @@ export default function PunchClockPage() {
               )}
 
               <div style={{ marginTop: 8 }}>
-                <label className="form-label">メモ</label>
-                <input type="text" placeholder="一言メモ" value={reportMemo} onChange={e => setReportMemo(e.target.value)} className="form-input" />
+                <label className="mb-0.5 block text-[0.8rem] text-[#666]">メモ</label>
+                <input type="text" placeholder="一言メモ" value={reportMemo} onChange={e => setReportMemo(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
               </div>
             </div>
 

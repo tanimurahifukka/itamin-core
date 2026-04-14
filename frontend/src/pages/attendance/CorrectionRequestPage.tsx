@@ -86,9 +86,9 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
 
       <form onSubmit={handleSubmit} className="[&_.form-group]:mb-3">
         <div className="form-group">
-          <label className="form-label">対象日</label>
+          <label className="mb-0.5 block text-[0.8rem] text-[#666]">対象日</label>
           <input
-            className="form-input"
+            className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
             type="date"
             value={businessDate}
             onChange={e => setBusinessDate(e.target.value)}
@@ -97,9 +97,9 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
         </div>
 
         <div className="form-group">
-          <label className="form-label">申請種別</label>
+          <label className="mb-0.5 block text-[0.8rem] text-[#666]">申請種別</label>
           <select
-            className="form-input"
+            className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
             value={requestType}
             onChange={e => setRequestType(e.target.value)}
             data-testid="correction-type-select"
@@ -111,9 +111,9 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
         </div>
 
         <div className="form-group">
-          <label className="form-label">修正後の出勤時刻</label>
+          <label className="mb-0.5 block text-[0.8rem] text-[#666]">修正後の出勤時刻</label>
           <input
-            className="form-input"
+            className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
             type="time"
             value={clockInAt}
             onChange={e => setClockInAt(e.target.value)}
@@ -122,9 +122,9 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
         </div>
 
         <div className="form-group">
-          <label className="form-label">修正後の退勤時刻</label>
+          <label className="mb-0.5 block text-[0.8rem] text-[#666]">修正後の退勤時刻</label>
           <input
-            className="form-input"
+            className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
             type="time"
             value={clockOutAt}
             onChange={e => setClockOutAt(e.target.value)}
@@ -133,9 +133,9 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
         </div>
 
         <div className="form-group">
-          <label className="form-label">理由（必須）</label>
+          <label className="mb-0.5 block text-[0.8rem] text-[#666]">理由（必須）</label>
           <textarea
-            className="form-input"
+            className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
             rows={3}
             value={reason}
             onChange={e => setReason(e.target.value)}

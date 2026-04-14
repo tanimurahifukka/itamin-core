@@ -178,7 +178,7 @@ export default function LineShiftRequestPage({ lineUserId, storeId }: Props) {
           <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>日付</label>
           <input
             type="date"
-            className="form-input"
+            className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
             value={formDate}
             onChange={e => setFormDate(e.target.value)}
             data-testid="shift-request-date-input"
@@ -257,7 +257,7 @@ export default function LineShiftRequestPage({ lineUserId, storeId }: Props) {
             <div style={{ marginBottom: 8 }}>
               <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>区分</label>
               <select
-                className="form-input"
+                className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
                 value={formType}
                 onChange={e => setFormType(e.target.value)}
                 data-testid="shift-request-type-select"
@@ -271,7 +271,7 @@ export default function LineShiftRequestPage({ lineUserId, storeId }: Props) {
                 <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>開始</label>
                 <input
                   type="time"
-                  className="form-input"
+                  className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
                   value={formStartTime}
                   onChange={e => setFormStartTime(e.target.value)}
                   data-testid="shift-request-start-time-input"
@@ -281,7 +281,7 @@ export default function LineShiftRequestPage({ lineUserId, storeId }: Props) {
                 <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>終了</label>
                 <input
                   type="time"
-                  className="form-input"
+                  className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
                   value={formEndTime}
                   onChange={e => setFormEndTime(e.target.value)}
                   data-testid="shift-request-end-time-input"
@@ -303,7 +303,7 @@ export default function LineShiftRequestPage({ lineUserId, storeId }: Props) {
           <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>メモ</label>
           <input
             type="text"
-            className="form-input"
+            className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
             value={formNote}
             onChange={e => setFormNote(e.target.value)}
             placeholder="任意"

@@ -79,7 +79,7 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
 
       <div className="mb-3 flex flex-wrap gap-2">
         <select
-          className="form-input"
+          className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
           data-testid="status-filter-select"
@@ -90,7 +90,7 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
           ))}
         </select>
         <input
-          className="form-input"
+          className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
           placeholder="スタッフ名で検索"
           value={search}
           onChange={e => setSearch(e.target.value)}

@@ -144,12 +144,12 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
               {editingId === r.id ? (
                 <>
                   <td>{r.businessDate}</td>
-                  <td><input type="datetime-local" className="form-input max-w-[180px] text-[13px] px-2 py-1" value={editClockIn} onChange={e => setEditClockIn(e.target.value)} data-testid="edit-clockin-input" /></td>
-                  <td><input type="datetime-local" className="form-input max-w-[180px] text-[13px] px-2 py-1" value={editClockOut} onChange={e => setEditClockOut(e.target.value)} data-testid="edit-clockout-input" /></td>
+                  <td><input type="datetime-local" className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans max-w-[180px] text-[13px] px-2 py-1" value={editClockIn} onChange={e => setEditClockIn(e.target.value)} data-testid="edit-clockin-input" /></td>
+                  <td><input type="datetime-local" className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans max-w-[180px] text-[13px] px-2 py-1" value={editClockOut} onChange={e => setEditClockOut(e.target.value)} data-testid="edit-clockout-input" /></td>
                   <td>{r.breakMinutes}分</td>
                   <td>—</td>
                   <td>{r.status}</td>
-                  <td><input className="form-input max-w-[180px] text-[13px] px-2 py-1" value={editNote} onChange={e => setEditNote(e.target.value)} data-testid="edit-note-input" /></td>
+                  <td><input className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans max-w-[180px] text-[13px] px-2 py-1" value={editNote} onChange={e => setEditNote(e.target.value)} data-testid="edit-note-input" /></td>
                   <td>
                     <button className="button button-small button-primary" onClick={() => saveEdit(r.id)} data-testid="save-edit-button">保存</button>
                     <button className="button button-small" onClick={() => setEditingId(null)}>取消</button>

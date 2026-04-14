@@ -175,22 +175,22 @@ export default function DailyReportPage() {
         <h3 style={{ marginBottom: 12 }}>日報入力</h3>
         <div className={DR_FORM_GRID}>
           <div>
-            <label className="form-label">日付</label>
-            <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} className="form-input" />
+            <label className="mb-0.5 block text-[0.8rem] text-[#666]">日付</label>
+            <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
           </div>
           {inputMode === 'manual' && (
             <div>
-              <label className="form-label">売上（円）</label>
-              <input type="number" placeholder="0" value={formSales} onChange={e => setFormSales(e.target.value)} className="form-input" />
+              <label className="mb-0.5 block text-[0.8rem] text-[#666]">売上（円）</label>
+              <input type="number" placeholder="0" value={formSales} onChange={e => setFormSales(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
             </div>
           )}
           <div>
-            <label className="form-label">来客数</label>
-            <input type="number" placeholder="0" value={formCustomers} onChange={e => setFormCustomers(e.target.value)} className="form-input" />
+            <label className="mb-0.5 block text-[0.8rem] text-[#666]">来客数</label>
+            <input type="number" placeholder="0" value={formCustomers} onChange={e => setFormCustomers(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
           </div>
           <div>
-            <label className="form-label">天気</label>
-            <select value={formWeather} onChange={e => setFormWeather(e.target.value)} className="form-input">
+            <label className="mb-0.5 block text-[0.8rem] text-[#666]">天気</label>
+            <select value={formWeather} onChange={e => setFormWeather(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans">
               {WEATHER_OPTIONS.map(w => <option key={w} value={w}>{w}</option>)}
             </select>
           </div>
@@ -252,8 +252,8 @@ export default function DailyReportPage() {
         )}
 
         <div style={{ marginTop: 8 }}>
-          <label className="form-label">メモ</label>
-          <input type="text" placeholder="一言メモ" value={formMemo} onChange={e => setFormMemo(e.target.value)} className="form-input" />
+          <label className="mb-0.5 block text-[0.8rem] text-[#666]">メモ</label>
+          <input type="text" placeholder="一言メモ" value={formMemo} onChange={e => setFormMemo(e.target.value)} className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans" />
         </div>
 
         {/* 在庫チェック */}

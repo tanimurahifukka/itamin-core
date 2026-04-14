@@ -109,7 +109,7 @@ export default function LineDailyReportPage({ lineUserId, storeId }: Props) {
         <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>日付</label>
         <input
           type="date"
-          className="form-input"
+          className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
           value={date}
           onChange={e => setDate(e.target.value)}
           data-testid="daily-report-date-input"
@@ -135,7 +135,7 @@ export default function LineDailyReportPage({ lineUserId, storeId }: Props) {
             <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>売上（円）</label>
             <input
               type="number"
-              className="form-input"
+              className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
               value={sales}
               onChange={e => setSales(e.target.value)}
               placeholder="0"
@@ -147,7 +147,7 @@ export default function LineDailyReportPage({ lineUserId, storeId }: Props) {
             <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>来客数</label>
             <input
               type="number"
-              className="form-input"
+              className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
               value={customerCount}
               onChange={e => setCustomerCount(e.target.value)}
               placeholder="0"
@@ -175,7 +175,7 @@ export default function LineDailyReportPage({ lineUserId, storeId }: Props) {
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontSize: 12, color: '#6b7280', marginBottom: 2 }}>メモ</label>
             <textarea
-              className="form-input"
+              className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
               value={memo}
               onChange={e => setMemo(e.target.value)}
               rows={4}

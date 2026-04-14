@@ -67,9 +67,9 @@ export default function PolicySettingsPage() {
       {toast && <Alert variant="success">{toast}</Alert>}
 
       <div className="form-group">
-        <label className="form-label">タイムゾーン</label>
+        <label className="mb-0.5 block text-[0.8rem] text-[#666]">タイムゾーン</label>
         <input
-          className="form-input"
+          className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
           value={policy.timezone}
           onChange={e => setPolicy({ ...policy, timezone: e.target.value })}
           data-testid="policy-timezone-input"
@@ -77,9 +77,9 @@ export default function PolicySettingsPage() {
       </div>
 
       <div className="form-group">
-        <label className="form-label">営業日切替時刻（0〜23）</label>
+        <label className="mb-0.5 block text-[0.8rem] text-[#666]">営業日切替時刻（0〜23）</label>
         <input
-          className="form-input"
+          className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
           type="number"
           min={0}
           max={23}
@@ -90,9 +90,9 @@ export default function PolicySettingsPage() {
       </div>
 
       <div className="form-group">
-        <label className="form-label">丸め単位（分）</label>
+        <label className="mb-0.5 block text-[0.8rem] text-[#666]">丸め単位（分）</label>
         <input
-          className="form-input"
+          className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
           type="number"
           min={1}
           value={policy.rounding_unit_minutes}
@@ -102,9 +102,9 @@ export default function PolicySettingsPage() {
       </div>
 
       <div className="form-group">
-        <label className="form-label">丸め方式</label>
+        <label className="mb-0.5 block text-[0.8rem] text-[#666]">丸め方式</label>
         <select
-          className="form-input"
+          className="box-border w-full rounded-md border border-border px-3 py-2 text-[0.9rem] font-sans"
           value={policy.rounding_mode}
           onChange={e => setPolicy({ ...policy, rounding_mode: e.target.value })}
           data-testid="policy-rounding-mode-select"
@@ -117,7 +117,7 @@ export default function PolicySettingsPage() {
       </div>
 
       <div className="form-group">
-        <label className="form-label">
+        <label className="mb-0.5 block text-[0.8rem] text-[#666]">
           <input
             type="checkbox"
             checked={!!policy.auto_close_break_before_clock_out}
@@ -129,7 +129,7 @@ export default function PolicySettingsPage() {
       </div>
 
       <div className="form-group">
-        <label className="form-label">
+        <label className="mb-0.5 block text-[0.8rem] text-[#666]">
           <input
             type="checkbox"
             checked={!!policy.require_manager_approval}
