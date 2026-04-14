@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
 import { Button } from '../components/atoms/Button';
 import type { MenuItem } from '../types/api';
+import { EmptyState } from '../components/molecules/EmptyState';
 
 const CATEGORIES = ['ドリンク', 'フード', '物販', 'その他'];
 
@@ -153,11 +154,7 @@ export default function MenuPage() {
 
       {/* 商品一覧 */}
       {items.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">☕</div>
-          <p className="empty-state-text">商品がありません</p>
-          <p className="empty-state-hint">上のフォームから商品を追加してください</p>
-        </div>
+        <EmptyState icon="☕" text="商品がありません" hint="上のフォームから商品を追加してください" />
       ) : (
         Object.entries(grouped).map(([cat, catItems]) => (
           <div key={cat} style={{ marginBottom: 16 }}>

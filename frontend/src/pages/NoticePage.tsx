@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { supabase } from '../api/supabase';
 import { showToast } from '../components/molecules/Toast';
 import type { Notice, NoticeComment } from '../types/api';
+import { EmptyState } from '../components/molecules/EmptyState';
 
 function linkifyText(text: string) {
   const parts = text.split(/(https?:\/\/[^\s]+)/g);
@@ -290,11 +291,7 @@ export default function NoticePage() {
       <div className="records-section">
         <h3 style={{ marginBottom: 12 }}>投稿一覧</h3>
         {notices.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">💬</div>
-            <p className="empty-state-text">投稿がありません</p>
-            <p className="empty-state-hint">上のフォームから投稿してください</p>
-          </div>
+          <EmptyState icon="💬" text="投稿がありません" hint="上のフォームから投稿してください" />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {notices.map(n => (

@@ -5,6 +5,7 @@ import { supabase } from '../api/supabase';
 import { showToast } from '../components/molecules/Toast';
 import type { SalesClose, SalesReceipt, CashClose } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
+import { EmptyState } from '../components/molecules/EmptyState';
 
 type Tab = 'close' | 'receipts' | 'cash';
 
@@ -295,11 +296,7 @@ export default function SalesCapturePage() {
           </div>
 
           {receipts.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">🧾</div>
-              <p className="empty-state-text">この日のレシートはまだありません</p>
-              <p className="empty-state-hint">締めレシートや精算票をアップロードできます</p>
-            </div>
+            <EmptyState icon="🧾" text="この日のレシートはまだありません" hint="締めレシートや精算票をアップロードできます" />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {receipts.map((r) => (

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import type { StaffConsecutiveInfo } from '../types/api';
+import { EmptyState } from '../components/molecules/EmptyState';
 
 type StaffStatus = StaffConsecutiveInfo;
 
@@ -46,10 +47,7 @@ export default function ConsecutiveWorkPage() {
           今日から遡って連続出勤日数を表示しています
         </p>
         {staffStatus.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📊</div>
-            <p className="empty-state-text">スタッフデータがありません</p>
-          </div>
+          <EmptyState icon="📊" text="スタッフデータがありません" />
         ) : (
           <table className="records-table">
             <thead>

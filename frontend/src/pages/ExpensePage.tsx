@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
 import type { ExpenseSummary } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
+import { EmptyState } from '../components/molecules/EmptyState';
 
 // Local Expense omits server-only fields (storeId, createdBy, createdAt)
 interface Expense {
@@ -252,11 +253,7 @@ export default function ExpensePage() {
       <div className="records-section">
         <h3 style={{ marginBottom: 12 }}>経費一覧</h3>
         {expenses.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">💰</div>
-            <p className="empty-state-text">この月の経費データはありません</p>
-            <p className="empty-state-hint">上のフォームから経費を追加してください</p>
-          </div>
+          <EmptyState icon="💰" text="この月の経費データはありません" hint="上のフォームから経費を追加してください" />
         ) : (
           <table className="records-table">
             <thead>

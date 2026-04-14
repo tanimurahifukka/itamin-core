@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
 import type { FeedbackItem } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
+import { EmptyState } from '../components/molecules/EmptyState';
 
 const TYPE_OPTIONS = [
   { value: 'praise', label: 'お褒め', color: '#22c55e', bg: '#f0fdf4' },
@@ -211,11 +212,7 @@ export default function FeedbackPage() {
       <div className="records-section">
         <h3 style={{ marginBottom: 12 }}>一覧</h3>
         {items.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📣</div>
-            <p className="empty-state-text">データがありません</p>
-            <p className="empty-state-hint">上のフォームからお客様の声を追加してください</p>
-          </div>
+          <EmptyState icon="📣" text="データがありません" hint="上のフォームからお客様の声を追加してください" />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {items.map(item => {

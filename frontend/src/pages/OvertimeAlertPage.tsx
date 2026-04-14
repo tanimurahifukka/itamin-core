@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import type { StaffOvertimeInfo } from '../types/api';
+import { EmptyState } from '../components/molecules/EmptyState';
 
 type StaffOvertime = StaffOvertimeInfo;
 
@@ -101,10 +102,7 @@ export default function OvertimeAlertPage() {
       <div className="records-section">
         <h3 style={{ marginBottom: 12 }}>スタッフ別残業時間</h3>
         {staffOvertime.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">⏰</div>
-            <p className="empty-state-text">今月の打刻データがありません</p>
-          </div>
+          <EmptyState icon="⏰" text="今月の打刻データがありません" />
         ) : (
           <table className="records-table">
             <thead>

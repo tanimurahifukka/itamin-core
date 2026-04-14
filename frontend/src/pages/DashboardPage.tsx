@@ -9,6 +9,7 @@ import { StatusDot } from '../components/atoms/StatusDot';
 import { ErrorMessage } from '../components/atoms/ErrorMessage';
 import type { TimeRecord, MonthlySummaryStaff, StaffMember, MonthlyRecordsResponse, MonthlyRawStaffRecord } from '../types/api';
 import { todayJST, formatDateJST, formatShortDateJST, formatTimeJST, currentJstYearMonth, isoToJstDateTimeLocalValue, jstDateTimeLocalValueToIso } from '../lib/dateUtils';
+import { EmptyState } from '../components/molecules/EmptyState';
 
 type ViewMode = 'daily' | 'monthly' | 'staff';
 
@@ -407,15 +408,7 @@ export default function DashboardPage() {
             </div>
 
             {records.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">📋</div>
-                <p className="empty-state-text">
-                  {isToday ? 'まだ出勤記録がありません' : 'この日の記録はありません'}
-                </p>
-                <p className="empty-state-hint">
-                  {isToday ? 'スタッフが出勤すると自動的に表示されます' : '日付を変更して別の日の記録を確認できます'}
-                </p>
-              </div>
+              <EmptyState icon="📋" text={isToday ? 'まだ出勤記録がありません' : 'この日の記録はありません'} hint={isToday ? 'スタッフが出勤すると自動的に表示されます' : '日付を変更して別の日の記録を確認できます'} />
             ) : (
               <table className="records-table">
                 <thead>
@@ -566,11 +559,7 @@ export default function DashboardPage() {
             </table>
             </>
           ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">📊</div>
-              <p className="empty-state-text">この月の集計データがありません</p>
-              <p className="empty-state-hint">月を変更して別の期間を確認できます</p>
-            </div>
+            <EmptyState icon="📊" text="この月の集計データがありません" hint="月を変更して別の期間を確認できます" />
           )}
         </div>
       )}
@@ -616,10 +605,7 @@ export default function DashboardPage() {
 
             if (staffRecords.length === 0) {
               return (
-                <div className="empty-state">
-                  <div className="empty-state-icon">📋</div>
-                  <p className="empty-state-text">この月の勤務記録はありません</p>
-                </div>
+                <EmptyState icon="📋" text="この月の勤務記録はありません" />
               );
             }
 
@@ -722,11 +708,7 @@ export default function DashboardPage() {
               </>
             );
           })() : (
-            <div className="empty-state">
-              <div className="empty-state-icon">👤</div>
-              <p className="empty-state-text">スタッフを選択してください</p>
-              <p className="empty-state-hint">上のボタンからスタッフを選ぶと月間タイムカードが表示されます</p>
-            </div>
+            <EmptyState icon="👤" text="スタッフを選択してください" hint="上のボタンからスタッフを選ぶと月間タイムカードが表示されます" />
           )}
         </div>
       )}

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
 import type { InventoryItem } from '../types/api';
+import { EmptyState } from '../components/molecules/EmptyState';
 
 const STATUS_OPTIONS = [
   { value: '適正', color: '#22c55e', bg: '#f0fdf4' },
@@ -287,11 +288,7 @@ export default function InventoryPage() {
       <div className="records-section">
         <h3 style={{ marginBottom: 12 }}>在庫一覧</h3>
         {displayItems.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📦</div>
-            <p className="empty-state-text">在庫データがありません</p>
-            <p className="empty-state-hint">上のフォームから商品を追加してください</p>
-          </div>
+          <EmptyState icon="📦" text="在庫データがありません" hint="上のフォームから商品を追加してください" />
         ) : (
           <div className="inventory-table-wrap">
           <table className="records-table">

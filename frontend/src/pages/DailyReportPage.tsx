@@ -5,6 +5,7 @@ import { showToast } from '../components/molecules/Toast';
 import { Button } from '../components/atoms/Button';
 import type { DailyReport, DailyReportSummary, MenuItem, DailyReportItem, InventoryItem } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
+import { EmptyState } from '../components/molecules/EmptyState';
 
 type InputMode = 'manual' | 'menu';
 
@@ -305,11 +306,7 @@ export default function DailyReportPage() {
       <div className="records-section">
         <h3 style={{ marginBottom: 12 }}>日報一覧</h3>
         {reports.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📝</div>
-            <p className="empty-state-text">この月の日報はありません</p>
-            <p className="empty-state-hint">上のフォームから日報を入力してください</p>
-          </div>
+          <EmptyState icon="📝" text="この月の日報はありません" hint="上のフォームから日報を入力してください" />
         ) : (
           <div className="daily-report-list">
             {reports.map(r => {

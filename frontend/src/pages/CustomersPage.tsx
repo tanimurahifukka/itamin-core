@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
 import type { Customer, ReservationRow } from '../types/api';
 import { Loading } from '../components/atoms/Loading';
+import { EmptyState } from '../components/molecules/EmptyState';
 
 const PAGE_LIMIT = 20;
 
@@ -371,11 +372,7 @@ export default function CustomersPage() {
         {loading ? (
           <Loading minHeight="30vh" />
         ) : customers.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">👤</div>
-            <p className="empty-state-text">顧客が登録されていません</p>
-            <p className="empty-state-hint">「+ 新規登録」から顧客を追加してください</p>
-          </div>
+          <EmptyState icon="👤" text="顧客が登録されていません" hint="「+ 新規登録」から顧客を追加してください" />
         ) : (
           <>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -526,10 +523,7 @@ function CustomerReservationHistory({ storeId, customerId }: { storeId: string; 
       {loading ? (
         <p style={{ color: '#666', fontSize: '0.875rem' }}>読み込み中...</p>
       ) : reservations.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">📅</div>
-          <p className="empty-state-text">予約履歴がありません</p>
-        </div>
+        <EmptyState icon="📅" text="予約履歴がありません" />
       ) : (
         <div style={{ display: 'grid', gap: 6 }}>
           {reservations.map((r) => {
