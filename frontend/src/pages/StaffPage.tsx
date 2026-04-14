@@ -34,6 +34,43 @@ const WAGE_INPUT =
 const WAGE_SAVE =
   'flex h-7 w-7 items-center justify-center rounded border-none bg-primary text-[0.85rem] text-white cursor-pointer';
 
+// 旧 .role-badge.* 系（role 別に背景色/文字色が変わる）
+const ROLE_BADGE_BASE =
+  'inline-block flex-shrink-0 whitespace-nowrap rounded-xl px-2.5 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.5px]';
+const ROLE_BADGE_COLORS: Record<string, string> = {
+  owner: 'bg-[#1a1a1a] text-white',
+  manager: 'bg-primary text-white',
+  leader: 'bg-primary text-white',
+  full_time: 'bg-[#e8edf3] text-text',
+  part_time: 'bg-[#f0f0f0] text-text-muted',
+  staff: 'bg-[#f0f0f0] text-text-muted',
+};
+const ROLE_BADGE_CLICKABLE =
+  'cursor-pointer border border-dashed border-[#cbd5e1] hover:opacity-80';
+const ROLE_SELECT =
+  'cursor-pointer rounded-xl border-2 border-primary bg-primary-bg px-2 py-1 text-[0.75rem] font-semibold text-[#1a1a2e] font-sans outline-none';
+
+function roleBadgeClass(role: string, clickable = false) {
+  return `${ROLE_BADGE_BASE} ${ROLE_BADGE_COLORS[role] ?? ROLE_BADGE_COLORS.staff}${clickable ? ` ${ROLE_BADGE_CLICKABLE}` : ''}`;
+}
+
+// 旧 .invite-action-btn 系（招待一覧の resend / cancel）
+const INVITE_ACTION_BASE =
+  'cursor-pointer whitespace-nowrap rounded-md border px-3 py-1.5 text-[0.8rem] font-medium font-sans transition-all';
+const INVITE_ACTION_RESEND =
+  'border-primary bg-surface text-primary hover:bg-primary-bg disabled:cursor-not-allowed disabled:opacity-50';
+const INVITE_ACTION_CANCEL =
+  'border-[#fca5a5] bg-surface text-[#dc2626] hover:border-[#dc2626] hover:bg-[#fef2f2]';
+
+// 旧 .rehire-* 系
+const REHIRE_ROW = 'flex items-center gap-2';
+const REHIRE_INPUT =
+  'box-border min-w-0 flex-1 rounded-md border border-border px-3.5 py-2.5 text-[0.9rem] font-sans';
+const REHIRE_SELECT =
+  'box-border rounded-md border border-border bg-surface px-3.5 py-2.5 text-[0.9rem] font-sans';
+const REHIRE_BTN =
+  'cursor-pointer whitespace-nowrap rounded-md border-none bg-[#059669] px-5 py-2.5 text-[0.9rem] font-medium text-white font-sans';
+
 const roleLabels: Record<string, string> = {
   owner: 'オーナー',
   manager: 'マネージャー',
@@ -507,10 +544,10 @@ export default function StaffPage() {
             </div>
             <div className="staff-item-meta">
               {s.role === 'owner' ? (
-                <span className="role-badge owner">{roleLabels.owner}</span>
+                <span className={roleBadgeClass('owner')}>{roleLabels.owner}</span>
               ) : editingRoleId === s.id ? (
                 <select
-                  className="role-select"
+                  className={ROLE_SELECT}
                   value={s.role}
                   onChange={e => handleChangeRole(s.id, e.target.value)}
                   onBlur={() => setEditingRoleId(null)}
@@ -522,7 +559,7 @@ export default function StaffPage() {
                 </select>
               ) : (
                 <span
-                  className={`role-badge ${s.role}${isOwner ? ' clickable' : ''}`}
+                  className={roleBadgeClass(s.role, isOwner)}
                   onClick={() => isOwner && setEditingRoleId(s.id)}
                   title={isOwner ? 'クリックしてロール変更' : undefined}
                 >
@@ -693,20 +730,22 @@ export default function StaffPage() {
                   <div className="name">{inv.name || inv.email}</div>
                   <div className="email">{inv.email}</div>
                 </div>
-                <span className={`role-badge ${inv.role}`}>
+                <span className={roleBadgeClass(inv.role)}>
                   {roleLabels[inv.role] || inv.role}
                 </span>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button
+                    type="button"
                     onClick={() => handleResend(inv.id, inv.name || inv.email)}
                     disabled={resendingId === inv.id}
-                    className="invite-action-btn resend"
+                    className={`${INVITE_ACTION_BASE} ${INVITE_ACTION_RESEND}`}
                   >
                     {resendingId === inv.id ? '送信中...' : '再送'}
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleCancelInvitation(inv.id, inv.name || inv.email)}
-                    className="invite-action-btn cancel"
+                    className={`${INVITE_ACTION_BASE} ${INVITE_ACTION_CANCEL}`}
                   >
                     取消
                   </button>
@@ -764,27 +803,28 @@ export default function StaffPage() {
           <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: 10 }}>
             過去に退職したスタッフを再追加します。パスワードは初期パスワードにリセットされます。
           </p>
-          <div className="rehire-form-row">
+          <div className={REHIRE_ROW}>
             <input
               type="email"
               placeholder="退職者のメールアドレス"
               value={rehireEmail}
               onChange={e => setRehireEmail(e.target.value)}
-              className="rehire-input"
+              className={REHIRE_INPUT}
             />
             <select
               value={rehireRole}
               onChange={e => setRehireRole(e.target.value)}
-              className="rehire-select"
+              className={REHIRE_SELECT}
             >
               {assignableRoles.map(r => (
                 <option key={r.value} value={r.value}>{r.label}</option>
               ))}
             </select>
             <button
+              type="button"
               onClick={handleRehire}
               disabled={rehiring || !rehireEmail.trim()}
-              className="rehire-btn"
+              className={REHIRE_BTN}
               style={{ opacity: rehiring || !rehireEmail.trim() ? 0.6 : 1 }}
             >
               {rehiring ? '処理中...' : '再入職'}

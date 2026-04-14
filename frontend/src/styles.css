@@ -356,63 +356,8 @@ body {
   white-space: nowrap;
 }
 
-.role-badge {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.role-badge.owner {
-  background: #1a1a1a;
-  color: white;
-}
-
-.role-badge.manager {
-  background: #2563eb;
-  color: white;
-}
-
-.role-badge.full_time {
-  background: #e8edf3;
-  color: #1a1a1a;
-}
-
-.role-badge.part_time {
-  background: #f0f0f0;
-  color: #555;
-}
-
-.role-badge.staff {
-  background: #f0f0f0;
-  color: #555;
-}
-
-.role-badge.clickable {
-  cursor: pointer;
-  border: 1px dashed #cbd5e1;
-}
-
-.role-badge.clickable:hover {
-  opacity: 0.8;
-}
-
-.role-select {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 12px;
-  border: 2px solid #2563eb;
-  background: #eff6ff;
-  color: #1a1a2e;
-  font-family: inherit;
-  outline: none;
-  cursor: pointer;
-}
+/* .role-badge / .role-badge.<role> / .role-badge.clickable / .role-select
+ *   migrated to inline Tailwind constants in StaffPage.tsx. */
 
 /* .loading migrated to components/atoms/Loading; keyframes preserved for the
  * arbitrary animate-[loading-spin_...] class. */
@@ -505,43 +450,8 @@ body {
  * .store-id-copy / .store-id-edit-input / .store-id-cancel / .store-id-hint
  *   migrated to inline Tailwind constants in StaffPage.tsx. */
 
-/* ===== Invite Action Buttons ===== */
-.invite-action-btn {
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-family: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-.invite-action-btn.resend {
-  background: white;
-  color: #2563eb;
-  border: 1px solid #2563eb;
-}
-
-.invite-action-btn.resend:hover {
-  background: #eff6ff;
-}
-
-.invite-action-btn.resend:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.invite-action-btn.cancel {
-  background: white;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
-}
-
-.invite-action-btn.cancel:hover {
-  background: #fef2f2;
-  border-color: #dc2626;
-}
+/* .invite-action-btn / .resend / .cancel migrated to inline Tailwind
+ *   constants in StaffPage.tsx. */
 
 /* ===== Inventory Form Grid ===== */
 .inventory-add-row1 {
@@ -587,46 +497,8 @@ body {
 /* ===== Remove Staff Button ===== */
 /* .remove-staff-btn was unused in JSX; removed. */
 
-/* ===== Rehire Form ===== */
-.rehire-form-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.rehire-input {
-  flex: 1;
-  min-width: 0;
-  padding: 10px 14px;
-  border: 1px solid #d4d9df;
-  border-radius: 6px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  box-sizing: border-box;
-}
-
-.rehire-select {
-  padding: 10px 14px;
-  border: 1px solid #d4d9df;
-  border-radius: 6px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  background: #fff;
-  box-sizing: border-box;
-}
-
-.rehire-btn {
-  padding: 10px 20px;
-  background: #059669;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  white-space: nowrap;
-  font-family: inherit;
-  font-size: 0.9rem;
-}
+/* .rehire-form-row / .rehire-input / .rehire-select / .rehire-btn migrated
+ *   to inline Tailwind constants in StaffPage.tsx. */
 
 /* .remove-modal-* migrated to Modal molecule + Button + Input atoms. */
 
@@ -976,29 +848,10 @@ body {
     padding-left: 0;
   }
 
-  .rehire-form-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .rehire-input {
-    width: 100%;
-  }
-
-  .rehire-select {
-    width: 100%;
-  }
-
-  .rehire-btn {
-    width: 100%;
-    text-align: center;
-  }
-
+  /* .rehire-* mobile overrides migrated to inline Tailwind in StaffPage. */
   /* remove-modal mobile overrides migrated to Modal molecule (uses responsive Tailwind). */
 
-  .invite-card {
-    padding: 24px 20px;
-  }
+  /* .invite-card mobile padding migrated to LoginPage constants. */
 
   /* Inventory mobile */
   .inventory-add-row1 {
