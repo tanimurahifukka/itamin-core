@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import { api } from '../../api/client';
+import { Alert } from '../../components/atoms/Alert';
 
 interface Props {
   lineUserId: string;
@@ -68,7 +69,7 @@ export default function LineLinkPage({ lineUserId, displayName, pictureUrl, onLi
             autoFocus
           />
 
-          {error && <div className="alert alert-error" data-testid="link-error">{error}</div>}
+          {error && <Alert variant="error" data-testid="link-error">{error}</Alert>}
 
           <button
             type="submit"

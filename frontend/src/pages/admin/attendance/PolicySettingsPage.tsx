@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
 import { Loading } from '../../../components/atoms/Loading';
+import { Alert } from '../../../components/atoms/Alert';
 
 interface AttendancePolicy {
   timezone: string;
@@ -57,13 +58,13 @@ export default function PolicySettingsPage() {
   };
 
   if (loading) return <Loading />;
-  if (!policy) return <div className="alert alert-error">ポリシーの取得に失敗しました</div>;
+  if (!policy) return <Alert variant="error">ポリシーの取得に失敗しました</Alert>;
 
   return (
     <div className="admin-policy-settings">
       <h2>勤怠ポリシー設定</h2>
 
-      {toast && <div className="alert alert-success">{toast}</div>}
+      {toast && <Alert variant="success">{toast}</Alert>}
 
       <div className="form-group">
         <label className="form-label">タイムゾーン</label>

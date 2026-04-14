@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
 import { todayJST } from '../../lib/dateUtils';
+import { Alert } from '../../components/atoms/Alert';
 
 const REQUEST_TYPES = [
   { value: 'clock_in_missing', label: '出勤漏れ' },
@@ -71,7 +72,7 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
   if (success) {
     return (
       <div className="attendance-correction">
-        <div className="alert alert-success">修正申請を送信しました。管理者の承認をお待ちください。</div>
+        <Alert variant="success">修正申請を送信しました。管理者の承認をお待ちください。</Alert>
         <button className="button button-primary" onClick={onSubmitted} data-testid="back-to-home-button">
           ホームに戻る
         </button>
@@ -143,7 +144,7 @@ export default function CorrectionRequestPage({ record, onSubmitted }: Props) {
           />
         </div>
 
-        {error && <div className="alert alert-error" data-testid="correction-error">{error}</div>}
+        {error && <Alert variant="error" data-testid="correction-error">{error}</Alert>}
 
         <button
           type="submit"

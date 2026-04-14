@@ -52,6 +52,7 @@ import { Sidebar } from './components/organisms/Sidebar';
 import { ProfileDropdown } from './components/organisms/ProfileDropdown';
 import { Button } from './components/atoms/Button';
 import { Loading } from './components/atoms/Loading';
+import { Alert } from './components/atoms/Alert';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -585,9 +586,9 @@ export default function App() {
         <div className="attendance-link-page">
           <div className="attendance-link-card">
             <h2 className="attendance-link-title">LINEログイン</h2>
-            <div className={liffMode.error ? 'alert alert-error' : 'alert alert-success'}>
+            <Alert variant={liffMode.error ? 'error' : 'success'}>
               {liffMode.error || liffMode.message}
-            </div>
+            </Alert>
           </div>
         </div>
       </div>
