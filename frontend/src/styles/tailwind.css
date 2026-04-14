@@ -1,46 +1,152 @@
 @import "tailwindcss";
 
-/* ===== Design tokens =====
- * Tailwind v4 の @theme ブロックでトークンを宣言する。
- * 既存 styles.css に散在していた色・間隔・フォントをここに集約し、
- * Atom/Molecule からは bg-primary, text-text-muted 等のユーティリティで参照する。
- */
+/* ============================================================
+   ITAMIN Design Tokens
+   ------------------------------------------------------------
+   デジタル庁デザインシステム v3 の階層構造・命名規則に準拠する。
+   - https://design.digital.go.jp/
+
+   階層:
+     1. Primitive  : 基本パレット（blue / sumi / red / green / yellow）
+     2. Semantic   : 用途別エイリアス（text-body / background-body 等）
+     3. Component  : コンポーネント固有の派生（必要に応じて追加）
+     4. Legacy alias: 既存実装からの後方互換
+   ============================================================ */
+
 @theme {
-  /* ブランドカラー */
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-bg: #eff6ff;
+  /* ============================================================
+     [1] PRIMITIVE — 基本パレット
+     値はデジタル庁 Color Tokens に合わせるが、本プロダクトの
+     既存ブランドカラー（やや明るい #2563eb 系）も保持する。
+     ============================================================ */
 
-  /* ニュートラル */
-  --color-text: #1a1a1a;
-  --color-text-muted: #555555;
-  --color-text-subtle: #9ca3af;
-  --color-surface: #ffffff;
-  --color-bg: #f7f8fa;
-  --color-border: #d4d9df;
-  --color-border-light: #e5e7eb;
+  /* Blue (Primary) */
+  --color-blue-50:   #eff6ff;
+  --color-blue-100:  #dbeafe;
+  --color-blue-200:  #bfdbfe;
+  --color-blue-500:  #3b82f6;
+  --color-blue-700:  #2563eb;  /* Brand primary */
+  --color-blue-900:  #1d4ed8;
+  --color-blue-1000: #1e40af;
 
-  /* ステータス配色（badge / status-dot 互換） */
-  --color-success: #10b981;
-  --color-success-bg: #dcfce7;
-  --color-success-fg: #166534;
-  --color-warn-bg: #fef3c7;
-  --color-warn-fg: #92400e;
-  --color-error: #ef4444;
-  --color-error-bg: #fef2f2;
-  --color-error-fg: #991b1b;
-  --color-info-bg: #dbeafe;
-  --color-info-fg: #1e40af;
+  /* Sumi (Neutral / 墨) */
+  --color-sumi-50:   #f7f8fa;  /* canvas */
+  --color-sumi-100:  #f0f2f5;
+  --color-sumi-200:  #d4d9df;  /* divider */
+  --color-sumi-300:  #e5e7eb;
+  --color-sumi-500:  #9ca3af;
+  --color-sumi-600:  #6b7280;
+  --color-sumi-700:  #555555;  /* description text */
+  --color-sumi-900:  #1a1a1a;  /* body text */
 
-  /* 日本語フォント */
+  /* Red (Error / Danger) */
+  --color-red-50:  #fef2f2;
+  --color-red-200: #fecaca;
+  --color-red-500: #ef4444;
+  --color-red-700: #dc2626;
+  --color-red-900: #991b1b;
+
+  /* Green (Success) */
+  --color-green-50:  #dcfce7;
+  --color-green-500: #22c55e;
+  --color-green-700: #16a34a;
+  --color-green-900: #166534;
+
+  /* Yellow (Warning) */
+  --color-yellow-50:  #fef3c7;
+  --color-yellow-500: #f59e0b;
+  --color-yellow-700: #d97706;
+  --color-yellow-900: #92400e;
+
+  /* Brand accent (旧打刻テーマ #e94560 用) */
+  --color-magenta-500: #e94560;
+  --color-magenta-700: #c23152;
+
+  /* ============================================================
+     [2] SEMANTIC — 用途別トークン
+     デジタル庁 v3 の category 命名（text- / background- / border-
+     / fill-）に合わせる。
+     ============================================================ */
+
+  /* --- Text --- */
+  --color-text-body:        var(--color-sumi-900);
+  --color-text-description: var(--color-sumi-700);
+  --color-text-disabled:    var(--color-sumi-500);
+  --color-text-link:        var(--color-blue-700);
+  --color-text-on-fill:     #ffffff;
+
+  /* --- Background --- */
+  --color-background-body:    var(--color-sumi-50);
+  --color-background-surface: #ffffff;
+  --color-background-subtle:  var(--color-sumi-100);
+
+  /* --- Border --- */
+  --color-border-divider: var(--color-sumi-200);
+  --color-border-field:   var(--color-sumi-200);
+  --color-border-strong:  var(--color-sumi-700);
+
+  /* --- Fill (action / brand) --- */
+  --color-fill-primary:        var(--color-blue-700);
+  --color-fill-primary-hover:  var(--color-blue-900);
+  --color-fill-primary-subtle: var(--color-blue-50);
+
+  /* --- State: Success / Warning / Error / Info --- */
+  --color-success-fill: var(--color-green-700);
+  --color-success-bg:   var(--color-green-50);
+  --color-success-fg:   var(--color-green-900);
+
+  --color-warning-fill: var(--color-yellow-500);
+  --color-warning-bg:   var(--color-yellow-50);
+  --color-warning-fg:   var(--color-yellow-900);
+
+  --color-error-fill:   var(--color-red-500);
+  --color-error-bg:     var(--color-red-50);
+  --color-error-fg:     var(--color-red-900);
+
+  --color-info-bg:      var(--color-blue-100);
+  --color-info-fg:      var(--color-blue-1000);
+
+  /* --- Focus ring (アクセシビリティ要件) --- */
+  --color-focus-ring: var(--color-blue-700);
+
+  /* ============================================================
+     [3] TYPOGRAPHY — フォント
+     Noto Sans JP を基本とし、line-height / letter-spacing は
+     デジタル庁準拠（読みやすさ重視）。
+     ============================================================ */
   --font-sans: 'Noto Sans JP', -apple-system, BlinkMacSystemFont,
     'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+  --font-mono: 'SF Mono', Menlo, Consolas, monospace;
+
+  /* ============================================================
+     [4] LEGACY ALIAS — 既存実装からの後方互換
+     既存 className（bg-primary / text-text / text-text-muted /
+     bg-success-bg 等）が動き続けるよう、エイリアスを残す。
+     新規実装ではセマンティック名（text-body / fill-primary 等）の
+     使用を推奨する。
+     ============================================================ */
+  --color-primary:        var(--color-fill-primary);
+  --color-primary-hover:  var(--color-fill-primary-hover);
+  --color-primary-bg:     var(--color-fill-primary-subtle);
+  --color-text:           var(--color-text-body);
+  --color-text-muted:     var(--color-text-description);
+  --color-text-subtle:    var(--color-sumi-500);
+  --color-surface:        var(--color-background-surface);
+  --color-bg:             var(--color-background-body);
+  --color-border:         var(--color-border-divider);
+  --color-border-light:   var(--color-sumi-300);
+  --color-success:        var(--color-success-fill);
+  --color-warn-bg:        var(--color-warning-bg);
+  --color-warn-fg:        var(--color-warning-fg);
+  --color-error:          var(--color-error-fill);
 }
 
-/* ===== Global base =====
- * 既存 styles.css 冒頭のリセット/body ベーススタイルをここに移設する。
- * 本体は段階的に縮小していくが、このレイヤーは常に残す。
- */
+/* ============================================================
+   Global base layer
+   ------------------------------------------------------------
+   リセット + body 既定スタイル。デジタル庁の base typography
+   推奨値（line-height 1.7〜1.8、letter-spacing 0.02em）を採用。
+   ============================================================ */
 @layer base {
   *,
   *::before,
@@ -52,8 +158,8 @@
 
   body {
     font-family: var(--font-sans);
-    background: var(--color-bg);
-    color: var(--color-text);
+    background: var(--color-background-body);
+    color: var(--color-text-body);
     min-height: 100vh;
     font-feature-settings: 'palt';
     -webkit-font-smoothing: antialiased;
@@ -61,5 +167,12 @@
     line-height: 1.8;
     letter-spacing: 0.02em;
     font-size: 15px;
+  }
+
+  /* デジタル庁: フォーカスリングはキーボード操作時のみ表示し、
+     コントラスト 3:1 以上を確保する。 */
+  :focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
   }
 }
