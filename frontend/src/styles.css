@@ -573,62 +573,12 @@ body {
 
 /* .form-save-btn migrated to Button atom (variant primary, size sm). */
 
-.daily-report-form-grid {
-  display: grid;
-  grid-template-columns: 140px 1fr 1fr 120px;
-  gap: 8px;
-}
-
-.daily-report-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.daily-report-card {
-  padding: 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.daily-report-card:hover {
-  background: #f8fafc;
-}
-
-.daily-report-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.daily-report-date {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.daily-report-weather {
-  font-size: 0.85rem;
-  color: #666;
-}
-
-.daily-report-card-body {
-  display: flex;
-  gap: 16px;
-}
-
-.daily-report-stat {
-  font-size: 0.95rem;
-  font-weight: 500;
-}
-
-.daily-report-memo {
-  margin-top: 4px;
-  font-size: 0.85rem;
-  color: #666;
-}
+/* .daily-report-form-grid / .daily-report-list / .daily-report-card /
+ * .daily-report-card-header / .daily-report-date / .daily-report-weather /
+ * .daily-report-card-body / .daily-report-stat / .daily-report-memo
+ *   migrated to inline Tailwind constants in DailyReportPage.tsx.
+ * .daily-report-form-grid usages in PunchClockPage / SalesCapturePage
+ *   inlined as Tailwind arbitrary [grid-template-columns:...] where needed. */
 
 /* .checklist-shift-grid / .checklist-preview-grid were unused in JSX; removed. */
 

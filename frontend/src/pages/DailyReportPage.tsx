@@ -4,6 +4,18 @@ import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
 import { Button } from '../components/atoms/Button';
 import { SummaryCard } from '../components/molecules/SummaryCard';
+
+// 旧 .daily-report-* の代替
+const DR_FORM_GRID = 'grid gap-2 [grid-template-columns:140px_1fr_1fr_120px]';
+const DR_LIST = 'flex flex-col gap-2';
+const DR_CARD =
+  'cursor-pointer rounded-lg border border-[#e5e7eb] p-3 transition-colors hover:bg-[#f8fafc]';
+const DR_CARD_HEADER = 'mb-1.5 flex items-center justify-between';
+const DR_DATE = 'text-[0.9rem] font-semibold';
+const DR_WEATHER = 'text-[0.85rem] text-text-muted';
+const DR_CARD_BODY = 'flex gap-4';
+const DR_STAT = 'text-[0.95rem] font-medium';
+const DR_MEMO = 'mt-1 text-[0.85rem] text-text-muted';
 import type { DailyReport, DailyReportSummary, MenuItem, DailyReportItem, InventoryItem } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
 import { EmptyState } from '../components/molecules/EmptyState';
@@ -161,7 +173,7 @@ export default function DailyReportPage() {
       {/* 入力フォーム */}
       <div className="records-section" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 12 }}>日報入力</h3>
-        <div className="daily-report-form-grid">
+        <div className={DR_FORM_GRID}>
           <div>
             <label className="form-label">日付</label>
             <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} className="form-input" />
@@ -301,11 +313,11 @@ export default function DailyReportPage() {
         {reports.length === 0 ? (
           <EmptyState icon="📝" text="この月の日報はありません" hint="上のフォームから日報を入力してください" />
         ) : (
-          <div className="daily-report-list">
+          <div className={DR_LIST}>
             {reports.map(r => {
               const isExpanded = expandedDate === r.date;
               return (
-                <div key={r.id} className="daily-report-card">
+                <div key={r.id} className={DR_CARD}>
                   <div
                     style={{ cursor: 'pointer' }}
                     onClick={() => {
@@ -324,21 +336,21 @@ export default function DailyReportPage() {
                       }
                     }}
                   >
-                    <div className="daily-report-card-header">
-                      <span className="daily-report-date">
+                    <div className={DR_CARD_HEADER}>
+                      <span className={DR_DATE}>
                         {new Date(r.date + 'T00:00:00').toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' })}
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span className="daily-report-weather">{r.weather}</span>
+                        <span className={DR_WEATHER}>{r.weather}</span>
                         <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{isExpanded ? '▲' : '▼'}</span>
                       </div>
                     </div>
-                    <div className="daily-report-card-body">
-                      <span className="daily-report-stat">¥{Number(r.sales).toLocaleString()}</span>
-                      <span className="daily-report-stat">{r.customerCount}人</span>
+                    <div className={DR_CARD_BODY}>
+                      <span className={DR_STAT}>¥{Number(r.sales).toLocaleString()}</span>
+                      <span className={DR_STAT}>{r.customerCount}人</span>
                       {r.createdByName && <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{r.createdByName}</span>}
                     </div>
-                    {r.memo && <div className="daily-report-memo">{r.memo}</div>}
+                    {r.memo && <div className={DR_MEMO}>{r.memo}</div>}
                   </div>
 
                   {isExpanded && (

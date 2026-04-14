@@ -487,7 +487,7 @@ export default function PunchClockPage() {
             {/* 日報セクション */}
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 8, color: '#1e293b' }}>日報</div>
-              <div className="daily-report-form-grid">
+              <div className="grid gap-2 [grid-template-columns:140px_1fr_1fr_120px]">
                 {reportInputMode === 'manual' && (
                   <div>
                     <label className="form-label">売上（円）</label>

@@ -213,7 +213,7 @@ export default function SalesCapturePage() {
         <div className="records-section">
           <h3 style={{ marginBottom: 16 }}>売上締め — {date}</h3>
 
-          <div className="daily-report-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
             <div>
               <label className="form-label">総売上</label>
               <input type="number" className="form-input" value={grossSales} onChange={e => setGrossSales(e.target.value)} placeholder="0" data-testid="gross-sales-input" />
@@ -233,7 +233,7 @@ export default function SalesCapturePage() {
           </div>
 
           <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', marginBottom: 8 }}>支払方法別</div>
-          <div className="daily-report-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
             <div>
               <label className="form-label">現金</label>
               <input type="number" className="form-input" value={cashSales} onChange={e => setCashSales(e.target.value)} placeholder="0" data-testid="cash-sales-input" />
