@@ -93,19 +93,6 @@ body {
  * .item-actions / .item-edit-form / .item-edit-type-selector were all unused; removed.
  * .item-edit-input remains because InventoryPage uses it. */
 
-.item-edit-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #d4d9df;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-family: inherit;
-}
-
-.item-edit-input:focus {
-  outline: none;
-  border-color: #2563eb;
-}
 
 /* .add-item-form / .add-item-type-selector / .type-toggle / .add-item-row /
  * .save-row were all unused in JSX; removed. */

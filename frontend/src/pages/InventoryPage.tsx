@@ -140,7 +140,7 @@ export default function InventoryPage() {
       return (
         <input
           type={['quantity', 'minQuantity', 'cost'].includes(field) ? 'number' : 'text'}
-          className="item-edit-input"
+          className="w-full rounded-md border border-border px-3 py-2.5 text-[0.9rem] font-sans focus:border-primary focus:outline-none"
           value={editingValue}
           onChange={e => setEditingValue(e.target.value)}
           onKeyDown={e => {
