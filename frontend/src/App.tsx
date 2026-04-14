@@ -46,6 +46,7 @@ import PublicSchoolBookingPage from './pages/reservation/PublicSchoolBookingPage
 import PublicEventBookingPage from './pages/reservation/PublicEventBookingPage';
 import CalendarAdminPage from './pages/CalendarAdminPage';
 import ShiftMultiPage from './pages/ShiftMultiPage';
+import { PageTitleBar } from './components/organisms/PageTitleBar';
 
 function decodeLineLoginStateStoreId(state: string | null): string | null {
   if (!state?.startsWith('itamin:')) return null;
@@ -783,10 +784,7 @@ export default function App() {
               </button>
             )}
             {activeTabObj && (
-              <div className="page-title-bar">
-                <span className="page-title-icon">{activeTabObj.icon}</span>
-                <h1 className="page-title">{activeTabObj.label}</h1>
-              </div>
+              <PageTitleBar icon={activeTabObj.icon} title={activeTabObj.label} />
             )}
             {tabsLoading ? (
               <div className="loading" style={{ minHeight: '40vh' }}>読み込み中...</div>

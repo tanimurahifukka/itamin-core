@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
+import { Button } from '../components/atoms/Button';
 import type { MenuItem } from '../types/api';
 
 const CATEGORIES = ['ドリンク', 'フード', '物販', 'その他'];
@@ -134,9 +135,9 @@ export default function MenuPage() {
                 キャンセル
               </button>
             )}
-            <button onClick={handleSave} disabled={saving || !name.trim()} className="form-save-btn">
+            <Button onClick={handleSave} disabled={saving || !name.trim()} size="sm">
               {saving ? '保存中...' : editing ? '更新' : '追加'}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

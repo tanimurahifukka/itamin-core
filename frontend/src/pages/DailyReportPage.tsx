@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
+import { Button } from '../components/atoms/Button';
 import type { DailyReport, DailyReportSummary, MenuItem, DailyReportItem, InventoryItem } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
 
@@ -267,9 +268,9 @@ export default function DailyReportPage() {
         )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
-          <button onClick={handleSave} disabled={saving} className="form-save-btn">
+          <Button onClick={handleSave} disabled={saving} size="sm">
             {saving ? '保存中...' : '保存'}
-          </button>
+          </Button>
         </div>
       </div>
 

@@ -157,28 +157,7 @@ body {
   border-radius: 0 2px 2px 0;
 }
 
-/* ===== Page Title Bar ===== */
-.page-title-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.page-title-icon {
-  font-size: 1.3rem;
-  line-height: 1;
-}
-
-.page-title {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #1a1a2e;
-  margin: 0;
-  letter-spacing: 0.02em;
-}
+/* Page title bar styles migrated to components/organisms/PageTitleBar. */
 
 /* ===== Profile Dropdown ===== */
 .profile-area {
@@ -1428,26 +1407,7 @@ body {
   gap: 12px;
 }
 
-.save-btn {
-  padding: 12px 32px;
-  background: #1a1a2e;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.save-btn:hover {
-  background: #2a2a4e;
-}
-
-.save-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+/* .save-btn was unused; removed. */
 
 /* ===== Store ID Banner ===== */
 .store-id-banner {
@@ -2267,19 +2227,7 @@ body {
   box-sizing: border-box;
 }
 
-.form-save-btn {
-  padding: 8px 20px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  white-space: nowrap;
-  font-family: inherit;
-  font-size: 0.9rem;
-  height: 38px;
-}
+/* .form-save-btn migrated to Button atom (variant primary, size sm). */
 
 .daily-report-form-grid {
   display: grid;
