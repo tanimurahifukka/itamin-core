@@ -9,10 +9,29 @@ import { BreakMinutesField } from '../components/molecules/BreakMinutesField';
 import { Button } from '../components/atoms/Button';
 import { ErrorMessage } from '../components/atoms/ErrorMessage';
 import type { MenuItem, InventoryItem, DailyReportItem } from '../types/api';
+import { cn } from '../lib/cn';
 
 // 打刻テーマの濃紺グラデーション（旧 .break-confirm の配色）
 const PUNCH_CONFIRM_CLASS =
   'flex-[2] bg-gradient-to-br from-[#0f3460] to-[#16213e] text-white hover:opacity-90';
+
+// 旧 .punch-clock / .current-time / .current-date / .punch-btn / .punch-status
+// を Tailwind 定数に移植。
+const PUNCH_CONTAINER = 'px-5 py-10 text-center max-md:px-4 max-md:py-6';
+const PUNCH_TIME =
+  'mb-2 text-[3rem] font-bold tabular-nums max-md:text-[2.4rem]';
+const PUNCH_DATE = 'mb-10 text-[1.1rem] text-text-muted';
+const PUNCH_BTN_BASE =
+  'h-[200px] w-[200px] cursor-pointer rounded-full border-none text-[1.5rem] font-bold text-white transition-transform duration-200 hover:scale-105 active:scale-95 max-md:h-[160px] max-md:w-[160px] max-md:text-[1.3rem]';
+const PUNCH_BTN_IN =
+  'bg-gradient-to-br from-[#e94560] to-[#c23152] shadow-[0_8px_32px_rgba(233,69,96,0.4)]';
+const PUNCH_BTN_OUT =
+  'bg-gradient-to-br from-[#0f3460] to-[#16213e] shadow-[0_8px_32px_rgba(15,52,96,0.4)]';
+// 旧 .punch-btn.punch-success 用（grad + pop keyframe 利用）
+const PUNCH_BTN_SUCCESS =
+  '!bg-gradient-to-br !from-[#22c55e] !to-[#16a34a] !shadow-[0_8px_32px_rgba(34,197,94,0.4)] animate-[punchSuccessPop_0.4s_ease]';
+const PUNCH_STATUS = 'mt-6 text-base text-text-muted';
+const PUNCH_SINCE = 'font-medium text-[#e94560]';
 import { todayJST } from '../lib/dateUtils';
 
 const WEATHER_OPTIONS = ['晴れ', '曇り', '雨', '雪'];
@@ -334,20 +353,25 @@ export default function PunchClockPage() {
   const elapsedM = elapsed % 60;
 
   return (
-    <div className="punch-clock">
+    <div className={PUNCH_CONTAINER}>
       {selectedStore && (
         <PunchRouteHint
           storeId={selectedStore.id}
           isManager={!!isManagerRole || selectedStore.role === 'owner'}
         />
       )}
-      <div className="current-time">{formatTime(time)}</div>
-      <div className="current-date">{formatDate(time)}</div>
+      <div className={PUNCH_TIME}>{formatTime(time)}</div>
+      <div className={PUNCH_DATE}>{formatDate(time)}</div>
 
       {error && <ErrorMessage>{error}</ErrorMessage>}
 
       <button
-        className={`punch-btn ${isClockedIn ? 'clock-out' : 'clock-in'} ${punchSuccess ? 'punch-success' : ''}`}
+        type="button"
+        className={cn(
+          PUNCH_BTN_BASE,
+          isClockedIn ? PUNCH_BTN_OUT : PUNCH_BTN_IN,
+          punchSuccess && PUNCH_BTN_SUCCESS,
+        )}
         onClick={handlePunchRequest}
         disabled={loading || (!staffId && !error && selectedStore?.role !== 'owner')}
       >
@@ -355,8 +379,8 @@ export default function PunchClockPage() {
       </button>
 
       {isClockedIn && clockInTime && (
-        <div className="punch-status">
-          <span className="since">{formatTime(clockInTime)}</span> から勤務中
+        <div className={PUNCH_STATUS}>
+          <span className={PUNCH_SINCE}>{formatTime(clockInTime)}</span> から勤務中
           （{elapsedH}時間{elapsedM}分）
         </div>
       )}

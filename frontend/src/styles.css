@@ -162,65 +162,9 @@ body {
   min-width: 0;
 }
 
-/* ===== Punch Clock ===== */
-.punch-clock {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.punch-clock .current-time {
-  font-size: 3rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-  font-variant-numeric: tabular-nums;
-}
-
-.punch-clock .current-date {
-  font-size: 1.1rem;
-  color: #666;
-  margin-bottom: 40px;
-}
-
-.punch-btn {
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  border: none;
-  font-size: 1.5rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  color: white;
-}
-
-.punch-btn:hover {
-  transform: scale(1.05);
-}
-
-.punch-btn:active {
-  transform: scale(0.98);
-}
-
-.punch-btn.clock-in {
-  background: linear-gradient(135deg, #e94560, #c23152);
-  box-shadow: 0 8px 32px rgba(233, 69, 96, 0.4);
-}
-
-.punch-btn.clock-out {
-  background: linear-gradient(135deg, #0f3460, #16213e);
-  box-shadow: 0 8px 32px rgba(15, 52, 96, 0.4);
-}
-
-.punch-status {
-  margin-top: 24px;
-  font-size: 1rem;
-  color: #666;
-}
-
-.punch-status .since {
-  color: #e94560;
-  font-weight: 500;
-}
+/* .punch-clock / .punch-clock .current-time/.current-date / .punch-btn
+ * (clock-in/clock-out/:hover/:active) / .punch-status (+ .since) migrated to
+ * inline Tailwind constants in PunchClockPage.tsx. */
 
 /* .break-modal-* and .clock-out-report-modal migrated to Modal molecule +
  * BreakMinutesField molecule. The #e94560 focus / preset active color and
@@ -483,13 +427,9 @@ body {
   50% { opacity: 0.4; }
 }
 
-/* ===== Punch Success Animation ===== */
-.punch-btn.punch-success {
-  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
-  box-shadow: 0 8px 32px rgba(34, 197, 94, 0.4) !important;
-  animation: punchSuccessPop 0.4s ease;
-}
-
+/* .punch-btn.punch-success migrated to PUNCH_BTN_SUCCESS inline in
+ * PunchClockPage.tsx. Keep @keyframes punchSuccessPop (referenced via
+ * Tailwind animate-[...] arbitrary). */
 @keyframes punchSuccessPop {
   0% { transform: scale(1); }
   30% { transform: scale(1.1); }
@@ -705,19 +645,8 @@ body {
     padding: 16px 14px;
   }
 
-  .punch-clock {
-    padding: 24px 16px;
-  }
-
-  .punch-clock .current-time {
-    font-size: 2.4rem;
-  }
-
-  .punch-btn {
-    width: 160px;
-    height: 160px;
-    font-size: 1.3rem;
-  }
+  /* .punch-clock / .punch-btn mobile overrides migrated to max-md: Tailwind
+   * in PunchClockPage.tsx. */
 
   .records-section,
   .checklist-admin {
