@@ -296,7 +296,7 @@ export default function DailyReportPage() {
       </div>
 
       {/* 月次サマリー */}
-      <div className="today-summary">
+      <div className="mb-4 grid grid-cols-3 gap-3 max-md:gap-2">
         <SummaryCard
           value={`¥${summary.totalSales.toLocaleString()}`}
           label="売上合計"

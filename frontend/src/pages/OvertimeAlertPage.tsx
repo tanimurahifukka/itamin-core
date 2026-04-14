@@ -80,7 +80,7 @@ export default function OvertimeAlertPage() {
       )}
 
       {/* サマリー */}
-      <div className="today-summary">
+      <div className="mb-4 grid grid-cols-3 gap-3 max-md:gap-2">
         <SummaryCard value={staffOvertime.length} label="対象スタッフ" />
         <SummaryCard
           value={exceededCount}

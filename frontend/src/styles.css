@@ -189,13 +189,6 @@ body {
   to { opacity: 0; transform: translateY(-10px); }
 }
 
-/* ===== Today's Summary Cards ===== */
-.today-summary {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
 
 /* .month-nav / .month-nav-btn / .month-nav-label + .attendance-month-nav /
  * .attendance-month-label migrated to components/molecules/MonthNavigation. */
@@ -393,15 +386,6 @@ body {
 
   /* break-modal / break-presets mobile overrides migrated to Modal / BreakMinutesField molecules. */
 
-  .today-summary {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-
-  /* .summary-number mobile + .toast-container / .toast mobile overrides
-   * migrated to SummaryCard / Toast molecules (Tailwind responsive). */
-
-  /* .store-id-* mobile overrides migrated to inline Tailwind in StaffPage. */
 
   /* .staff-item / .staff-item-meta mobile overrides migrated to
    * Tailwind max-md: in StaffPage. (meta uses max-md:pl-0) */

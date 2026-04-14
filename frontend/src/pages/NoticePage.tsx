@@ -214,7 +214,7 @@ export default function NoticePage() {
   return (
     <div className="main-content">
       {/* サマリー */}
-      <div className="today-summary">
+      <div className="mb-4 grid grid-cols-3 gap-3 max-md:gap-2">
         <SummaryCard value={notices.length} label="投稿数" />
         <SummaryCard
           value={unreadCount}

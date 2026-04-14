@@ -113,7 +113,7 @@ export default function FeedbackPage() {
   return (
     <div className="main-content">
       {/* サマリー */}
-      <div className="today-summary">
+      <div className="mb-4 grid grid-cols-3 gap-3 max-md:gap-2">
         <SummaryCard value={allItems.length} label="総件数" />
         <SummaryCard
           value={allItems.filter(i => i.status === '未対応').length}

@@ -175,7 +175,7 @@ export default function InventoryPage() {
   return (
     <div className="main-content">
       {/* サマリーカード */}
-      <div className="today-summary">
+      <div className="mb-4 grid grid-cols-3 gap-3 max-md:gap-2">
         <SummaryCard value={totalItems} label="商品数" />
         <SummaryCard
           value={lowStockCount}

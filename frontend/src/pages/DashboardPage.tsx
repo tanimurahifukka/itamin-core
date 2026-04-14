@@ -338,7 +338,7 @@ export default function DashboardPage() {
         <>
           {/* サマリーカード */}
           {records.length > 0 && (
-            <div className="today-summary" style={isOwner ? { gridTemplateColumns: 'repeat(4, 1fr)' } : undefined}>
+            <div className="mb-4 grid grid-cols-3 gap-3 max-md:gap-2" style={isOwner ? { gridTemplateColumns: 'repeat(4, 1fr)' } : undefined}>
               {isToday && <SummaryCard variant="working" value={working.length} label="勤務中" />}
               <SummaryCard variant="finished" value={finished.length} label="退勤済み" />
               <SummaryCard variant="hours" value={totalHoursToday.toFixed(1)} label="合計時間" />
@@ -598,7 +598,7 @@ export default function DashboardPage() {
               <>
                 {/* スタッフサマリー */}
                 {staffSummary && (
-                  <div className="today-summary" style={isOwner ? { gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 } : { marginBottom: 16 }}>
+                  <div className="mb-4 grid grid-cols-3 gap-3 max-md:gap-2" style={isOwner ? { gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 } : { marginBottom: 16 }}>
                     <SummaryCard variant="finished" value={`${staffSummary.workDays}日`} label="出勤日数" />
                     <SummaryCard variant="hours" value={`${Number(staffSummary.totalWorkHours).toFixed(1)}h`} label="合計時間" />
                     {isOwner && (
