@@ -10,6 +10,40 @@ import { Loading } from '../../components/atoms/Loading';
 import { Alert } from '../../components/atoms/Alert';
 import { InlineToast } from '../../components/molecules/InlineToast';
 
+// 旧 .attendance-home / .attendance-home-header / .attendance-date /
+// .attendance-clock / .attendance-shift-info / .attendance-status-badge /
+// .attendance-elapsed / .attendance-actions / .attendance-action-btn /
+// .attendance-events / .attendance-event-item / .attendance-event-time /
+// .attendance-nav-links の置き換え。
+const HOME = 'mx-auto max-w-[480px] p-4 text-center';
+const DATE = 'text-sm text-[#6b7280]';
+const CLOCK = 'text-[36px] font-bold leading-[1.2] tabular-nums';
+const SHIFT_INFO =
+  'mb-3 rounded-lg bg-[#f0f9ff] px-3 py-2 text-[13px] text-[#1e40af]';
+const STATUS_BADGE =
+  'mb-2 inline-block rounded-[20px] px-6 py-2 text-base font-semibold';
+const STATUS_COLORS: Record<string, string> = {
+  not_clocked_in: 'bg-[#f3f4f6] text-[#6b7280]',
+  working: 'bg-[#dcfce7] text-[#166534]',
+  on_break: 'bg-[#fef3c7] text-[#92400e]',
+  completed: 'bg-[#dbeafe] text-[#1e40af]',
+};
+const ELAPSED = 'mb-5 text-sm text-[#6b7280]';
+const ACTIONS = 'mb-6 flex flex-col gap-3';
+const ACTION_BASE =
+  'min-h-[56px] rounded-xl border-none px-6 py-4 text-lg font-semibold text-white max-md:min-h-12 max-md:text-base disabled:opacity-60';
+const ACTION_CLOCK_IN =
+  'bg-[#22c55e] hover:enabled:bg-[#16a34a]';
+const ACTION_BREAK_START =
+  'bg-[#f59e0b] hover:enabled:bg-[#d97706]';
+const ACTION_BREAK_END = 'bg-[#3b82f6]';
+const ACTION_CLOCK_OUT = 'bg-[#ef4444]';
+const EVENTS = 'mb-4 text-left';
+const EVENTS_TITLE = 'mb-2 text-sm text-[#6b7280]';
+const EVENT_ITEM = 'flex gap-2 py-1 text-sm';
+const EVENT_TIME = 'text-[#6b7280] tabular-nums';
+const NAV_LINKS = 'flex justify-center gap-2';
+
 type AttendanceTodayData = AttendanceTodayResponse;
 type RawAttendanceEvent = AttendanceRawEvent;
 
@@ -125,7 +159,7 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
   const { currentStatus, activeSession, recentEvents, todayShift, businessDate } = data;
 
   return (
-    <div className="attendance-home">
+    <div className={HOME}>
       {/* トースト */}
       {toast && (
         <InlineToast type={toast.type} data-testid="attendance-toast">
@@ -134,36 +168,40 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
       )}
 
       {/* ヘッダー情報 */}
-      <div className="attendance-home-header">
-        <div className="attendance-date">{businessDate}</div>
-        <div className="attendance-clock">{now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+      <div className="mb-3">
+        <div className={DATE}>{businessDate}</div>
+        <div className={CLOCK}>{now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
       </div>
 
       {/* 予定シフト */}
       {todayShift && (
-        <div className="attendance-shift-info">
+        <div className={SHIFT_INFO}>
           予定シフト: {todayShift.startTime} 〜 {todayShift.endTime}
         </div>
       )}
 
       {/* 現在状態 */}
-      <div className={`attendance-status-badge status-${currentStatus}`} data-testid="attendance-status">
+      <div
+        className={`${STATUS_BADGE} ${STATUS_COLORS[currentStatus] ?? STATUS_COLORS.not_clocked_in}`}
+        data-testid="attendance-status"
+      >
         {STATUS_LABELS[currentStatus] || currentStatus}
       </div>
 
       {/* 経過時間 */}
       {activeSession && (
-        <div className="attendance-elapsed">
+        <div className={ELAPSED}>
           {formatTime(activeSession.clockInAt)} から {formatElapsed(activeSession.clockInAt)}
           {activeSession.breakMinutes > 0 && ` （休憩 ${activeSession.breakMinutes}分）`}
         </div>
       )}
 
       {/* アクションボタン */}
-      <div className="attendance-actions">
+      <div className={ACTIONS}>
         {currentStatus === 'not_clocked_in' && (
           <button
-            className="button button-primary attendance-action-btn clock-in"
+            type="button"
+            className={`button ${ACTION_BASE} ${ACTION_CLOCK_IN}`}
             onClick={handleClockIn}
             disabled={actionLoading}
             data-testid="clock-in-button"
@@ -175,7 +213,8 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
         {currentStatus === 'working' && (
           <>
             <button
-              className="button attendance-action-btn break-start"
+              type="button"
+              className={`button ${ACTION_BASE} ${ACTION_BREAK_START}`}
               onClick={handleBreakStart}
               disabled={actionLoading}
               data-testid="break-start-button"
@@ -183,7 +222,8 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
               休憩開始
             </button>
             <button
-              className="button button-danger attendance-action-btn clock-out"
+              type="button"
+              className={`button ${ACTION_BASE} ${ACTION_CLOCK_OUT}`}
               onClick={handleClockOut}
               disabled={actionLoading}
               data-testid="clock-out-button"
@@ -195,7 +235,8 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
 
         {currentStatus === 'on_break' && (
           <button
-            className="button button-primary attendance-action-btn break-end"
+            type="button"
+            className={`button ${ACTION_BASE} ${ACTION_BREAK_END}`}
             onClick={handleBreakEnd}
             disabled={actionLoading}
             data-testid="break-end-button"
@@ -207,13 +248,13 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
 
       {/* 直近イベント */}
       {recentEvents && recentEvents.length > 0 && (
-        <div className="attendance-events">
-          <h3>今日の記録</h3>
-          <ul className="attendance-event-list">
+        <div className={EVENTS}>
+          <h3 className={EVENTS_TITLE}>今日の記録</h3>
+          <ul className="list-none">
             {recentEvents.map((ev: RawAttendanceEvent, i: number) => (
-              <li key={i} className="attendance-event-item">
-                <span className="attendance-event-time">{formatTime(ev.event_at)}</span>
-                <span className="attendance-event-label">{EVENT_LABELS[ev.event_type] || ev.event_type}</span>
+              <li key={i} className={EVENT_ITEM}>
+                <span className={EVENT_TIME}>{formatTime(ev.event_at)}</span>
+                <span>{EVENT_LABELS[ev.event_type] || ev.event_type}</span>
               </li>
             ))}
           </ul>
@@ -221,8 +262,9 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
       )}
 
       {/* ナビゲーション */}
-      <div className="attendance-nav-links">
+      <div className={NAV_LINKS}>
         <button
+          type="button"
           className="button button-secondary"
           onClick={() => onNavigate('history')}
           data-testid="nav-history-button"
@@ -230,6 +272,7 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
           履歴を見る
         </button>
         <button
+          type="button"
           className="button button-secondary"
           onClick={() => onNavigate('correction')}
           data-testid="nav-correction-button"

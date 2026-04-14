@@ -485,110 +485,16 @@ body {
 /* .attendance-staff-tabs / .attendance-admin-tabs + their .active variants
  * migrated to components/molecules/Tabs with variant="underline". */
 
-/* --- S02 打刻ホーム --- */
-.attendance-home {
-  padding: 16px;
-  max-width: 480px;
-  margin: 0 auto;
-  text-align: center;
-}
-.attendance-home-header {
-  margin-bottom: 12px;
-}
-.attendance-date {
-  font-size: 14px;
-  color: #6b7280;
-}
-.attendance-clock {
-  font-size: 36px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-}
-.attendance-shift-info {
-  background: #f0f9ff;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #1e40af;
-  margin-bottom: 12px;
-}
-.attendance-status-badge {
-  display: inline-block;
-  padding: 8px 24px;
-  border-radius: 20px;
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-/* .status-* (not_clocked_in / working / on_break / completed) were unused in JSX. Removed. */
-
-.attendance-elapsed {
-  font-size: 14px;
-  color: #6b7280;
-  margin-bottom: 20px;
-}
-
-/* アクションボタン */
-.attendance-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-.attendance-action-btn {
-  padding: 16px 24px;
-  font-size: 18px;
-  font-weight: 600;
-  border-radius: 12px;
-  min-height: 56px;
-}
-.attendance-action-btn.clock-in {
-  background: #22c55e;
-  color: #fff;
-  border: none;
-}
-.attendance-action-btn.clock-in:hover:not(:disabled) {
-  background: #16a34a;
-}
-.attendance-action-btn.break-start {
-  background: #f59e0b;
-  color: #fff;
-  border: none;
-}
-.attendance-action-btn.break-start:hover:not(:disabled) {
-  background: #d97706;
-}
-.attendance-action-btn.break-end {
-  background: #3b82f6;
-  color: #fff;
-  border: none;
-}
-.attendance-action-btn.clock-out {
-  background: #ef4444;
-  color: #fff;
-  border: none;
-}
+/* .attendance-home / .attendance-home-header / .attendance-date / .attendance-clock /
+ * .attendance-shift-info / .attendance-status-badge / .attendance-elapsed /
+ * .attendance-actions / .attendance-action-btn (clock-in/break-start/break-end/clock-out)
+ *   migrated to inline Tailwind constants in AttendanceHomePage.tsx. */
 
 @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
 
-/* イベント履歴 */
-.attendance-events { text-align: left; margin-bottom: 16px; }
-.attendance-events h3 { font-size: 14px; color: #6b7280; margin-bottom: 8px; }
-.attendance-event-list { list-style: none; }
-.attendance-event-item {
-  display: flex;
-  gap: 8px;
-  padding: 4px 0;
-  font-size: 14px;
-}
-.attendance-event-time { color: #6b7280; font-variant-numeric: tabular-nums; }
-
-.attendance-nav-links {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-}
+/* .attendance-events / .attendance-event-list / .attendance-event-item /
+ * .attendance-event-time / .attendance-nav-links migrated to inline
+ * Tailwind in AttendanceHomePage.tsx. */
 
 /* --- S03 勤怠履歴 --- */
 .attendance-history { padding: 16px; }
@@ -748,5 +654,5 @@ body {
   .admin-attendance-table th,
   .admin-attendance-table td { padding: 6px 8px; }
   .admin-filters .form-input { max-width: 100%; }
-  .attendance-action-btn { font-size: 16px; min-height: 48px; }
+  /* .attendance-action-btn mobile override migrated to max-md: Tailwind in AttendanceHomePage. */
 }
