@@ -503,7 +503,7 @@ export default function DashboardPage() {
                   <tr key={i}>
                     <td>
                       <button
-                        className="staff-name-link"
+                        className="cursor-pointer border-none bg-transparent p-0 font-medium text-primary underline decoration-transparent transition-colors hover:decoration-primary"
                         onClick={() => { setSelectedStaff({ staffId: s.staffId, staffName: s.staffName }); setViewMode('staff'); }}
                         data-testid={`staff-detail-btn-${s.staffId}`}
                       >
@@ -571,7 +571,7 @@ export default function DashboardPage() {
               {monthlyData.summary.map((s) => (
                 <button
                   key={s.staffId}
-                  className={`staff-chip ${selectedStaff?.staffId === s.staffId ? 'active' : ''}`}
+                  className={`cursor-pointer rounded-full border border-border bg-surface px-3.5 py-1.5 text-[0.85rem] text-[#374151] transition-all hover:border-primary hover:text-primary ${selectedStaff?.staffId === s.staffId ? 'border-primary bg-primary text-white' : ''}`}
                   onClick={() => setSelectedStaff({ staffId: s.staffId, staffName: s.staffName })}
                   data-testid={`staff-chip-${s.staffId}`}
                 >

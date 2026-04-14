@@ -319,48 +319,6 @@ body {
    * migrated to max-md: Tailwind at call sites where relevant. */
 }
 
-/* スタッフ名リンク（月別集計テーブル内） */
-.staff-name-link {
-  background: none;
-  border: none;
-  color: #2563eb;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 0;
-  font-size: inherit;
-  font-family: inherit;
-  text-decoration: underline;
-  text-decoration-color: transparent;
-  transition: text-decoration-color 0.15s;
-}
-
-.staff-name-link:hover {
-  text-decoration-color: #2563eb;
-}
-
-/* スタッフ選択チップ */
-.staff-chip {
-  padding: 6px 14px;
-  border-radius: 20px;
-  border: 1px solid #d4d9df;
-  background: white;
-  color: #374151;
-  font-size: 0.85rem;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.staff-chip:hover {
-  border-color: #2563eb;
-  color: #2563eb;
-}
-
-.staff-chip.active {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: white;
-}
 
 
 /* ============================================================
