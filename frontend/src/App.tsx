@@ -584,9 +584,9 @@ export default function App() {
     return (
       <div className="flex min-h-screen flex-col">
         <Header />
-        <div className="attendance-link-page">
-          <div className="attendance-link-card">
-            <h2 className="attendance-link-title">LINEログイン</h2>
+        <div className="flex min-h-[60vh] items-center justify-center p-4">
+          <div className="w-full max-w-[400px] rounded-xl bg-surface p-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+            <h2 className="mb-2 text-[20px]">LINEログイン</h2>
             <Alert variant={liffMode.error ? 'error' : 'success'}>
               {liffMode.error || liffMode.message}
             </Alert>

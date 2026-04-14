@@ -6,6 +6,20 @@ import { useState } from 'react';
 import { api } from '../../api/client';
 import { Alert } from '../../components/atoms/Alert';
 
+// 旧 .attendance-link-* の代替
+const LINK_PAGE =
+  'flex min-h-[60vh] items-center justify-center p-4';
+const LINK_CARD =
+  'w-full max-w-[400px] rounded-xl bg-surface p-8 text-center shadow-[0_2px_8px_rgba(0,0,0,0.08)]';
+const LINK_TITLE = 'mb-2 text-[20px]';
+const LINK_DESC = 'mb-5 text-sm text-[#6b7280]';
+const LINK_PROFILE = 'mb-4 flex items-center justify-center gap-2';
+const LINK_AVATAR = 'h-10 w-10 rounded-full';
+const LINK_FORM = 'text-left';
+const LINK_INPUT_EXTRA = 'text-center text-[24px] tracking-[0.3em]';
+const LINK_BTN = 'mt-3 w-full';
+const LINK_HELP = 'mt-4 text-xs text-text-subtle';
+
 interface Props {
   lineUserId: string;
   displayName?: string;
@@ -40,26 +54,26 @@ export default function LineLinkPage({ lineUserId, displayName, pictureUrl, onLi
   };
 
   return (
-    <div className="attendance-link-page">
-      <div className="attendance-link-card">
-        <h2 className="attendance-link-title">LINE連携</h2>
-        <p className="attendance-link-desc">
+    <div className={LINK_PAGE}>
+      <div className={LINK_CARD}>
+        <h2 className={LINK_TITLE}>LINE連携</h2>
+        <p className={LINK_DESC}>
           連携コードを入力すると、LINEから打刻できるようになります。
         </p>
 
         {displayName && (
-          <div className="attendance-link-profile">
-            {pictureUrl && <img src={pictureUrl} alt="" className="attendance-link-avatar" />}
+          <div className={LINK_PROFILE}>
+            {pictureUrl && <img src={pictureUrl} alt="" className={LINK_AVATAR} />}
             <span>{displayName}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="attendance-link-form">
+        <form onSubmit={handleSubmit} className={LINK_FORM}>
           <label className="form-label" htmlFor="link-code">連携コード</label>
           <input
             id="link-code"
             data-testid="link-code-input"
-            className="form-input attendance-link-input"
+            className={`form-input ${LINK_INPUT_EXTRA}`}
             type="text"
             inputMode="numeric"
             maxLength={6}
@@ -73,7 +87,7 @@ export default function LineLinkPage({ lineUserId, displayName, pictureUrl, onLi
 
           <button
             type="submit"
-            className="button button-primary attendance-link-btn"
+            className={`button button-primary ${LINK_BTN}`}
             disabled={loading || code.trim().length < 6 || !lineUserId}
             data-testid="link-submit-button"
           >
@@ -81,7 +95,7 @@ export default function LineLinkPage({ lineUserId, displayName, pictureUrl, onLi
           </button>
         </form>
 
-        <p className="attendance-link-help">
+        <p className={LINK_HELP}>
           連携コードがない場合は、管理者にお問い合わせください。
         </p>
       </div>
