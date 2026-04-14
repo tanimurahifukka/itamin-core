@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Loading } from '../../components/atoms/Loading';
+import { InlineToast } from '../../components/molecules/InlineToast';
 
 interface Props {
   lineUserId: string;
@@ -161,9 +162,9 @@ export default function LineShiftRequestPage({ lineUserId, storeId }: Props) {
   return (
     <div className="attendance-home" data-testid="line-shift-request-page">
       {toast && (
-        <div className={`attendance-toast ${toast.type}`} data-testid="shift-request-toast">
+        <InlineToast type={toast.type} data-testid="shift-request-toast">
           {toast.msg}
-        </div>
+        </InlineToast>
       )}
 
       <h2 style={{ textAlign: 'center', marginBottom: 16 }}>シフト希望</h2>

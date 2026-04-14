@@ -8,6 +8,7 @@ import { Button } from '../components/atoms/Button';
 import { StatusDot } from '../components/atoms/StatusDot';
 import { ErrorMessage } from '../components/atoms/ErrorMessage';
 import { SummaryCard } from '../components/molecules/SummaryCard';
+import { Tabs } from '../components/molecules/Tabs';
 import type { TimeRecord, MonthlySummaryStaff, StaffMember, MonthlyRecordsResponse, MonthlyRawStaffRecord } from '../types/api';
 import { todayJST, formatDateJST, formatShortDateJST, formatTimeJST, currentJstYearMonth, isoToJstDateTimeLocalValue, jstDateTimeLocalValueToIso } from '../lib/dateUtils';
 import { EmptyState } from '../components/molecules/EmptyState';
@@ -322,27 +323,15 @@ export default function DashboardPage() {
       )}
 
       {/* ビュー切替タブ */}
-      <div className="view-mode-tabs">
-        <button
-          className={`view-mode-tab ${viewMode === 'daily' ? 'active' : ''}`}
-          onClick={() => setViewMode('daily')}
-        >
-          日別
-        </button>
-        <button
-          className={`view-mode-tab ${viewMode === 'monthly' ? 'active' : ''}`}
-          onClick={() => setViewMode('monthly')}
-        >
-          月別集計
-        </button>
-        <button
-          className={`view-mode-tab ${viewMode === 'staff' ? 'active' : ''}`}
-          onClick={() => setViewMode('staff')}
-          data-testid="staff-view-tab"
-        >
-          スタッフ別
-        </button>
-      </div>
+      <Tabs
+        value={viewMode}
+        onChange={setViewMode}
+        items={[
+          { value: 'daily', label: '日別' },
+          { value: 'monthly', label: '月別集計' },
+          { value: 'staff', label: 'スタッフ別', dataTestId: 'staff-view-tab' },
+        ]}
+      />
 
       {viewMode === 'daily' && (
         <>

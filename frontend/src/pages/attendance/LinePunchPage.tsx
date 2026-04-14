@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Loading } from '../../components/atoms/Loading';
+import { InlineToast } from '../../components/molecules/InlineToast';
 
 const API_BASE = '/api';
 
@@ -114,9 +115,9 @@ export default function LinePunchPage({ lineUserId, storeId, displayName, pictur
   return (
     <div className="attendance-home">
       {toast && (
-        <div className={`attendance-toast ${toast.type}`} data-testid="punch-toast">
+        <InlineToast type={toast.type} data-testid="punch-toast">
           {toast.msg}
-        </div>
+        </InlineToast>
       )}
 
       {/* ヘッダー */}

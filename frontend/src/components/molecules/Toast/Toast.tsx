@@ -1,17 +1,39 @@
 import { useEffect, useState } from 'react';
+import { cn } from '../../../lib/cn';
+
+type ToastType = 'success' | 'error' | 'info';
 
 interface ToastItem {
   id: number;
   message: string;
-  type: 'success' | 'error' | 'info';
+  type: ToastType;
 }
 
 let toastId = 0;
 let addToastFn: ((item: ToastItem) => void) | null = null;
 
-export function showToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
+export function showToast(message: string, type: ToastType = 'info') {
   addToastFn?.({ id: ++toastId, message, type });
 }
+
+// バリアント別の背景・テキスト・ボーダー（旧 .toast-success/error/info の配色を踏襲）
+const toastClass: Record<ToastType, string> = {
+  success: 'bg-[#f0fdf4] text-[#166534] border border-[#bbf7d0]',
+  error: 'bg-[#fef2f2] text-[#991b1b] border border-[#fecaca]',
+  info: 'bg-[#eff6ff] text-[#1e40af] border border-[#bfdbfe]',
+};
+
+const iconClass: Record<ToastType, string> = {
+  success: 'bg-[#22c55e] text-white',
+  error: 'bg-[#ef4444] text-white',
+  info: 'bg-[#3b82f6] text-white',
+};
+
+const iconChar: Record<ToastType, string> = {
+  success: '✓',
+  error: '!',
+  info: 'i',
+};
 
 export function ToastContainer() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -32,11 +54,30 @@ export function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="toast-container">
+    <div
+      className={cn(
+        'fixed top-[68px] right-5 z-[9999] flex flex-col gap-2 pointer-events-none',
+        // モバイルでは下中央寄せ（旧 .toast-container メディアクエリ相当）
+        'max-md:top-auto max-md:bottom-5 max-md:left-3 max-md:right-3',
+      )}
+    >
       {toasts.map(t => (
-        <div key={t.id} className={`toast toast-${t.type}`}>
-          <span className="toast-icon">
-            {t.type === 'success' ? '✓' : t.type === 'error' ? '!' : 'i'}
+        <div
+          key={t.id}
+          className={cn(
+            'flex items-center gap-2.5 rounded-[10px] px-5 py-3 text-[0.9rem] font-medium shadow-[0_4px_16px_rgba(0,0,0,0.12)]',
+            'pointer-events-auto max-w-[360px] max-md:max-w-full',
+            'animate-[toastSlideIn_0.3s_ease,toastFadeOut_0.4s_ease_2.6s_forwards]',
+            toastClass[t.type],
+          )}
+        >
+          <span
+            className={cn(
+              'flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full text-[0.75rem] font-bold',
+              iconClass[t.type],
+            )}
+          >
+            {iconChar[t.type]}
           </span>
           {t.message}
         </div>

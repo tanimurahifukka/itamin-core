@@ -6,6 +6,7 @@ import { showToast } from '../components/molecules/Toast';
 import type { SalesClose, SalesReceipt, CashClose } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
 import { EmptyState } from '../components/molecules/EmptyState';
+import { Tabs } from '../components/molecules/Tabs';
 
 type Tab = 'close' | 'receipts' | 'cash';
 
@@ -197,17 +198,15 @@ export default function SalesCapturePage() {
         )}
       </div>
 
-      <div className="view-mode-tabs">
-        <button className={`view-mode-tab ${tab === 'close' ? 'active' : ''}`} onClick={() => setTab('close')}>
-          売上締め
-        </button>
-        <button className={`view-mode-tab ${tab === 'receipts' ? 'active' : ''}`} onClick={() => setTab('receipts')}>
-          証跡
-        </button>
-        <button className={`view-mode-tab ${tab === 'cash' ? 'active' : ''}`} onClick={() => setTab('cash')}>
-          現金締め
-        </button>
-      </div>
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        items={[
+          { value: 'close', label: '売上締め' },
+          { value: 'receipts', label: '証跡' },
+          { value: 'cash', label: '現金締め' },
+        ]}
+      />
 
       {/* 売上締めフォーム */}
       {tab === 'close' && (
