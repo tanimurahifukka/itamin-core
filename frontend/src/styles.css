@@ -258,103 +258,9 @@ body {
   font-size: 0.85rem;
 }
 
-/* ===== Staff Management ===== */
-.staff-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  margin-top: 20px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-}
-
-.staff-section h3 {
-  margin-bottom: 16px;
-  font-size: 1.1rem;
-  color: #1a1a2e;
-}
-
-.staff-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 12px;
-  margin: 0 -12px;
-  border-bottom: 1px solid #f0f0f0;
-  border-radius: 8px;
-  transition: background 0.15s;
-}
-
-.staff-item-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px 12px;
-  margin: 0 -12px;
-  border-bottom: 1px solid #f0f0f0;
-  border-radius: 8px;
-  transition: background 0.15s;
-}
-
-.staff-item-card:hover {
-  background: #fafafa;
-}
-
-.staff-item-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.staff-item-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-left: 52px;
-  flex-wrap: wrap;
-}
-
-.staff-item:last-child,
-.staff-item-card:last-child {
-  border-bottom: none;
-}
-
-.staff-item:hover {
-  background: #fafafa;
-}
-
-.staff-item img {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #e0e0e0;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.staff-item .info,
-.staff-item-card .info {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.staff-item .info .name,
-.staff-item-card .info .name {
-  font-weight: 500;
-  color: #1a1a2e;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.staff-item .info .email,
-.staff-item-card .info .email {
-  font-size: 0.8rem;
-  color: #999;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* .staff-section / .staff-item / .staff-item-card / .staff-item-top /
+ * .staff-item-meta / .info/.name/.email migrated to inline Tailwind
+ * constants in StaffPage.tsx. */
 
 /* .role-badge / .role-badge.<role> / .role-badge.clickable / .role-select
  *   migrated to inline Tailwind constants in StaffPage.tsx. */
@@ -814,11 +720,11 @@ body {
   }
 
   .records-section,
-  .staff-section,
   .checklist-admin {
     padding: 16px;
     border-radius: 10px;
   }
+  /* .staff-section mobile padding handled by Tailwind max-md: in StaffPage. */
 
   .records-table th,
   .records-table td {
@@ -839,14 +745,8 @@ body {
 
   /* .store-id-* mobile overrides migrated to inline Tailwind in StaffPage. */
 
-  .staff-item {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .staff-item-meta {
-    padding-left: 0;
-  }
+  /* .staff-item / .staff-item-meta mobile overrides migrated to
+   * Tailwind max-md: in StaffPage. (meta uses max-md:pl-0) */
 
   /* .rehire-* mobile overrides migrated to inline Tailwind in StaffPage. */
   /* remove-modal mobile overrides migrated to Modal molecule (uses responsive Tailwind). */

@@ -71,6 +71,22 @@ const REHIRE_SELECT =
 const REHIRE_BTN =
   'cursor-pointer whitespace-nowrap rounded-md border-none bg-[#059669] px-5 py-2.5 text-[0.9rem] font-medium text-white font-sans';
 
+// 旧 .staff-section / .staff-item / .staff-item-card / .staff-item-top /
+// .staff-item-meta + .info/.name/.email の代替。
+const STAFF_SECTION =
+  'mt-5 rounded-xl bg-surface p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)]';
+const STAFF_ITEM_CARD =
+  '-mx-3 flex flex-col gap-2 rounded-lg border-b border-[#f0f0f0] px-3 py-3.5 transition-colors last:border-b-0 hover:bg-[#fafafa]';
+const STAFF_ITEM_ROW =
+  '-mx-3 flex items-center gap-3.5 rounded-lg border-b border-[#f0f0f0] px-3 py-3.5 transition-colors last:border-b-0 hover:bg-[#fafafa]';
+const STAFF_ITEM_TOP = 'flex items-center gap-3';
+const STAFF_ITEM_META = 'flex flex-wrap items-center gap-2 pl-[52px] max-md:pl-0';
+const STAFF_INFO = 'min-w-0 flex-1 overflow-hidden';
+const STAFF_NAME =
+  'truncate font-medium text-[#1a1a2e]';
+const STAFF_EMAIL =
+  'truncate text-[0.8rem] text-text-subtle';
+
 const roleLabels: Record<string, string> = {
   owner: 'オーナー',
   manager: 'マネージャー',
@@ -504,7 +520,7 @@ export default function StaffPage() {
         </p>
       </div>
 
-      <div className="staff-section">
+      <div className={STAFF_SECTION}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h3 style={{ margin: 0 }}>スタッフ一覧</h3>
           {isOwner && (
@@ -527,14 +543,14 @@ export default function StaffPage() {
         </div>
 
         {staffList.map((s) => (
-          <div key={s.id} className="staff-item-card">
-            <div className="staff-item-top">
+          <div key={s.id} className={STAFF_ITEM_CARD}>
+            <div className={STAFF_ITEM_TOP}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', color: '#666', flexShrink: 0 }}>
                 {(s.userName || s.email || '?')[0].toUpperCase()}
               </div>
-              <div className="info">
-                <div className="name">{s.userName || s.email}</div>
-                <div className="email">{s.email}</div>
+              <div className={STAFF_INFO}>
+                <div className={STAFF_NAME}>{s.userName || s.email}</div>
+                <div className={STAFF_EMAIL}>{s.email}</div>
                 {isOwner && s.lastSignInAt && (
                   <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>
                     最終ログイン: {new Date(s.lastSignInAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -542,7 +558,7 @@ export default function StaffPage() {
                 )}
               </div>
             </div>
-            <div className="staff-item-meta">
+            <div className={STAFF_ITEM_META}>
               {s.role === 'owner' ? (
                 <span className={roleBadgeClass('owner')}>{roleLabels.owner}</span>
               ) : editingRoleId === s.id ? (
@@ -722,13 +738,13 @@ export default function StaffPage() {
           <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #f0f0f0' }}>
             <h4 style={{ marginBottom: 10 }}>招待中</h4>
             {invitations.map((inv) => (
-              <div key={inv.id} className="staff-item">
+              <div key={inv.id} className={STAFF_ITEM_ROW}>
                 <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#f7f8fa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', color: '#666', flexShrink: 0 }}>
                   {(inv.name || inv.email || '?')[0].toUpperCase()}
                 </div>
-                <div className="info">
-                  <div className="name">{inv.name || inv.email}</div>
-                  <div className="email">{inv.email}</div>
+                <div className={STAFF_INFO}>
+                  <div className={STAFF_NAME}>{inv.name || inv.email}</div>
+                  <div className={STAFF_EMAIL}>{inv.email}</div>
                 </div>
                 <span className={roleBadgeClass(inv.role)}>
                   {roleLabels[inv.role] || inv.role}
