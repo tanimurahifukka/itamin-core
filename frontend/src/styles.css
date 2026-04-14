@@ -303,42 +303,8 @@ body {
 /* .invite-action-btn / .resend / .cancel migrated to inline Tailwind
  *   constants in StaffPage.tsx. */
 
-/* ===== Inventory Form Grid ===== */
-.inventory-add-row1 {
-  display: grid;
-  grid-template-columns: 1fr 1fr 80px;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.inventory-add-row2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr auto;
-  gap: 8px;
-  align-items: end;
-}
-
-.inventory-table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* ===== Inventory Status Select ===== */
-.inventory-status-select {
-  padding: 4px 8px;
-  border: 1px solid #d4d9df;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  font-family: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 6px center;
-  padding-right: 20px;
-}
+/* .inventory-add-row1 / .inventory-add-row2 / .inventory-table-wrap /
+ * .inventory-status-select migrated to inline Tailwind in InventoryPage.tsx. */
 
 /* ===== Wage Display/Edit ===== */
 /* .wage-display / .wage-edit / .wage-yen / .wage-input / .wage-save migrated
@@ -632,23 +598,7 @@ body {
 
   /* .invite-card mobile padding migrated to LoginPage constants. */
 
-  /* Inventory mobile */
-  .inventory-add-row1 {
-    grid-template-columns: 1fr;
-  }
-
-  .inventory-add-row2 {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .inventory-add-row2 > :last-child {
-    grid-column: 1 / -1;
-  }
-
-  .inventory-table-wrap {
-    margin: 0 -16px;
-    padding: 0 16px;
-  }
+  /* .inventory-* mobile overrides migrated to max-md: Tailwind in InventoryPage. */
 
   .timing-tabs {
     flex-wrap: wrap;

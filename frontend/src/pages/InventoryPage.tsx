@@ -193,7 +193,7 @@ export default function InventoryPage() {
       {/* 新規追加フォーム */}
       <div className="records-section" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 12 }}>商品追加</h3>
-        <div className="inventory-add-row1">
+        <div className="mb-2 grid gap-2 [grid-template-columns:1fr_1fr_80px] max-md:[grid-template-columns:1fr]">
           <input
             type="text"
             placeholder="商品名 *"
@@ -216,7 +216,7 @@ export default function InventoryPage() {
             style={{ padding: '8px 12px', border: '1px solid #d4d9df', borderRadius: 6, fontFamily: 'inherit', fontSize: '0.9rem' }}
           />
         </div>
-        <div className="inventory-add-row2">
+        <div className="grid items-end gap-2 [grid-template-columns:1fr_1fr_1fr_1fr_auto] max-md:[grid-template-columns:1fr_1fr] [&>*:last-child]:max-md:col-span-full">
           <div>
             <label style={{ fontSize: '0.8rem', color: '#666', marginBottom: 2, display: 'block' }}>数量</label>
             <input
@@ -291,7 +291,7 @@ export default function InventoryPage() {
         {displayItems.length === 0 ? (
           <EmptyState icon="📦" text="在庫データがありません" hint="上のフォームから商品を追加してください" />
         ) : (
-          <div className="inventory-table-wrap">
+          <div className="touch-pan-x overflow-x-auto max-md:-mx-4 max-md:px-4">
           <table className="records-table">
             <thead>
               <tr>
@@ -328,7 +328,7 @@ export default function InventoryPage() {
                           loadItems();
                         } catch {}
                       }}
-                      className="inventory-status-select"
+                      className="cursor-pointer appearance-none rounded-md border border-border px-2 py-1 text-[0.78rem] font-semibold font-sans"
                       style={{
                         background: STATUS_OPTIONS.find(s => s.value === item.status)?.bg || '#fff',
                         color: STATUS_OPTIONS.find(s => s.value === item.status)?.color || '#555',
