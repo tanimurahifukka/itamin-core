@@ -44,24 +44,10 @@ body {
  * .store-action-btn (+ .secondary) migrated to inline Tailwind constants
  * in StoreSelectPage.tsx. */
 
-
 /* .punch-clock / .punch-clock .current-time/.current-date / .punch-btn
  * (clock-in/clock-out/:hover/:active) / .punch-status (+ .since) migrated to
  * inline Tailwind constants in PunchClockPage.tsx. */
 
-/* records-table cells: shared th/td padding rule retained until per-page
- * migration; records-section/table containers are now inline Tailwind. */
-.records-table th,
-.records-table td {
-  padding: 10px 12px;
-  text-align: left;
-  border-bottom: 1px solid #f0f0f0;
-}
-.records-table th {
-  font-weight: 500;
-  color: #888;
-  font-size: 0.85rem;
-}
 
 /* .staff-section / .staff-item / .staff-item-card / .staff-item-top /
  * .staff-item-meta / .info/.name/.email migrated to inline Tailwind
@@ -84,7 +70,6 @@ body {
 /* .admin-items / .admin-item / .item-order / .item-label / .item-type-badge /
  * .item-actions / .item-edit-form / .item-edit-type-selector were all unused; removed.
  * .item-edit-input remains because InventoryPage uses it. */
-
 
 /* .add-item-form / .add-item-type-selector / .type-toggle / .add-item-row /
  * .save-row were all unused in JSX; removed. */
@@ -243,7 +228,6 @@ body {
   font-weight: 600;
 }
 
-
 /* .daily-report-form-grid / .daily-report-list / .daily-report-card /
  * .daily-report-card-header / .daily-report-date / .daily-report-weather /
  * .daily-report-card-body / .daily-report-stat / .daily-report-memo
@@ -264,19 +248,10 @@ body {
   /* main-content / checklist-admin / records-section / staff-section mobile
    * padding handled by Tailwind max-md: at the call sites. */
 
-  .records-table th,
-  .records-table td {
-    padding: 8px 6px;
-    font-size: 0.85rem;
-  }
-
-  
 
   /* .timing-tabs mobile flex-wrap / .daily-report-form-grid mobile columns
    * migrated to max-md: Tailwind at call sites where relevant. */
 }
-
-
 
 /* ============================================================
    LINE打刻 / 勤怠管理 スタイル
@@ -297,8 +272,6 @@ body {
  * .attendance-event-time / .attendance-nav-links migrated to inline
  * Tailwind in AttendanceHomePage.tsx. */
 
-
-
 /* A05 LINE連携管理: コード表示の code 要素だけ descendant selector 依存 */
 .admin-link-code code {
   background: #f3f4f6;
@@ -309,7 +282,6 @@ body {
   letter-spacing: 0.2em;
 }
 .admin-link-code small { color: #9ca3af; font-size: 11px; }
-
 
 /* .line-menu-page / .line-menu-tabs / .line-menu-tab / .line-menu-tab-icon /
  * .line-menu-tab-label / .line-menu-content migrated to inline Tailwind
