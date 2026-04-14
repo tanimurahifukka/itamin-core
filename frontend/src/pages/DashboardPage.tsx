@@ -5,6 +5,7 @@ import { showToast } from '../components/molecules/Toast';
 import { Modal } from '../components/molecules/Modal';
 import { BreakMinutesField } from '../components/molecules/BreakMinutesField';
 import { Button } from '../components/atoms/Button';
+import { StatusDot } from '../components/atoms/StatusDot';
 import type { TimeRecord, MonthlySummaryStaff, StaffMember, MonthlyRecordsResponse, MonthlyRawStaffRecord } from '../types/api';
 import { todayJST, formatDateJST, formatShortDateJST, formatTimeJST, currentJstYearMonth, isoToJstDateTimeLocalValue, jstDateTimeLocalValueToIso } from '../lib/dateUtils';
 
@@ -435,7 +436,7 @@ export default function DashboardPage() {
                       <tr key={r.id} className={!r.clockOut ? 'row-working row-unpaired' : ''}>
                         <td>
                           <span className="staff-name-cell">{r.staffName || '—'}</span>
-                          {!r.clockOut && <span className="status-dot" title="勤務中" />}
+                          {!r.clockOut && <StatusDot state="working_pulse" title="勤務中" />}
                         </td>
                         <td>{formatTime(r.clockIn)}</td>
                         <td className={!r.clockOut ? 'text-unpaired' : ''}>
