@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
 import TimePicker15 from '../components/organisms/TimePicker15';
+import { Tabs } from '../components/molecules/Tabs';
 import type { Shift, ShiftRequest, ShiftTemplate } from '../types/api';
 
 // Local alias for ShiftTemplate
@@ -240,29 +241,23 @@ export default function ShiftPage() {
         <h3>シフト表</h3>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {/* 表示切替 */}
-          <div className="view-mode-tabs" style={{ marginBottom: 0 }}>
-            <button
-              className={`view-mode-tab ${viewSpan === 'week' ? 'active' : ''}`}
-              onClick={() => { setViewSpan('week'); setWeekStart(getMonday(weekStart)); }}
-              data-testid="shift-view-week"
-            >
-              週
-            </button>
-            <button
-              className={`view-mode-tab ${viewSpan === 'half-month' ? 'active' : ''}`}
-              onClick={() => { setViewSpan('half-month'); setWeekStart(getMonday(weekStart)); }}
-              data-testid="shift-view-half-month"
-            >
-              半月
-            </button>
-            <button
-              className={`view-mode-tab ${viewSpan === 'month' ? 'active' : ''}`}
-              onClick={() => { setViewSpan('month'); setWeekStart(new Date(weekStart.getFullYear(), weekStart.getMonth(), 1)); }}
-              data-testid="shift-view-month"
-            >
-              月
-            </button>
-          </div>
+          <Tabs
+            value={viewSpan}
+            onChange={(span) => {
+              setViewSpan(span);
+              if (span === 'month') {
+                setWeekStart(new Date(weekStart.getFullYear(), weekStart.getMonth(), 1));
+              } else {
+                setWeekStart(getMonday(weekStart));
+              }
+            }}
+            className="mb-0"
+            items={[
+              { value: 'week', label: '週', dataTestId: 'shift-view-week' },
+              { value: 'half-month', label: '半月', dataTestId: 'shift-view-half-month' },
+              { value: 'month', label: '月', dataTestId: 'shift-view-month' },
+            ]}
+          />
           <button onClick={() => setShowTemplateManager(!showTemplateManager)} style={{ ...navBtnStyle, fontSize: '0.8rem' }}>
             テンプレート
           </button>

@@ -924,34 +924,8 @@ body {
  * migrated to components/molecules/SummaryCard. */
 
 /* ===== View Mode Tabs ===== */
-.view-mode-tabs {
-  display: flex;
-  gap: 4px;
-  background: #e8edf3;
-  border-radius: 8px;
-  padding: 3px;
-  margin-bottom: 16px;
-  width: fit-content;
-}
-
-.view-mode-tab {
-  padding: 8px 20px;
-  border: none;
-  background: none;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-family: inherit;
-  cursor: pointer;
-  color: #666;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.view-mode-tab.active {
-  background: white;
-  color: #1a1a1a;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-}
+/* .view-mode-tabs / .view-mode-tab / .active migrated to
+ * components/molecules/Tabs. */
 
 /* ===== Month Navigation ===== */
 .month-nav {

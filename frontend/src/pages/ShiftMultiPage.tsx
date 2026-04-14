@@ -3,6 +3,7 @@ import { orgApi } from '../api/organizationsClient';
 import { shiftMultiApi } from '../api/shiftMultiClient';
 import { showToast } from '../components/molecules/Toast';
 import TimePicker15 from '../components/organisms/TimePicker15';
+import { Tabs } from '../components/molecules/Tabs';
 import type { Organization } from '../api/organizationsClient';
 import type {
   OrgStore,
@@ -340,26 +341,23 @@ export default function ShiftMultiPage() {
           )}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div className="view-mode-tabs" style={{ marginBottom: 0 }}>
-            <button
-              className={`view-mode-tab ${viewSpan === 'week' ? 'active' : ''}`}
-              onClick={() => { setViewSpan('week'); setWeekStart(getMonday(weekStart)); }}
-            >
-              週
-            </button>
-            <button
-              className={`view-mode-tab ${viewSpan === 'half-month' ? 'active' : ''}`}
-              onClick={() => { setViewSpan('half-month'); setWeekStart(getMonday(weekStart)); }}
-            >
-              半月
-            </button>
-            <button
-              className={`view-mode-tab ${viewSpan === 'month' ? 'active' : ''}`}
-              onClick={() => { setViewSpan('month'); setWeekStart(new Date(weekStart.getFullYear(), weekStart.getMonth(), 1)); }}
-            >
-              月
-            </button>
-          </div>
+          <Tabs
+            value={viewSpan}
+            onChange={(span) => {
+              setViewSpan(span);
+              if (span === 'month') {
+                setWeekStart(new Date(weekStart.getFullYear(), weekStart.getMonth(), 1));
+              } else {
+                setWeekStart(getMonday(weekStart));
+              }
+            }}
+            className="mb-0"
+            items={[
+              { value: 'week', label: '週' },
+              { value: 'half-month', label: '半月' },
+              { value: 'month', label: '月' },
+            ]}
+          />
           {hasTimeConflicts && (
             <button
               onClick={() => setShowConflicts(!showConflicts)}
