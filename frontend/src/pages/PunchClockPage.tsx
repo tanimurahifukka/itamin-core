@@ -4,7 +4,14 @@ import { api } from '../api/client';
 import ChecklistGate from '../components/organisms/ChecklistGate';
 import PunchRouteHint from '../components/organisms/PunchRouteHint';
 import { showToast } from '../components/molecules/Toast';
+import { Modal } from '../components/molecules/Modal';
+import { BreakMinutesField } from '../components/molecules/BreakMinutesField';
+import { Button } from '../components/atoms/Button';
 import type { MenuItem, InventoryItem, DailyReportItem } from '../types/api';
+
+// 打刻テーマの濃紺グラデーション（旧 .break-confirm の配色）
+const PUNCH_CONFIRM_CLASS =
+  'flex-[2] bg-gradient-to-br from-[#0f3460] to-[#16213e] text-white hover:opacity-90';
 import { todayJST } from '../lib/dateUtils';
 
 const WEATHER_OPTIONS = ['晴れ', '曇り', '雨', '雪'];
@@ -354,57 +361,57 @@ export default function PunchClockPage() {
       )}
 
       {/* 休憩時間入力モーダル */}
-      {showBreakModal && (
-        <div className="break-modal-overlay" onClick={() => setShowBreakModal(false)}>
-          <div className="break-modal" onClick={e => e.stopPropagation()}>
-            <h3>休憩時間を入力</h3>
-            <p className="break-modal-desc">退勤前に休憩時間を入力してください</p>
-            <div className="break-input-row">
-              <input
-                type="number"
-                min={0}
-                max={480}
-                value={breakMinutes}
-                onChange={e => setBreakMinutes(Math.max(0, parseInt(e.target.value) || 0))}
-                className="break-input"
-              />
-              <span className="break-unit">分</span>
-            </div>
-            <div className="break-presets">
-              {[0, 15, 30, 45, 60].map(m => (
-                <button
-                  key={m}
-                  className={`break-preset ${breakMinutes === m ? 'active' : ''}`}
-                  onClick={() => setBreakMinutes(m)}
-                >
-                  {m}分
-                </button>
-              ))}
-            </div>
-            <div className="break-modal-actions">
-              <button className="break-cancel" onClick={() => setShowBreakModal(false)}>
-                キャンセル
-              </button>
-              <button className="break-confirm" onClick={handleBreakConfirm}>
-                退勤する
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={showBreakModal}
+        onClose={() => setShowBreakModal(false)}
+        size="sm"
+        actions={
+          <>
+            <Button variant="secondary" className="flex-1" onClick={() => setShowBreakModal(false)}>
+              キャンセル
+            </Button>
+            <Button className={PUNCH_CONFIRM_CLASS} onClick={handleBreakConfirm}>
+              退勤する
+            </Button>
+          </>
+        }
+      >
+        <h3 className="text-center text-[1.2rem] text-[#1a1a2e] mb-1">休憩時間を入力</h3>
+        <p className="text-center text-[0.85rem] text-[#888] mb-5">退勤前に休憩時間を入力してください</p>
+        <BreakMinutesField value={breakMinutes} onChange={setBreakMinutes} className="mb-2" />
+      </Modal>
 
       {/* 退勤押し忘れ修正モーダル */}
-      {showStaleModal && staleRecord && (
-        <div className="break-modal-overlay" onClick={() => setShowStaleModal(false)}>
-          <div className="break-modal" onClick={e => e.stopPropagation()} data-testid="stale-record-modal">
-            <h3>前回の退勤が未記録です</h3>
-            <p className="break-modal-desc">
+      <Modal
+        open={showStaleModal && !!staleRecord}
+        onClose={() => setShowStaleModal(false)}
+        size="sm"
+        actions={
+          <>
+            <Button variant="secondary" className="flex-1" onClick={() => setShowStaleModal(false)} data-testid="stale-cancel-btn">
+              キャンセル
+            </Button>
+            <Button
+              className={PUNCH_CONFIRM_CLASS}
+              onClick={handleStaleCorrect}
+              disabled={!staleClockOut || correctingStale}
+              data-testid="stale-correct-btn"
+            >
+              {correctingStale ? '処理中...' : '修正して出勤'}
+            </Button>
+          </>
+        }
+      >
+        {staleRecord && (
+          <div data-testid="stale-record-modal">
+            <h3 className="text-center text-[1.2rem] text-[#1a1a2e] mb-1">前回の退勤が未記録です</h3>
+            <p className="text-center text-[0.85rem] text-[#888] mb-5">
               {new Date(staleRecord.clockIn).toLocaleString('ja-JP')} に出勤した記録の退勤が打刻されていません。退勤時刻を入力してください。
             </p>
 
             {error && <div className="error-msg" style={{ marginBottom: 8 }}>{error}</div>}
 
-            <div style={{ marginBottom: 12 }}>
+            <div className="mb-3">
               <label className="form-label" style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600 }}>退勤時刻</label>
               <input
                 type="datetime-local"
@@ -416,49 +423,17 @@ export default function PunchClockPage() {
               />
             </div>
 
-            <div style={{ marginBottom: 12 }}>
+            <div className="mb-3">
               <label className="form-label" style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600 }}>休憩時間</label>
-              <div className="break-input-row">
-                <input
-                  type="number"
-                  min={0}
-                  max={480}
-                  value={staleBreakMinutes}
-                  onChange={e => setStaleBreakMinutes(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="break-input"
-                  data-testid="stale-break-input"
-                />
-                <span className="break-unit">分</span>
-              </div>
-              <div className="break-presets">
-                {[0, 15, 30, 45, 60].map(m => (
-                  <button
-                    key={m}
-                    className={`break-preset ${staleBreakMinutes === m ? 'active' : ''}`}
-                    onClick={() => setStaleBreakMinutes(m)}
-                  >
-                    {m}分
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="break-modal-actions">
-              <button className="break-cancel" onClick={() => setShowStaleModal(false)} data-testid="stale-cancel-btn">
-                キャンセル
-              </button>
-              <button
-                className="break-confirm"
-                onClick={handleStaleCorrect}
-                disabled={!staleClockOut || correctingStale}
-                data-testid="stale-correct-btn"
-              >
-                {correctingStale ? '処理中...' : '修正して出勤'}
-              </button>
+              <BreakMinutesField
+                value={staleBreakMinutes}
+                onChange={setStaleBreakMinutes}
+                inputTestId="stale-break-input"
+              />
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* チェックリストゲート（プラグインフック） */}
       {showChecklist && selectedStore && (
@@ -472,10 +447,14 @@ export default function PunchClockPage() {
       )}
 
       {/* 退勤時レポートフォーム（マネージャー/リーダー用） */}
-      {showClockOutReport && (
-        <div className="break-modal-overlay" onClick={() => {}}>
-          <div className="clock-out-report-modal" onClick={e => e.stopPropagation()}>
-            <h3>退勤レポート</h3>
+      <Modal
+        open={showClockOutReport}
+        onClose={() => { /* intentional no-op: require explicit skip/save */ }}
+        closeOnBackdrop={false}
+        size="lg"
+      >
+        <div className="max-h-[80vh] overflow-y-auto">
+          <h3 className="text-center text-[1.2rem] text-[#1a1a2e] mb-1">退勤レポート</h3>
             <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: 12 }}>日報と在庫を確認してから退勤します</p>
 
             {error && <div className="error-msg" style={{ marginBottom: 8 }}>{error}</div>}
@@ -592,25 +571,16 @@ export default function PunchClockPage() {
             )}
 
             {/* アクションボタン */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <button
-                onClick={handleReportSkip}
-                disabled={submittingReport}
-                style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #d4d9df', background: 'white', color: '#666', cursor: 'pointer', fontSize: '0.9rem', fontFamily: 'inherit' }}
-              >
+            <div className="flex justify-between gap-2">
+              <Button variant="secondary" size="sm" onClick={handleReportSkip} disabled={submittingReport}>
                 スキップして退勤
-              </button>
-              <button
-                onClick={handleReportSubmit}
-                disabled={submittingReport}
-                style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#2563eb', color: 'white', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, fontFamily: 'inherit' }}
-              >
+              </Button>
+              <Button variant="primary" size="sm" onClick={handleReportSubmit} disabled={submittingReport}>
                 {submittingReport ? '送信中...' : '保存して退勤'}
-              </button>
+              </Button>
             </div>
-          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

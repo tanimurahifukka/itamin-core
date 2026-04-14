@@ -2,6 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
+import { Modal } from '../components/molecules/Modal';
+import { BreakMinutesField } from '../components/molecules/BreakMinutesField';
+import { Button } from '../components/atoms/Button';
 import type { TimeRecord, MonthlySummaryStaff, StaffMember, MonthlyRecordsResponse, MonthlyRawStaffRecord } from '../types/api';
 import { todayJST, formatDateJST, formatShortDateJST, formatTimeJST, currentJstYearMonth, isoToJstDateTimeLocalValue, jstDateTimeLocalValueToIso } from '../lib/dateUtils';
 
@@ -727,11 +730,43 @@ export default function DashboardPage() {
       )}
 
       {/* 勤怠編集モーダル (create / edit 兼用) */}
-      {(editRecord || isCreating) && (
-        <div className="break-modal-overlay" onClick={closeEditModal}>
-          <div className="break-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }} data-testid="edit-record-modal">
-            <h3>{isCreating ? '勤怠記録の新規作成' : '勤怠記録の修正'}</h3>
-            <p className="break-modal-desc">
+      <Modal
+        open={!!editRecord || isCreating}
+        onClose={closeEditModal}
+        size="sm"
+        actions={
+          <div data-testid="edit-record-modal-actions" className="flex w-full flex-wrap gap-2">
+            <Button variant="secondary" onClick={closeEditModal} data-testid="edit-cancel-btn">
+              キャンセル
+            </Button>
+            {!isCreating && editRecord && canDelete && (
+              <Button
+                variant="secondary"
+                onClick={handleEditDelete}
+                disabled={editSubmitting}
+                data-testid="edit-delete-btn"
+                className="border-error text-error"
+              >
+                削除
+              </Button>
+            )}
+            <Button
+              className="flex-[2] bg-gradient-to-br from-[#0f3460] to-[#16213e] text-white hover:opacity-90"
+              onClick={handleEditSubmit}
+              disabled={editSubmitting}
+              data-testid="edit-save-btn"
+            >
+              {editSubmitting ? (isCreating ? '作成中...' : '保存中...') : (isCreating ? '作成' : '保存')}
+            </Button>
+          </div>
+        }
+      >
+        {(editRecord || isCreating) && (
+          <div data-testid="edit-record-modal">
+            <h3 className="text-center text-[1.2rem] text-[#1a1a2e] mb-1">
+              {isCreating ? '勤怠記録の新規作成' : '勤怠記録の修正'}
+            </h3>
+            <p className="text-center text-[0.85rem] text-[#888] mb-5">
               {isCreating
                 ? 'スタッフと時刻を選択して作成します'
                 : `${editRecord?.staffName || '—'} さんの記録を修正します`}
@@ -787,58 +822,15 @@ export default function DashboardPage() {
 
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', marginBottom: 4, fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>休憩時間</label>
-              <div className="break-input-row">
-                <input
-                  type="number"
-                  min={0}
-                  max={480}
-                  value={editBreakMinutes}
-                  onChange={e => setEditBreakMinutes(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="break-input"
-                  data-testid="edit-break-input"
-                />
-                <span className="break-unit">分</span>
-              </div>
-              <div className="break-presets">
-                {[0, 15, 30, 45, 60].map(m => (
-                  <button
-                    key={m}
-                    className={`break-preset ${editBreakMinutes === m ? 'active' : ''}`}
-                    onClick={() => setEditBreakMinutes(m)}
-                  >
-                    {m}分
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="break-modal-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button className="break-cancel" onClick={closeEditModal} data-testid="edit-cancel-btn">
-                キャンセル
-              </button>
-              {!isCreating && editRecord && canDelete && (
-                <button
-                  className="break-cancel"
-                  onClick={handleEditDelete}
-                  disabled={editSubmitting}
-                  data-testid="edit-delete-btn"
-                  style={{ color: '#ef4444', borderColor: '#ef4444' }}
-                >
-                  削除
-                </button>
-              )}
-              <button
-                className="break-confirm"
-                onClick={handleEditSubmit}
-                disabled={editSubmitting}
-                data-testid="edit-save-btn"
-              >
-                {editSubmitting ? (isCreating ? '作成中...' : '保存中...') : (isCreating ? '作成' : '保存')}
-              </button>
+              <BreakMinutesField
+                value={editBreakMinutes}
+                onChange={setEditBreakMinutes}
+                inputTestId="edit-break-input"
+              />
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </>
   );
 }
