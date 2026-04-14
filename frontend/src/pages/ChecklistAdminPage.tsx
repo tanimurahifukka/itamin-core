@@ -820,9 +820,9 @@ export default function ChecklistAdminPage() {
 
   return (
     <div className="main-content">
-      <div className="checklist-admin">
-        <div className="admin-header">
-          <h3>チェックリスト</h3>
+      <div className="mt-5 rounded-xl bg-surface p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:rounded-[10px] max-md:p-4">
+        <div className="mb-5 flex items-center justify-between">
+          <h3 className="text-[1.2rem]">チェックリスト</h3>
         </div>
 
         {/* タブ */}
