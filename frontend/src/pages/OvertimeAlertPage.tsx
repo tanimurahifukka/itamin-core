@@ -98,12 +98,12 @@ export default function OvertimeAlertPage() {
       </div>
 
       {/* 一覧テーブル */}
-      <div className="records-section">
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
         <h3 style={{ marginBottom: 12 }}>スタッフ別残業時間</h3>
         {staffOvertime.length === 0 ? (
           <EmptyState icon="⏰" text="今月の打刻データがありません" />
         ) : (
-          <table className="records-table">
+          <table className="records-table w-full border-collapse">
             <thead>
               <tr>
                 <th>スタッフ名</th>

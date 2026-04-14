@@ -103,12 +103,12 @@ export default function PaidLeavePage() {
       </div>
 
       {/* 残日数一覧 */}
-      <div className="records-section" style={{ marginBottom: 16 }}>
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 12 }}>スタッフ別有給残日数</h3>
         {summary.length === 0 ? (
           <EmptyState icon="🏖️" text="有給データがありません" hint="下のフォームから有給を付与してください" />
         ) : (
-          <table className="records-table">
+          <table className="records-table w-full border-collapse">
             <thead>
               <tr>
                 <th>スタッフ名</th>
@@ -134,7 +134,7 @@ export default function PaidLeavePage() {
       </div>
 
       {/* 有給付与フォーム */}
-      <div className="records-section" style={{ marginBottom: 16 }}>
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 12 }}>有給付与</h3>
         <div style={{ display: 'flex', gap: 8, alignItems: 'end' }}>
           <div style={{ flex: 1 }}>
@@ -170,7 +170,7 @@ export default function PaidLeavePage() {
       </div>
 
       {/* 取得記録登録フォーム */}
-      <div className="records-section" style={{ marginBottom: 16 }}>
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 12 }}>取得記録の登録</h3>
         <div style={{ display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 150 }}>
@@ -227,7 +227,7 @@ export default function PaidLeavePage() {
       </div>
 
       {/* 取得記録一覧 */}
-      <div className="records-section">
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <h3>取得記録</h3>
           <select
@@ -244,7 +244,7 @@ export default function PaidLeavePage() {
         {records.length === 0 ? (
           <p style={{ color: '#888', fontSize: '0.9rem' }}>取得記録はありません</p>
         ) : (
-          <table className="records-table">
+          <table className="records-table w-full border-collapse">
             <thead>
               <tr>
                 <th>日付</th>

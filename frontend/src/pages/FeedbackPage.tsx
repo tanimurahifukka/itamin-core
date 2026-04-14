@@ -133,7 +133,7 @@ export default function FeedbackPage() {
       </div>
 
       {/* 追加フォーム */}
-      <div className="records-section" style={{ marginBottom: 16 }}>
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 12 }}>新規追加</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '140px 120px 1fr', gap: 8, marginBottom: 8 }}>
           <div>
@@ -204,7 +204,7 @@ export default function FeedbackPage() {
       </div>
 
       {/* 一覧 */}
-      <div className="records-section">
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
         <h3 style={{ marginBottom: 12 }}>一覧</h3>
         {items.length === 0 ? (
           <EmptyState icon="📣" text="データがありません" hint="上のフォームからお客様の声を追加してください" />

@@ -191,7 +191,7 @@ export default function InventoryPage() {
       </div>
 
       {/* 新規追加フォーム */}
-      <div className="records-section" style={{ marginBottom: 16 }}>
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 12 }}>商品追加</h3>
         <div className="mb-2 grid gap-2 [grid-template-columns:1fr_1fr_80px] max-md:[grid-template-columns:1fr]">
           <input
@@ -286,13 +286,13 @@ export default function InventoryPage() {
       )}
 
       {/* 在庫テーブル */}
-      <div className="records-section">
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
         <h3 style={{ marginBottom: 12 }}>在庫一覧</h3>
         {displayItems.length === 0 ? (
           <EmptyState icon="📦" text="在庫データがありません" hint="上のフォームから商品を追加してください" />
         ) : (
           <div className="touch-pan-x overflow-x-auto max-md:-mx-4 max-md:px-4">
-          <table className="records-table">
+          <table className="records-table w-full border-collapse">
             <thead>
               <tr>
                 <th>商品名</th>

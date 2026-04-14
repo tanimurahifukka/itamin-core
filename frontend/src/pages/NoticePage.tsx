@@ -225,7 +225,7 @@ export default function NoticePage() {
       </div>
 
       {/* 投稿フォーム */}
-      <div className="records-section" style={{ marginBottom: 16 }}>
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 12 }}>新規投稿</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <input
@@ -288,7 +288,7 @@ export default function NoticePage() {
       </div>
 
       {/* 投稿一覧 */}
-      <div className="records-section">
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
         <h3 style={{ marginBottom: 12 }}>投稿一覧</h3>
         {notices.length === 0 ? (
           <EmptyState icon="💬" text="投稿がありません" hint="上のフォームから投稿してください" />

@@ -43,7 +43,7 @@ export default function ConsecutiveWorkPage() {
       </div>
 
       {/* 一覧 */}
-      <div className="records-section">
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
         <h3 style={{ marginBottom: 12 }}>スタッフ別連勤日数</h3>
         <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: 12 }}>
           今日から遡って連続出勤日数を表示しています
@@ -51,7 +51,7 @@ export default function ConsecutiveWorkPage() {
         {staffStatus.length === 0 ? (
           <EmptyState icon="📊" text="スタッフデータがありません" />
         ) : (
-          <table className="records-table">
+          <table className="records-table w-full border-collapse">
             <thead>
               <tr>
                 <th>スタッフ名</th>

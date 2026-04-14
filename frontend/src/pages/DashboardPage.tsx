@@ -369,7 +369,7 @@ export default function DashboardPage() {
           )}
 
           {/* 日別タイムカード */}
-          <div className="records-section">
+          <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8, flexWrap: 'wrap' }}>
               <h3>日別タイムカード</h3>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -395,7 +395,7 @@ export default function DashboardPage() {
             {records.length === 0 ? (
               <EmptyState icon="📋" text={isToday ? 'まだ出勤記録がありません' : 'この日の記録はありません'} hint={isToday ? 'スタッフが出勤すると自動的に表示されます' : '日付を変更して別の日の記録を確認できます'} />
             ) : (
-              <table className="records-table">
+              <table className="records-table w-full border-collapse">
                 <thead>
                   <tr>
                     <th>スタッフ</th>
@@ -472,7 +472,7 @@ export default function DashboardPage() {
 
       {viewMode === 'monthly' && (
         /* 月別集計ビュー */
-        <div className="records-section">
+        <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h3>月別集計</h3>
             <MonthNavigation
@@ -484,7 +484,7 @@ export default function DashboardPage() {
 
           {monthlyData?.summary && monthlyData.summary.length > 0 ? (
             <>
-            <table className="records-table">
+            <table className="records-table w-full border-collapse">
               <thead>
                 <tr>
                   <th>スタッフ</th>
@@ -550,7 +550,7 @@ export default function DashboardPage() {
       )}
 
       {viewMode === 'staff' && (
-        <div className="records-section">
+        <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h3>
               {selectedStaff
@@ -618,7 +618,7 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                <table className="records-table">
+                <table className="records-table w-full border-collapse">
                   <thead>
                     <tr>
                       <th>日付</th>

@@ -210,7 +210,7 @@ export default function SalesCapturePage() {
 
       {/* 売上締めフォーム */}
       {tab === 'close' && (
-        <div className="records-section">
+        <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
           <h3 style={{ marginBottom: 16 }}>売上締め — {date}</h3>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
@@ -272,7 +272,7 @@ export default function SalesCapturePage() {
 
       {/* レシート証跡 */}
       {tab === 'receipts' && (
-        <div className="records-section">
+        <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
           <h3 style={{ marginBottom: 16 }}>レシート証跡 — {date}</h3>
 
           <div style={{ marginBottom: 16 }}>
@@ -325,7 +325,7 @@ export default function SalesCapturePage() {
 
       {/* 現金締め */}
       {tab === 'cash' && (
-        <div className="records-section">
+        <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
           <h3 style={{ marginBottom: 16 }}>現金締め — {date}</h3>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>

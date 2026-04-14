@@ -171,7 +171,7 @@ export default function DailyReportPage() {
   return (
     <div className="main-content">
       {/* 入力フォーム */}
-      <div className="records-section" style={{ marginBottom: 16 }}>
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 12 }}>日報入力</h3>
         <div className={DR_FORM_GRID}>
           <div>
@@ -308,7 +308,7 @@ export default function DailyReportPage() {
       </div>
 
       {/* 一覧 */}
-      <div className="records-section">
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
         <h3 style={{ marginBottom: 12 }}>日報一覧</h3>
         {reports.length === 0 ? (
           <EmptyState icon="📝" text="この月の日報はありません" hint="上のフォームから日報を入力してください" />

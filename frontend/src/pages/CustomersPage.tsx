@@ -243,7 +243,7 @@ export default function CustomersPage() {
           </button>
         </div>
 
-        <div className="records-section">
+        <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{selectedCustomer.name}</h2>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -368,7 +368,7 @@ export default function CustomersPage() {
       )}
 
       {/* テーブル */}
-      <div className="records-section">
+      <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4">
         {loading ? (
           <Loading minHeight="30vh" />
         ) : customers.length === 0 ? (
@@ -518,7 +518,7 @@ function CustomerReservationHistory({ storeId, customerId }: { storeId: string; 
   };
 
   return (
-    <div className="records-section" style={{ marginTop: 16 }}>
+    <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4" style={{ marginTop: 16 }}>
       <h3 style={{ marginBottom: 8 }}>予約履歴</h3>
       {loading ? (
         <p style={{ color: '#666', fontSize: '0.875rem' }}>読み込み中...</p>
