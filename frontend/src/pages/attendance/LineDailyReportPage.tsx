@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { todayJST } from '../../lib/dateUtils';
 import { Loading } from '../../components/atoms/Loading';
+import { InlineToast } from '../../components/molecules/InlineToast';
 
 interface Props {
   lineUserId: string;
@@ -96,9 +97,9 @@ export default function LineDailyReportPage({ lineUserId, storeId }: Props) {
   return (
     <div className="attendance-home" data-testid="line-daily-report-page">
       {toast && (
-        <div className={`attendance-toast ${toast.type}`} data-testid="daily-report-toast">
+        <InlineToast type={toast.type} data-testid="daily-report-toast">
           {toast.msg}
-        </div>
+        </InlineToast>
       )}
 
       <h2 style={{ textAlign: 'center', marginBottom: 16 }}>日報</h2>

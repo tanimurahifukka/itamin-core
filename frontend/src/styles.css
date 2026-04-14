@@ -1765,20 +1765,9 @@ body {
   border: none;
 }
 
-/* トースト */
-.attendance-toast {
-  position: fixed;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  z-index: 1000;
-  animation: toastIn 0.3s ease;
-}
-.attendance-toast.success { background: #dcfce7; color: #166534; }
-.attendance-toast.error { background: #fef2f2; color: #991b1b; }
+/* .attendance-toast / .attendance-toast.success/error migrated to
+ * components/molecules/InlineToast. Keep @keyframes toastIn for the
+ * Tailwind animate-[toastIn_...] arbitrary class. */
 @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-10px); } }
 
 /* イベント履歴 */

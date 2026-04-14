@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Loading } from '../../components/atoms/Loading';
+import { InlineToast } from '../../components/molecules/InlineToast';
 
 interface Props {
   lineUserId: string;
@@ -97,9 +98,9 @@ export default function LineChecklistPage({ lineUserId, storeId }: Props) {
   return (
     <div className="attendance-home" data-testid="line-checklist-page">
       {toast && (
-        <div className={`attendance-toast ${toast.type}`} data-testid="checklist-toast">
+        <InlineToast type={toast.type} data-testid="checklist-toast">
           {toast.msg}
-        </div>
+        </InlineToast>
       )}
 
       <h2 style={{ textAlign: 'center', marginBottom: 16 }}>チェックリスト</h2>

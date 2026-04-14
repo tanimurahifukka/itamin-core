@@ -8,6 +8,7 @@ import { api } from '../../api/client';
 import type { AttendanceTodayResponse, AttendanceRawEvent } from '../../types/api';
 import { Loading } from '../../components/atoms/Loading';
 import { Alert } from '../../components/atoms/Alert';
+import { InlineToast } from '../../components/molecules/InlineToast';
 
 type AttendanceTodayData = AttendanceTodayResponse;
 type RawAttendanceEvent = AttendanceRawEvent;
@@ -127,9 +128,9 @@ export default function AttendanceHomePage({ onNavigate }: Props) {
     <div className="attendance-home">
       {/* トースト */}
       {toast && (
-        <div className={`attendance-toast ${toast.type}`} data-testid="attendance-toast">
+        <InlineToast type={toast.type} data-testid="attendance-toast">
           {toast.msg}
-        </div>
+        </InlineToast>
       )}
 
       {/* ヘッダー情報 */}
