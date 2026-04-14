@@ -235,7 +235,7 @@ export default function ShiftPage() {
   const isCompact = viewSpan !== 'week';
 
   return (
-    <div className="main-content">
+    <div className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7 max-md:px-3.5 max-md:py-4">
       {/* ヘッダー */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <h3>シフト表</h3>

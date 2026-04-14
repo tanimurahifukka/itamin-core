@@ -310,7 +310,7 @@ export default function ShiftMultiPage() {
 
   if (organizations.length === 0) {
     return (
-      <div className="main-content">
+      <div className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7 max-md:px-3.5 max-md:py-4">
         <h3>マルチ店舗シフト管理</h3>
         <p style={{ color: '#888', marginTop: 16 }}>
           管理者権限を持つ組織がありません。組織を作成し、複数の店舗を紐付けてください。
@@ -323,7 +323,7 @@ export default function ShiftMultiPage() {
   }
 
   return (
-    <div className="main-content">
+    <div className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7 max-md:px-3.5 max-md:py-4">
       {/* ヘッダー: 組織選択 + アクション */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

@@ -815,11 +815,11 @@ export default function ChecklistAdminPage() {
   const isManager = ['owner', 'manager', 'leader'].includes(selectedStore?.role ?? '');
 
   if (!selectedStore) {
-    return <div className="main-content"><p>店舗を選択してください</p></div>;
+    return <div className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7 max-md:px-3.5 max-md:py-4"><p>店舗を選択してください</p></div>;
   }
 
   return (
-    <div className="main-content">
+    <div className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7 max-md:px-3.5 max-md:py-4">
       <div className="mt-5 rounded-xl bg-surface p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:rounded-[10px] max-md:p-4">
         <div className="mb-5 flex items-center justify-between">
           <h3 className="text-[1.2rem]">チェックリスト</h3>

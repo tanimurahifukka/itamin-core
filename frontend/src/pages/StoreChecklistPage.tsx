@@ -452,7 +452,7 @@ export default function StoreChecklistPage() {
   useEffect(() => { load(); }, [load]);
 
   if (!selectedStore) {
-    return <div className="main-content"><p>店舗を選択してください</p></div>;
+    return <div className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7 max-md:px-3.5 max-md:py-4"><p>店舗を選択してください</p></div>;
   }
 
   // テンプレートごとに本日の最新提出状況をまとめる
@@ -471,7 +471,7 @@ export default function StoreChecklistPage() {
   }
 
   return (
-    <div className="main-content">
+    <div className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7 max-md:px-3.5 max-md:py-4">
       <div style={{ maxWidth: 680, margin: '0 auto' }}>
         <h3 style={{ fontWeight: 700, marginBottom: 16 }}>今日の店舗チェック</h3>
 

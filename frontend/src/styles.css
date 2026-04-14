@@ -44,14 +44,6 @@ body {
  * .store-action-btn (+ .secondary) migrated to inline Tailwind constants
  * in StoreSelectPage.tsx. */
 
-/* ===== Main Content ===== */
-.main-content {
-  flex: 1;
-  padding: 28px 32px;
-  max-width: 960px;
-  width: 100%;
-  min-width: 0;
-}
 
 /* .punch-clock / .punch-clock .current-time/.current-date / .punch-btn
  * (clock-in/clock-out/:hover/:active) / .punch-status (+ .since) migrated to
@@ -286,13 +278,8 @@ body {
 /* ===== Mobile Responsive ===== */
 @media (max-width: 768px) {
 
-  .main-content {
-    padding: 16px 14px;
-  }
-
-  
-
-  /* checklist-admin / records-section / staff-section mobile padding handled by Tailwind max-md: at the call sites. */
+  /* main-content / checklist-admin / records-section / staff-section mobile
+   * padding handled by Tailwind max-md: at the call sites. */
 
   .records-table th,
   .records-table td {

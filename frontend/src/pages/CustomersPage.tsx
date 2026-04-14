@@ -233,7 +233,7 @@ export default function CustomersPage() {
   // ── Detail View ────────────────────────────────────────────
   if (selectedCustomer) {
     return (
-      <div className="main-content">
+      <div className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7 max-md:px-3.5 max-md:py-4">
         <div style={{ marginBottom: 16 }}>
           <button
             onClick={() => setSelectedCustomer(null)}
@@ -307,7 +307,7 @@ export default function CustomersPage() {
 
   // ── List View ───────────────────────────────────────────────
   return (
-    <div className="main-content">
+    <div className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7 max-md:px-3.5 max-md:py-4">
       {/* ヘッダー操作エリア */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>

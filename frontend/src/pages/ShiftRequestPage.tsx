@@ -194,7 +194,7 @@ export default function ShiftRequestPage() {
   const monthLabel = `${currentMonth.year}年${currentMonth.month + 1}月`;
 
   return (
-    <div className="main-content">
+    <div className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7 max-md:px-3.5 max-md:py-4">
       <h3 style={{ marginBottom: 4 }}>シフト希望</h3>
       <p style={{ color: '#888', fontSize: '0.85rem', marginBottom: 16 }}>
         日付をタップして出勤可・休み希望を登録

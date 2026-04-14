@@ -123,7 +123,7 @@ export default function ExpensePage() {
   };
 
   return (
-    <div className="main-content">
+    <div className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7 max-md:px-3.5 max-md:py-4">
       {/* 追加/編集フォーム */}
       <div className="mt-5 rounded-xl bg-surface p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)] max-md:p-4" style={{ marginBottom: 16 }}>
         <h3 style={{ marginBottom: 12 }}>{editingId ? '経費編集' : '経費追加'}</h3>

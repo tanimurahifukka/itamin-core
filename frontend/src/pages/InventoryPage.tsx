@@ -173,7 +173,7 @@ export default function InventoryPage() {
     Number(item.minQuantity) > 0 && Number(item.quantity) < Number(item.minQuantity);
 
   return (
-    <div className="main-content">
+    <div className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7 max-md:px-3.5 max-md:py-4">
       {/* サマリーカード */}
       <div className="mb-4 grid grid-cols-3 gap-3 max-md:gap-2">
         <SummaryCard value={totalItems} label="商品数" />

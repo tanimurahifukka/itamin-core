@@ -403,7 +403,7 @@ export default function PluginSettingsPage() {
   const currentInitialPassword = initialPassword || currentAccountId;
 
   return (
-    <div className="main-content">
+    <div className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7 max-md:px-3.5 max-md:py-4">
       <h3 style={{ marginBottom: 8 }}>設定</h3>
       <p style={{ color: '#888', marginBottom: 24, fontSize: '0.85rem' }}>
         施設アカウントとプラグイン権限を一元管理できます
