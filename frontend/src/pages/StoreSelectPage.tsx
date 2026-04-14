@@ -3,6 +3,25 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { Loading } from '../components/atoms/Loading';
 
+// 旧 .store-selector / .store-list / .store-card / .create-store /
+// .store-action-btn + .secondary を Tailwind に移植。
+const SELECTOR = 'px-5 py-[60px] text-center';
+const TITLE = 'mb-6 text-[1.3rem]';
+const STORE_LIST = 'mx-auto flex max-w-[400px] flex-col gap-3';
+const STORE_CARD =
+  'cursor-pointer rounded-xl border-2 border-border-light bg-surface p-5 text-left transition-all hover:border-[#e94560] hover:shadow-[0_2px_12px_rgba(233,69,96,0.1)]';
+const STORE_NAME = 'mb-1 text-[1.1rem]';
+const STORE_ROLE = 'text-[0.85rem] text-text-subtle';
+const CREATE_CONTAINER = 'mx-auto mt-6 max-w-[400px]';
+const CREATE_INPUT =
+  'mb-2 w-full rounded-lg border-2 border-border-light px-4 py-3 text-base';
+const CREATE_BTN =
+  'w-full cursor-pointer rounded-lg border-none bg-[#e94560] px-4 py-3 text-base font-medium text-white transition-colors hover:bg-[#d13a54] disabled:cursor-not-allowed disabled:opacity-50';
+const STORE_ACTION_BTN =
+  'w-full cursor-pointer rounded-lg border-none bg-[#e94560] px-4 py-3 text-base font-medium text-white transition-colors hover:bg-[#d13a54]';
+const STORE_ACTION_SECONDARY =
+  'w-full cursor-pointer rounded-lg border-2 border-border-light bg-surface px-4 py-3 text-base font-medium text-[#374151] transition-colors hover:border-[#e94560] hover:text-[#e94560]';
+
 const roleLabels: Record<string, string> = {
   owner: 'オーナー',
   manager: 'マネージャー',
@@ -71,8 +90,8 @@ export default function StoreSelectPage() {
   };
 
   return (
-    <div className="store-selector">
-      <h2>事業所を選択してください</h2>
+    <div className={SELECTOR}>
+      <h2 className={TITLE}>事業所を選択してください</h2>
 
       {message && <p style={{ color: '#16a34a', marginBottom: 16 }}>{message}</p>}
       {error && <p style={{ color: '#dc2626', marginBottom: 16 }}>{error}</p>}
@@ -82,15 +101,15 @@ export default function StoreSelectPage() {
           {storesLoading ? (
             <Loading />
           ) : stores.length > 0 ? (
-            <div className="store-list">
+            <div className={STORE_LIST}>
               {stores.map(store => (
                 <div
                   key={store.id}
-                  className="store-card"
+                  className={STORE_CARD}
                   onClick={() => selectStore(store)}
                 >
-                  <h3>{store.name}</h3>
-                  <span className="role">{roleLabels[store.role] || store.role}</span>
+                  <h3 className={STORE_NAME}>{store.name}</h3>
+                  <span className={STORE_ROLE}>{roleLabels[store.role] || store.role}</span>
                 </div>
               ))}
             </div>
@@ -101,14 +120,16 @@ export default function StoreSelectPage() {
           <div style={{ maxWidth: 400, margin: '24px auto 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {isOwner && (
               <button
-                className="store-action-btn"
+                type="button"
+                className={STORE_ACTION_BTN}
                 onClick={() => { setMode('create'); setError(''); setMessage(''); }}
               >
                 + 店舗を追加
               </button>
             )}
             <button
-              className="store-action-btn secondary"
+              type="button"
+              className={STORE_ACTION_SECONDARY}
               onClick={() => { setMode('join'); setError(''); setMessage(''); }}
             >
               招待コードで参加
@@ -118,7 +139,7 @@ export default function StoreSelectPage() {
       )}
 
       {mode === 'create' && (
-        <div className="create-store">
+        <div className={CREATE_CONTAINER}>
           <h3 style={{ marginBottom: 16 }}>新しい店舗を追加</h3>
           <input
             type="text"
@@ -126,18 +147,22 @@ export default function StoreSelectPage() {
             value={storeName}
             onChange={e => setStoreName(e.target.value)}
             autoFocus
+            className={CREATE_INPUT}
           />
           <input
             type="text"
             placeholder="住所（任意）"
             value={storeAddress}
             onChange={e => setStoreAddress(e.target.value)}
+            className={CREATE_INPUT}
           />
-          <button onClick={handleCreateStore} disabled={!storeName.trim() || creating}>
+          <button type="button" onClick={handleCreateStore} disabled={!storeName.trim() || creating} className={CREATE_BTN}>
             {creating ? '作成中...' : '作成'}
           </button>
           <button
+            type="button"
             onClick={() => { setMode('select'); setError(''); }}
+            className={CREATE_BTN}
             style={{ marginTop: 8, background: '#6b7280' }}
           >
             戻る
@@ -146,7 +171,7 @@ export default function StoreSelectPage() {
       )}
 
       {mode === 'join' && (
-        <div className="create-store">
+        <div className={CREATE_CONTAINER}>
           <h3 style={{ marginBottom: 16 }}>招待コードで参加</h3>
           <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: 12 }}>
             オーナーから受け取った事業所IDと招待コードを入力してください
@@ -157,18 +182,22 @@ export default function StoreSelectPage() {
             value={storeId}
             onChange={e => setStoreId(e.target.value)}
             autoFocus
+            className={CREATE_INPUT}
           />
           <input
             type="text"
             placeholder="招待コード"
             value={inviteToken}
             onChange={e => setInviteToken(e.target.value)}
+            className={CREATE_INPUT}
           />
-          <button onClick={handleJoinStore} disabled={!storeId.trim() || !inviteToken.trim() || joining}>
+          <button type="button" onClick={handleJoinStore} disabled={!storeId.trim() || !inviteToken.trim() || joining} className={CREATE_BTN}>
             {joining ? '参加中...' : '参加'}
           </button>
           <button
+            type="button"
             onClick={() => { setMode('select'); setError(''); }}
+            className={CREATE_BTN}
             style={{ marginTop: 8, background: '#6b7280' }}
           >
             戻る
