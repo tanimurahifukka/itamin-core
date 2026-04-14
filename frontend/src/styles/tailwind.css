@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* ===== Design tokens =====
+ * Tailwind v4 の @theme ブロックでトークンを宣言する。
+ * 既存 styles.css に散在していた色・間隔・フォントをここに集約し、
+ * Atom/Molecule からは bg-primary, text-text-muted 等のユーティリティで参照する。
+ */
+@theme {
+  /* ブランドカラー */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-bg: #eff6ff;
+
+  /* ニュートラル */
+  --color-text: #1a1a1a;
+  --color-text-muted: #555555;
+  --color-text-subtle: #9ca3af;
+  --color-surface: #ffffff;
+  --color-bg: #f7f8fa;
+  --color-border: #d4d9df;
+  --color-border-light: #e5e7eb;
+
+  /* ステータス配色（badge / status-dot 互換） */
+  --color-success: #10b981;
+  --color-success-bg: #dcfce7;
+  --color-success-fg: #166534;
+  --color-warn-bg: #fef3c7;
+  --color-warn-fg: #92400e;
+  --color-error: #ef4444;
+  --color-error-bg: #fef2f2;
+  --color-error-fg: #991b1b;
+  --color-info-bg: #dbeafe;
+  --color-info-fg: #1e40af;
+
+  /* 日本語フォント */
+  --font-sans: 'Noto Sans JP', -apple-system, BlinkMacSystemFont,
+    'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+}
+
+/* ===== Global base =====
+ * 既存 styles.css 冒頭のリセット/body ベーススタイルをここに移設する。
+ * 本体は段階的に縮小していくが、このレイヤーは常に残す。
+ */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-bg);
+    color: var(--color-text);
+    min-height: 100vh;
+    font-feature-settings: 'palt';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.8;
+    letter-spacing: 0.02em;
+    font-size: 15px;
+  }
+}

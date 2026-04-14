@@ -5,7 +5,7 @@
  * staffId = store_staff.id（= membership_id）
  */
 import { useEffect, useRef, useState } from 'react';
-import { checkApi, ActiveItem, SubmissionItemInput, CheckTiming } from '../api/checkApi';
+import { checkApi, ActiveItem, SubmissionItemInput, CheckTiming } from '../../../api/checkApi';
 
 interface Props {
   storeId: string;

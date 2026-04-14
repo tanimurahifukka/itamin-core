@@ -5,7 +5,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
-import TimePicker15 from '../components/TimePicker15';
+import TimePicker15 from '../components/organisms/TimePicker15';
 import type { ShiftRequest } from '../types/api';
 
 interface ExistingShift {

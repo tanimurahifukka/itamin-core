@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
-import ChecklistGate from '../components/ChecklistGate';
-import PunchRouteHint from '../components/PunchRouteHint';
-import { showToast } from '../components/Toast';
+import ChecklistGate from '../components/organisms/ChecklistGate';
+import PunchRouteHint from '../components/organisms/PunchRouteHint';
+import { showToast } from '../components/molecules/Toast';
 import type { MenuItem, InventoryItem, DailyReportItem } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
 

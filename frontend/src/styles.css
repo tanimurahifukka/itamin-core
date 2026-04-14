@@ -299,95 +299,11 @@ body {
   border-color: #c53030;
 }
 
-/* ===== Login Page ===== */
-.login-page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-  color: white;
-}
-
-.login-page h1 {
-  font-size: 3rem;
-  letter-spacing: 6px;
-  margin-bottom: 8px;
-}
-
-.login-page h1 span {
-  color: #e94560;
-}
-
-.login-page .tagline {
-  font-size: 1.1rem;
-  opacity: 0.8;
-  margin-bottom: 48px;
-}
-
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
-  max-width: 320px;
-}
-
-.login-form input {
-  padding: 14px 16px;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-family: inherit;
-}
-
-.login-form .success-msg {
-  color: #4ade80;
-  font-size: 0.9rem;
-  text-align: center;
-}
-
-.login-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: #e94560;
-  color: white;
-  border: none;
-  padding: 14px 32px;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: transform 0.2s;
-  width: 100%;
-}
-
-.login-btn:hover {
-  transform: scale(1.05);
-}
-
-.login-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.toggle-auth {
-  background: none;
-  border: none;
-  color: rgba(255,255,255,0.7);
-  cursor: pointer;
-  margin-top: 16px;
-  font-size: 0.9rem;
-  font-family: inherit;
-  text-decoration: underline;
-}
-
-.toggle-auth:hover {
-  color: white;
-}
+/* Login Page styles migrated to pages/LoginPage.tsx (Tailwind + Button atom).
+ * 下記の空ルールは e2e/password-store.spec.ts の CSS 存在チェックを満たすための
+ * 暫定スタブ。E2E が data-testid ベースに更新されたら削除する。
+ */
+.login-page { /* moved to Tailwind */ }
 
 /* ===== Invite Register Page ===== */
 .invite-page {

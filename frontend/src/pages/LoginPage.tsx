@@ -1,5 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { Button } from '../components/atoms/Button';
+import { Input } from '../components/atoms/Input';
+
+// ログイン画面のテーマ（背景グラデーション・白文字・#e94560 ボタン）は
+// アプリ本体のデザイン言語と異なるため、ここではアプリ共通の
+// `--color-primary` ではなく画面固有の配色をローカル変数として持つ。
+const LOGIN_BG =
+  'flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] text-white';
+const LOGIN_INPUT =
+  'rounded-lg border-0 px-4 py-3.5 text-base text-text placeholder:text-text-subtle';
+const LOGIN_BTN_OVERRIDE = 'w-full bg-[#e94560] hover:bg-[#d53c55] text-white';
+const TOGGLE_LINK =
+  'mt-4 bg-transparent text-sm text-white/70 underline hover:text-white cursor-pointer';
 
 export default function LoginPage() {
   const { signIn, signUp, completeInvitedSignUp } = useAuth();
@@ -61,54 +74,69 @@ function NormalLoginPage({ signIn, signUp }: {
   };
 
   return (
-    <div className="login-page">
-      <h1>ITA<span>MIN</span></h1>
-      <p className="tagline">痛みを取って、人を育てる。</p>
+    <div className={LOGIN_BG}>
+      <h1 className="mb-2 text-5xl tracking-[6px]">
+        ITA<span className="text-[#e94560]">MIN</span>
+      </h1>
+      <p className="mb-12 text-lg opacity-80">痛みを取って、人を育てる。</p>
 
-      <form onSubmit={handleSubmit} className="login-form">
+      <form
+        onSubmit={handleSubmit}
+        className="login-form flex w-full max-w-[320px] flex-col gap-3"
+      >
         {isSignUp && (
           <>
-            <input
+            <Input
               type="text"
               placeholder="お名前"
               value={name}
               onChange={e => setName(e.target.value)}
               required
+              className={LOGIN_INPUT}
             />
-            <input
+            <Input
               type="text"
               placeholder="事業所名（例：カフェsofe）"
               value={storeName}
               onChange={e => setStoreName(e.target.value)}
               required
+              className={LOGIN_INPUT}
             />
           </>
         )}
-        <input
+        <Input
           type="email"
           placeholder="メールアドレス"
           value={email}
           onChange={e => setEmail(e.target.value)}
           required
+          className={LOGIN_INPUT}
         />
-        <input
+        <Input
           type="password"
           placeholder="パスワード（8文字以上）"
           value={password}
           onChange={e => setPassword(e.target.value)}
           minLength={8}
           required
+          className={LOGIN_INPUT}
         />
 
         {error && <div className="error-msg">{error}</div>}
 
-        <button className="login-btn" type="submit" disabled={loading}>
+        <Button
+          type="submit"
+          disabled={loading}
+          size="lg"
+          className={`login-btn ${LOGIN_BTN_OVERRIDE}`}
+        >
           {loading ? '...' : isSignUp ? '事業所を登録する' : 'ログイン'}
-        </button>
+        </Button>
       </form>
 
       <button
-        className="toggle-auth"
+        type="button"
+        className={`toggle-auth ${TOGGLE_LINK}`}
         onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
       >
         {isSignUp ? 'ログインはこちら' : '事業所登録はこちら'}
@@ -150,9 +178,13 @@ function InviteRegisterPage({ email, defaultName, storeName, onComplete }: {
     }
   };
 
+  // invite-* 系クラスは本PRでは移行対象外のため既存クラスを維持する。
+  // 外側コンテナは .login-page を廃止し Tailwind で再現する。
   return (
-    <div className="login-page invite-page">
-      <h1>ITA<span>MIN</span></h1>
+    <div className={`${LOGIN_BG} invite-page`}>
+      <h1 className="mb-2 text-5xl tracking-[6px]">
+        ITA<span className="text-[#e94560]">MIN</span>
+      </h1>
 
       <div className="invite-card">
         <div className="invite-card-icon">🎉</div>
@@ -297,15 +329,21 @@ function JoinStorePage({ storeId, inviteToken }: { storeId: string; inviteToken:
   };
 
   if (storeLoading) {
-    return <div className="login-page"><div className="loading">読み込み中...</div></div>;
+    return <div className={LOGIN_BG}><div className="loading">読み込み中...</div></div>;
   }
 
   if (storeError) {
     return (
-      <div className="login-page">
-        <h1>ITA<span>MIN</span></h1>
+      <div className={LOGIN_BG}>
+        <h1 className="mb-2 text-5xl tracking-[6px]">
+          ITA<span className="text-[#e94560]">MIN</span>
+        </h1>
         <div className="error-msg" style={{ marginTop: 20 }}>{storeError}</div>
-        <button className="toggle-auth" onClick={() => { window.location.href = '/'; }}>
+        <button
+          type="button"
+          className={`toggle-auth ${TOGGLE_LINK}`}
+          onClick={() => { window.location.href = '/'; }}
+        >
           ログインページへ
         </button>
       </div>
@@ -314,27 +352,31 @@ function JoinStorePage({ storeId, inviteToken }: { storeId: string; inviteToken:
 
   if (success) {
     return (
-      <div className="login-page">
-        <h1>ITA<span>MIN</span></h1>
+      <div className={LOGIN_BG}>
+        <h1 className="mb-2 text-5xl tracking-[6px]">
+          ITA<span className="text-[#e94560]">MIN</span>
+        </h1>
         <div className="invite-card">
           <div className="invite-card-icon">✅</div>
           <h2 className="invite-card-title">登録完了</h2>
           <p className="invite-card-desc">{success}</p>
-          <button
-            className="login-btn"
-            style={{ marginTop: 16 }}
+          <Button
+            size="lg"
+            className={`login-btn mt-4 ${LOGIN_BTN_OVERRIDE}`}
             onClick={() => { window.location.href = '/'; }}
           >
             ログインする
-          </button>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="login-page invite-page">
-      <h1>ITA<span>MIN</span></h1>
+    <div className={`${LOGIN_BG} invite-page`}>
+      <h1 className="mb-2 text-5xl tracking-[6px]">
+        ITA<span className="text-[#e94560]">MIN</span>
+      </h1>
 
       <div className="invite-card">
         <div className="invite-card-icon">👋</div>
@@ -373,7 +415,11 @@ function JoinStorePage({ storeId, inviteToken }: { storeId: string; inviteToken:
           </button>
         </form>
 
-        <button className="toggle-auth" onClick={() => { window.location.href = '/'; }}>
+        <button
+          type="button"
+          className={`toggle-auth ${TOGGLE_LINK}`}
+          onClick={() => { window.location.href = '/'; }}
+        >
           既にアカウントをお持ちの方はこちら
         </button>
       </div>

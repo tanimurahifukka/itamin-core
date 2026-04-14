@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { kioskApi } from '../api/kioskClient';
-import TimePicker15 from '../components/TimePicker15';
+import TimePicker15 from '../components/organisms/TimePicker15';
 
 type ViewMode = 'week' | '15days' | 'month';
 

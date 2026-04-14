@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
-import { showToast } from '../components/Toast';
-import TimePicker15 from '../components/TimePicker15';
+import { showToast } from '../components/molecules/Toast';
+import TimePicker15 from '../components/organisms/TimePicker15';
 import type { Shift, ShiftRequest, ShiftTemplate } from '../types/api';
 
 // Local alias for ShiftTemplate

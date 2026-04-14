@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { supabase } from '../api/supabase';
-import { showToast } from '../components/Toast';
+import { showToast } from '../components/molecules/Toast';
 import type { SalesClose, SalesReceipt, CashClose } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
 

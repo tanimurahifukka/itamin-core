@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
-import { showToast } from '../components/Toast';
+import { showToast } from '../components/molecules/Toast';
 import type { StaffMember, Invitation, AuditLogEntry } from '../types/api';
 
 const roleLabels: Record<string, string> = {

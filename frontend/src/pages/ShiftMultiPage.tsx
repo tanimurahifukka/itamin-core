@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { orgApi } from '../api/organizationsClient';
 import { shiftMultiApi } from '../api/shiftMultiClient';
-import { showToast } from '../components/Toast';
-import TimePicker15 from '../components/TimePicker15';
+import { showToast } from '../components/molecules/Toast';
+import TimePicker15 from '../components/organisms/TimePicker15';
 import type { Organization } from '../api/organizationsClient';
 import type {
   OrgStore,
