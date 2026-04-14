@@ -7,6 +7,7 @@ import { api } from '../../../api/client';
 import { Badge } from '../../../components/atoms/Badge';
 import type { AdminStaffAttendanceDetail, AdminStaffAttendanceRecord, AdminStaffCorrectionItem } from '../../../types/api';
 import { Loading } from '../../../components/atoms/Loading';
+import { MonthNavigation } from '../../../components/molecules/MonthNavigation';
 
 type AttendanceRecord = AdminStaffAttendanceRecord;
 type CorrectionItem = AdminStaffCorrectionItem;
@@ -117,11 +118,12 @@ export default function StaffDetailPage({ userId, onBack }: Props) {
 
       <h2>{data?.staff?.name || 'スタッフ'} の勤怠詳細</h2>
 
-      <div className="attendance-month-nav">
-        <button className="button" onClick={prevMonth}>◀</button>
-        <span className="attendance-month-label">{year}年{month}月</span>
-        <button className="button" onClick={nextMonth}>▶</button>
-      </div>
+      <MonthNavigation
+        align="center"
+        label={`${year}年${month}月`}
+        onPrev={prevMonth}
+        onNext={nextMonth}
+      />
 
       <table className="table admin-attendance-table">
         <thead>

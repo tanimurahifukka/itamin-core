@@ -804,38 +804,8 @@ body {
 /* .view-mode-tabs / .view-mode-tab / .active migrated to
  * components/molecules/Tabs. */
 
-/* ===== Month Navigation ===== */
-.month-nav {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.month-nav-btn {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #d4d9df;
-  background: white;
-  border-radius: 6px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s;
-}
-
-.month-nav-btn:hover {
-  background: #f0f2f5;
-}
-
-.month-nav-label {
-  font-size: 0.95rem;
-  font-weight: 500;
-  min-width: 100px;
-  text-align: center;
-}
+/* .month-nav / .month-nav-btn / .month-nav-label + .attendance-month-nav /
+ * .attendance-month-label migrated to components/molecules/MonthNavigation. */
 
 /* ===== Date Picker ===== */
 .date-picker {
@@ -1551,14 +1521,7 @@ body {
 
 /* --- S03 勤怠履歴 --- */
 .attendance-history { padding: 16px; }
-.attendance-month-nav {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-.attendance-month-label { font-size: 16px; font-weight: 600; }
+/* .attendance-month-nav / .attendance-month-label migrated to MonthNavigation molecule. */
 .attendance-empty {
   text-align: center;
   color: #9ca3af;

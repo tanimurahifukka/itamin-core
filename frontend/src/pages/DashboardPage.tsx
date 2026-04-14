@@ -9,6 +9,7 @@ import { StatusDot } from '../components/atoms/StatusDot';
 import { ErrorMessage } from '../components/atoms/ErrorMessage';
 import { SummaryCard } from '../components/molecules/SummaryCard';
 import { Tabs } from '../components/molecules/Tabs';
+import { MonthNavigation } from '../components/molecules/MonthNavigation';
 import type { TimeRecord, MonthlySummaryStaff, StaffMember, MonthlyRecordsResponse, MonthlyRawStaffRecord } from '../types/api';
 import { todayJST, formatDateJST, formatShortDateJST, formatTimeJST, currentJstYearMonth, isoToJstDateTimeLocalValue, jstDateTimeLocalValueToIso } from '../lib/dateUtils';
 import { EmptyState } from '../components/molecules/EmptyState';
@@ -474,11 +475,11 @@ export default function DashboardPage() {
         <div className="records-section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h3>月別集計</h3>
-            <div className="month-nav">
-              <button className="month-nav-btn" onClick={handlePrevMonth}>&lt;</button>
-              <span className="month-nav-label">{year}年{month}月</span>
-              <button className="month-nav-btn" onClick={handleNextMonth}>&gt;</button>
-            </div>
+            <MonthNavigation
+              label={`${year}年${month}月`}
+              onPrev={handlePrevMonth}
+              onNext={handleNextMonth}
+            />
           </div>
 
           {monthlyData?.summary && monthlyData.summary.length > 0 ? (
@@ -556,11 +557,11 @@ export default function DashboardPage() {
                 ? `${selectedStaff.staffName} のタイムカード`
                 : 'スタッフ別タイムカード'}
             </h3>
-            <div className="month-nav">
-              <button className="month-nav-btn" onClick={handlePrevMonth}>&lt;</button>
-              <span className="month-nav-label">{year}年{month}月</span>
-              <button className="month-nav-btn" onClick={handleNextMonth}>&gt;</button>
-            </div>
+            <MonthNavigation
+              label={`${year}年${month}月`}
+              onPrev={handlePrevMonth}
+              onNext={handleNextMonth}
+            />
           </div>
 
           {/* スタッフ選択 */}

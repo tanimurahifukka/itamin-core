@@ -7,6 +7,7 @@ import { api } from '../../api/client';
 import { Badge } from '../../components/atoms/Badge';
 import type { AttendanceHistoryRecord } from '../../types/api';
 import { Loading } from '../../components/atoms/Loading';
+import { MonthNavigation } from '../../components/molecules/MonthNavigation';
 
 type AttendanceRecord = AttendanceHistoryRecord;
 
@@ -72,11 +73,14 @@ export default function AttendanceHistoryPage({ onNavigate }: Props) {
     <div className="attendance-history">
       <h2>勤怠履歴</h2>
 
-      <div className="attendance-month-nav">
-        <button className="button" onClick={prevMonth} data-testid="prev-month-button">◀</button>
-        <span className="attendance-month-label">{year}年{month}月</span>
-        <button className="button" onClick={nextMonth} data-testid="next-month-button">▶</button>
-      </div>
+      <MonthNavigation
+        align="center"
+        label={`${year}年${month}月`}
+        onPrev={prevMonth}
+        onNext={nextMonth}
+        prevTestId="prev-month-button"
+        nextTestId="next-month-button"
+      />
 
       {loading ? (
         <Loading />

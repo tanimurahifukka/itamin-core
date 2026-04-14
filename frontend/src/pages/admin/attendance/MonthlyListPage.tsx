@@ -7,6 +7,7 @@ import { api } from '../../../api/client';
 import { Badge } from '../../../components/atoms/Badge';
 import type { AdminMonthlySummary } from '../../../types/api';
 import { Loading } from '../../../components/atoms/Loading';
+import { MonthNavigation } from '../../../components/molecules/MonthNavigation';
 
 interface Props {
   onSelectStaff: (userId: string) => void;
@@ -77,11 +78,14 @@ export default function MonthlyListPage({ onSelectStaff }: Props) {
     <div className="admin-monthly-list">
       <h2>月次勤怠一覧</h2>
 
-      <div className="attendance-month-nav">
-        <button className="button" onClick={prevMonth} data-testid="prev-month-button">◀</button>
-        <span className="attendance-month-label">{year}年{month}月</span>
-        <button className="button" onClick={nextMonth} data-testid="next-month-button">▶</button>
-      </div>
+      <MonthNavigation
+        align="center"
+        label={`${year}年${month}月`}
+        onPrev={prevMonth}
+        onNext={nextMonth}
+        prevTestId="prev-month-button"
+        nextTestId="next-month-button"
+      />
 
       {csvError && (
         <div className="error-message" role="alert" data-testid="csv-error-message">
