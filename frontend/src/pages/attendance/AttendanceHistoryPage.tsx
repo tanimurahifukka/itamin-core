@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
+import { Badge } from '../../components/atoms/Badge';
 import type { AttendanceHistoryRecord } from '../../types/api';
 
 type AttendanceRecord = AttendanceHistoryRecord;
@@ -95,9 +96,9 @@ export default function AttendanceHistoryPage({ onNavigate }: Props) {
                 <span>実働 {calcHours(r.clockInAt, r.clockOutAt, r.breakMinutes)}</span>
               </div>
               <div className="attendance-record-status">
-                <span className={`badge badge-${r.status}`}>
+                <Badge variant={r.status}>
                   {r.correctionStatus === 'pending' ? '申請中' : STATUS_LABELS[r.status] || r.status}
-                </span>
+                </Badge>
               </div>
               <button
                 className="button button-small"

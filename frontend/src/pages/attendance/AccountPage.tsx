@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../api/client';
+import { Badge } from '../../components/atoms/Badge';
 
 interface LineInfo {
   displayName?: string;
@@ -142,9 +143,9 @@ export default function AccountPage() {
             </div>
             <div className="attendance-account-row">
               <span className="attendance-account-label">連携状態</span>
-              <span className={`badge badge-${lineInfo.status}`}>
+              <Badge variant={lineInfo.status || 'inactive'}>
                 {lineInfo.status === 'active' ? '連携済み' : '無効'}
-              </span>
+              </Badge>
             </div>
             <div className="attendance-account-row">
               <span className="attendance-account-label">連携日時</span>

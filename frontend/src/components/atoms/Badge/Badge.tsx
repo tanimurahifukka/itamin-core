@@ -15,10 +15,11 @@ export type BadgeVariant =
   | 'inactive';
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: BadgeVariant;
+  /** 既知バリアント以外の文字列（API の status 直渡し等）は neutral にフォールバックする。 */
+  variant?: BadgeVariant | (string & {});
 }
 
-// 既存 .badge-* クラスと同じ配色マッピング（styles.css 3123-3133 行目由来）
+// 旧 .badge-* クラスと同じ配色マッピング（styles.css で展開されていた 10 種）
 const variantClass: Record<BadgeVariant, string> = {
   neutral: 'bg-[color:var(--color-bg)] text-text-subtle',
   working: 'bg-success-bg text-success-fg',
@@ -33,13 +34,16 @@ const variantClass: Record<BadgeVariant, string> = {
   inactive: 'bg-[color:var(--color-bg)] text-text-subtle',
 };
 
-export const Badge = ({ variant = 'neutral', className, ...props }: BadgeProps) => (
-  <span
-    className={cn(
-      'inline-block rounded-[10px] px-[10px] py-[2px] text-xs font-semibold',
-      variantClass[variant],
-      className,
-    )}
-    {...props}
-  />
-);
+export const Badge = ({ variant = 'neutral', className, ...props }: BadgeProps) => {
+  const resolved = variantClass[variant as BadgeVariant] ?? variantClass.neutral;
+  return (
+    <span
+      className={cn(
+        'inline-block rounded-[10px] px-[10px] py-[2px] text-xs font-semibold',
+        resolved,
+        className,
+      )}
+      {...props}
+    />
+  );
+};

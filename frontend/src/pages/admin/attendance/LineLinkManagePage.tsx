@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
+import { Badge } from '../../../components/atoms/Badge';
 import type { LineLink } from '../../../types/api';
 
 type StaffLineLinkItem = LineLink;
@@ -67,9 +68,9 @@ export default function LineLinkManagePage() {
                 <td>{s.role}</td>
                 <td>
                   {s.lineLink ? (
-                    <span className="badge badge-active">連携済み</span>
+                    <Badge variant="active">連携済み</Badge>
                   ) : (
-                    <span className="badge badge-inactive">未連携</span>
+                    <Badge variant="inactive">未連携</Badge>
                   )}
                 </td>
                 <td>{s.lineLink?.displayName || '—'}</td>

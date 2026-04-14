@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../api/client';
+import { Badge } from '../../../components/atoms/Badge';
 import type { AdminTodayStaff } from '../../../types/api';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -117,9 +118,9 @@ export default function TodayBoardPage({ onSelectStaff }: Props) {
               <tr key={s.userId} data-testid="today-board-row">
                 <td className="admin-staff-name">{s.staffName}</td>
                 <td>
-                  <span className={`badge badge-${s.currentStatus}`}>
+                  <Badge variant={s.currentStatus}>
                     {STATUS_LABELS[s.currentStatus] || s.currentStatus}
-                  </span>
+                  </Badge>
                 </td>
                 <td>{s.shift ? `${s.shift.startTime}〜${s.shift.endTime}` : '—'}</td>
                 <td>{formatTime(s.clockInAt)}</td>
