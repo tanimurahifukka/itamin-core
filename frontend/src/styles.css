@@ -220,21 +220,6 @@ body {
 /* .empty-state / .empty-state-icon / .empty-state-text / .empty-state-hint
  * migrated to components/molecules/EmptyState. */
 
-/* ===== Working Status ===== */
-.row-working {
-  background: #f0fdf4;
-}
-
-.text-working {
-  color: #16a34a;
-  font-weight: 600;
-}
-
-.staff-name-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
 
 @keyframes dotPulse {
   0%, 100% { opacity: 1; }

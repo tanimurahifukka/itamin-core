@@ -412,9 +412,9 @@ export default function DashboardPage() {
                   {records.map((r) => {
                     const cost = calcLaborCost(r);
                     return (
-                      <tr key={r.id} className={!r.clockOut ? 'row-working row-unpaired' : ''}>
+                      <tr key={r.id} className={!r.clockOut ? 'bg-[#f0fdf4]' : ''}>
                         <td>
-                          <span className="staff-name-cell">{r.staffName || '—'}</span>
+                          <span className="inline-flex items-center gap-2">{r.staffName || '—'}</span>
                           {!r.clockOut && <StatusDot state="working_pulse" title="勤務中" />}
                         </td>
                         <td>{formatTime(r.clockIn)}</td>
@@ -422,7 +422,7 @@ export default function DashboardPage() {
                           {r.clockOut ? formatTime(r.clockOut) : '未打刻'}
                         </td>
                         <td>{r.breakMinutes}分</td>
-                        <td className={!r.clockOut ? 'text-working' : ''}>
+                        <td className={!r.clockOut ? 'font-semibold text-[#16a34a]' : ''}>
                           {calcHoursStr(r)}
                         </td>
                         {isOwner && (
@@ -644,7 +644,7 @@ export default function DashboardPage() {
                       const cost = h !== null && mapped.hourlyWage ? Math.round(h * mapped.hourlyWage) : null;
                       const dateStr = formatShortDateJST(r.clock_in);
                       return (
-                        <tr key={r.id} className={!r.clock_out ? 'row-working row-unpaired' : ''}>
+                        <tr key={r.id} className={!r.clock_out ? 'bg-[#f0fdf4]' : ''}>
                           <td>{dateStr}</td>
                           <td>{formatTime(r.clock_in)}</td>
                           <td className={!r.clock_out ? 'text-unpaired' : ''}>
