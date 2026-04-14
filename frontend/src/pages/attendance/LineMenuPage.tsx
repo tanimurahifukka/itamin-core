@@ -11,6 +11,14 @@ import LineChecklistPage from './LineChecklistPage';
 import LineNoticePage from './LineNoticePage';
 import LineDailyReportPage from './LineDailyReportPage';
 
+// 旧 .line-menu-* の代替。LINE 用アイコン+ラベル 2 段タブ。
+const LINE_TABS =
+  'flex touch-pan-x gap-0.5 overflow-x-auto whitespace-nowrap bg-[#f3f4f6] px-1 pt-1';
+const LINE_TAB_BASE =
+  'inline-flex min-w-[52px] flex-shrink-0 cursor-pointer flex-col items-center gap-0.5 whitespace-nowrap border-none border-b-2 border-transparent bg-transparent px-2.5 py-2 text-[11px] text-[#6b7280] font-sans';
+const LINE_TAB_ACTIVE =
+  'border-b-primary bg-surface font-semibold text-primary';
+
 type Tab = 'punch' | 'shift' | 'shift_request' | 'history' | 'checklist' | 'notice' | 'daily_report';
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
@@ -35,23 +43,26 @@ export default function LineMenuPage({ lineUserId, storeId, displayName, picture
   const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'punch');
 
   return (
-    <div className="line-menu-page">
-      <div className="line-menu-tabs" data-testid="line-menu-tabs" style={{ overflowX: 'auto', whiteSpace: 'nowrap', WebkitOverflowScrolling: 'touch' }}>
-        {TABS.map(tab => (
-          <button
-            key={tab.key}
-            className={`line-menu-tab ${activeTab === tab.key ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}
-            data-testid={`line-tab-${tab.key}`}
-            style={{ display: 'inline-flex' }}
-          >
-            <span className="line-menu-tab-icon">{tab.icon}</span>
-            <span className="line-menu-tab-label">{tab.label}</span>
-          </button>
-        ))}
+    <div className="min-h-[80vh]">
+      <div className={LINE_TABS} data-testid="line-menu-tabs">
+        {TABS.map(tab => {
+          const active = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              className={`${LINE_TAB_BASE}${active ? ` ${LINE_TAB_ACTIVE}` : ''}`}
+              onClick={() => setActiveTab(tab.key)}
+              data-testid={`line-tab-${tab.key}`}
+            >
+              <span className="text-[18px]">{tab.icon}</span>
+              <span className="text-[10px]">{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="line-menu-content">
+      <div>
         {activeTab === 'punch' && <LinePunchPage lineUserId={lineUserId} storeId={storeId} displayName={displayName} pictureUrl={pictureUrl} />}
         {activeTab === 'shift' && <LineShiftPage lineUserId={lineUserId} storeId={storeId} />}
         {activeTab === 'shift_request' && <LineShiftRequestPage lineUserId={lineUserId} storeId={storeId} />}
