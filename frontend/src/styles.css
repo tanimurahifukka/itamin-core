@@ -201,20 +201,6 @@ body {
  * .attendance-month-label migrated to components/molecules/MonthNavigation. */
 
 /* ===== Date Picker ===== */
-.date-picker {
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid #d4d9df;
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: #1a1a1a;
-  transition: border-color 0.2s;
-}
-
-.date-picker:focus {
-  outline: none;
-  border-color: #2563eb;
-}
 
 /* ===== Empty State ===== */
 /* .empty-state / .empty-state-icon / .empty-state-text / .empty-state-hint

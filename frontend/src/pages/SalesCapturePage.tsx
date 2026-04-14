@@ -190,7 +190,7 @@ export default function SalesCapturePage() {
           type="date"
           value={date}
           onChange={e => setDate(e.target.value)}
-          className="date-picker"
+          className="rounded-md border border-border px-3 py-1.5 text-[0.9rem] text-text font-sans transition-colors focus:border-primary focus:outline-none"
           data-testid="sales-date-picker"
         />
         {closeData?.approvedAt && (
