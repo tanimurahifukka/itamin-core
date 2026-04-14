@@ -9,6 +9,7 @@ import StaffDetailPage from './admin/attendance/StaffDetailPage';
 import CorrectionApprovalPage from './admin/attendance/CorrectionApprovalPage';
 import LineLinkManagePage from './admin/attendance/LineLinkManagePage';
 import PolicySettingsPage from './admin/attendance/PolicySettingsPage';
+import { Tabs } from '../components/molecules/Tabs';
 
 type SubPage = 'today' | 'monthly' | 'staff_detail' | 'corrections' | 'line_links' | 'policy';
 
@@ -31,18 +32,12 @@ export default function AttendanceAdminPage() {
 
   return (
     <div className="attendance-admin-page">
-      <div className="attendance-admin-tabs">
-        {tabs.map(tab => (
-          <button
-            key={tab.key}
-            className={`attendance-admin-tab ${subPage === tab.key ? 'active' : ''}`}
-            onClick={() => { setSubPage(tab.key); setSelectedUserId(null); }}
-            data-testid={`admin-tab-${tab.key}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        variant="underline"
+        value={subPage}
+        onChange={(key) => { setSubPage(key); setSelectedUserId(null); }}
+        items={tabs.map(t => ({ value: t.key, label: t.label, dataTestId: `admin-tab-${t.key}` }))}
+      />
 
       <div className="attendance-admin-content">
         {subPage === 'today' && <TodayBoardPage onSelectStaff={handleSelectStaff} />}

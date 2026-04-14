@@ -1328,32 +1328,8 @@ body {
    ============================================================ */
 
 /* --- 共通タブナビ --- */
-.attendance-staff-tabs,
-.attendance-admin-tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 2px solid #e5e7eb;
-  margin-bottom: 16px;
-  overflow-x: auto;
-}
-.attendance-staff-tab,
-.attendance-admin-tab {
-  padding: 8px 16px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 14px;
-  color: #6b7280;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  white-space: nowrap;
-}
-.attendance-staff-tab.active,
-.attendance-admin-tab.active {
-  color: #2563eb;
-  border-bottom-color: #2563eb;
-  font-weight: 600;
-}
+/* .attendance-staff-tabs / .attendance-admin-tabs + their .active variants
+ * migrated to components/molecules/Tabs with variant="underline". */
 
 /* --- S01 LINE連携 --- */
 .attendance-link-page {

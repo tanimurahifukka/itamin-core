@@ -7,6 +7,7 @@ import AttendanceHomePage from './attendance/AttendanceHomePage';
 import AttendanceHistoryPage from './attendance/AttendanceHistoryPage';
 import CorrectionRequestPage from './attendance/CorrectionRequestPage';
 import AccountPage from './attendance/AccountPage';
+import { Tabs } from '../components/molecules/Tabs';
 
 type SubPage = 'home' | 'history' | 'correction' | 'account';
 
@@ -32,18 +33,12 @@ export default function AttendanceStaffPage() {
 
   return (
     <div className="attendance-staff-page">
-      <div className="attendance-staff-tabs">
-        {tabs.map(tab => (
-          <button
-            key={tab.key}
-            className={`attendance-staff-tab ${subPage === tab.key ? 'active' : ''}`}
-            onClick={() => handleNavigate(tab.key)}
-            data-testid={`tab-${tab.key}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        variant="underline"
+        value={subPage}
+        onChange={(key) => handleNavigate(key)}
+        items={tabs.map(t => ({ value: t.key, label: t.label, dataTestId: `tab-${t.key}` }))}
+      />
 
       <div className="attendance-staff-content">
         {subPage === 'home' && (
