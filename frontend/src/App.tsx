@@ -50,6 +50,7 @@ import { PageTitleBar } from './components/organisms/PageTitleBar';
 import { Header } from './components/organisms/Header';
 import { Sidebar } from './components/organisms/Sidebar';
 import { ProfileDropdown } from './components/organisms/ProfileDropdown';
+import { MobileCardMenu } from './components/organisms/MobileCardMenu';
 import { Button } from './components/atoms/Button';
 import { Loading } from './components/atoms/Loading';
 import { Alert } from './components/atoms/Alert';
@@ -662,30 +663,15 @@ export default function App() {
       </Header>
 
       {showMobileMenu ? (
-        /* モバイルカードメニュー */
-        <div className="mobile-card-menu">
-          <div className="mobile-greeting">
-            {new Date().getHours() < 12 ? 'おはようございます' : new Date().getHours() < 18 ? 'お疲れさまです' : 'おつかれさまです'}、{displayName.split(/[\s@]/)[0]} さん
-          </div>
-
-          {categorizedTabs.map(({ category, tabs: catTabs }) => (
-            <div key={category.key} className="mobile-category-section">
-              <div className="mobile-category-label">{category.label}</div>
-              <div className="mobile-card-grid">
-                {catTabs.map(tab => (
-                  <button
-                    key={tab.name}
-                    className="mobile-card"
-                    onClick={() => handleCardClick(tab.name)}
-                  >
-                    <span className="mobile-card-icon">{tab.icon}</span>
-                    <span className="mobile-card-label">{tab.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <MobileCardMenu
+          greeting={
+            <>
+              {new Date().getHours() < 12 ? 'おはようございます' : new Date().getHours() < 18 ? 'お疲れさまです' : 'おつかれさまです'}、{displayName.split(/[\s@]/)[0]} さん
+            </>
+          }
+          categorizedTabs={categorizedTabs}
+          onSelect={handleCardClick}
+        />
       ) : (
         /* 通常レイアウト */
         <div className="flex min-h-[calc(100vh-56px)] flex-1">
@@ -699,7 +685,11 @@ export default function App() {
 
           <main className="w-full min-w-0 max-w-[960px] flex-1 px-8 py-7">
             {isMobile && (
-              <button className="mobile-back-btn" onClick={handleBackToMenu}>
+              <button
+                type="button"
+                onClick={handleBackToMenu}
+                className="mb-3 inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[#e2e8f0] bg-[#f1f5f9] px-3.5 py-2 text-[0.85rem] font-medium text-[#475569] transition-colors hover:bg-[#e2e8f0]"
+              >
                 ← メニュー
               </button>
             )}
