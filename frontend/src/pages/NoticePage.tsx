@@ -5,6 +5,7 @@ import { supabase } from '../api/supabase';
 import { showToast } from '../components/molecules/Toast';
 import type { Notice, NoticeComment } from '../types/api';
 import { EmptyState } from '../components/molecules/EmptyState';
+import { SummaryCard } from '../components/molecules/SummaryCard';
 
 function linkifyText(text: string) {
   const parts = text.split(/(https?:\/\/[^\s]+)/g);
@@ -214,14 +215,13 @@ export default function NoticePage() {
     <div className="main-content">
       {/* サマリー */}
       <div className="today-summary">
-        <div className="summary-card">
-          <div className="summary-number">{notices.length}</div>
-          <div className="summary-label">投稿数</div>
-        </div>
-        <div className="summary-card" style={unreadCount > 0 ? { background: '#eff6ff' } : {}}>
-          <div className="summary-number" style={unreadCount > 0 ? { color: '#2563eb' } : {}}>{unreadCount}</div>
-          <div className="summary-label">未読</div>
-        </div>
+        <SummaryCard value={notices.length} label="投稿数" />
+        <SummaryCard
+          value={unreadCount}
+          label="未読"
+          className={unreadCount > 0 ? 'bg-[#eff6ff]' : undefined}
+          valueClassName={unreadCount > 0 ? 'text-[#2563eb]' : undefined}
+        />
       </div>
 
       {/* 投稿フォーム */}

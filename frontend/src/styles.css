@@ -984,43 +984,8 @@ body {
   margin-bottom: 16px;
 }
 
-.summary-card {
-  background: white;
-  border-radius: 12px;
-  padding: 18px 16px;
-  text-align: center;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  border-left: 4px solid transparent;
-}
-
-.summary-card.working {
-  border-left-color: #22c55e;
-}
-
-.summary-card.finished {
-  border-left-color: #2563eb;
-}
-
-.summary-card.hours {
-  border-left-color: #f59e0b;
-}
-
-.summary-number {
-  font-size: 1.8rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-}
-
-.summary-card.working .summary-number { color: #16a34a; }
-.summary-card.finished .summary-number { color: #2563eb; }
-.summary-card.hours .summary-number { color: #d97706; }
-
-.summary-label {
-  font-size: 0.8rem;
-  color: #888;
-  margin-top: 4px;
-}
+/* .summary-card / .summary-number / .summary-label / variant rules
+ * migrated to components/molecules/SummaryCard. */
 
 /* ===== View Mode Tabs ===== */
 .view-mode-tabs {
@@ -1474,9 +1439,7 @@ body {
     gap: 8px;
   }
 
-  .summary-number {
-    font-size: 1.4rem;
-  }
+  /* .summary-number mobile size migrated to SummaryCard molecule. */
 
   .toast-container {
     top: auto;
@@ -1602,10 +1565,7 @@ body {
   color: white;
 }
 
-/* 人件費サマリーカード */
-.summary-card.labor {
-  border-left-color: #8b5cf6;
-}
+/* .summary-card.labor migrated to SummaryCard molecule (variant="labor"). */
 
 /* 未退勤アラートバナー */
 .stale-alert {

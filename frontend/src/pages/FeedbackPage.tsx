@@ -5,6 +5,7 @@ import { showToast } from '../components/molecules/Toast';
 import type { FeedbackItem } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
 import { EmptyState } from '../components/molecules/EmptyState';
+import { SummaryCard } from '../components/molecules/SummaryCard';
 
 const TYPE_OPTIONS = [
   { value: 'praise', label: 'お褒め', color: '#22c55e', bg: '#f0fdf4' },
@@ -113,28 +114,22 @@ export default function FeedbackPage() {
     <div className="main-content">
       {/* サマリー */}
       <div className="today-summary">
-        <div className="summary-card">
-          <div className="summary-number">{allItems.length}</div>
-          <div className="summary-label">総件数</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-number" style={{ color: '#dc2626' }}>
-            {allItems.filter(i => i.status === '未対応').length}
-          </div>
-          <div className="summary-label">未対応</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-number" style={{ color: '#f59e0b' }}>
-            {allItems.filter(i => i.status === '対応中').length}
-          </div>
-          <div className="summary-label">対応中</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-number" style={{ color: '#22c55e' }}>
-            {allItems.filter(i => i.status === '完了').length}
-          </div>
-          <div className="summary-label">完了</div>
-        </div>
+        <SummaryCard value={allItems.length} label="総件数" />
+        <SummaryCard
+          value={allItems.filter(i => i.status === '未対応').length}
+          label="未対応"
+          valueClassName="text-[#dc2626]"
+        />
+        <SummaryCard
+          value={allItems.filter(i => i.status === '対応中').length}
+          label="対応中"
+          valueClassName="text-[#f59e0b]"
+        />
+        <SummaryCard
+          value={allItems.filter(i => i.status === '完了').length}
+          label="完了"
+          valueClassName="text-[#22c55e]"
+        />
       </div>
 
       {/* 追加フォーム */}

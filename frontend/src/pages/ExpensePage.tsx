@@ -5,6 +5,7 @@ import { showToast } from '../components/molecules/Toast';
 import type { ExpenseSummary } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
 import { EmptyState } from '../components/molecules/EmptyState';
+import { SummaryCard } from '../components/molecules/SummaryCard';
 
 // Local Expense omits server-only fields (storeId, createdBy, createdAt)
 interface Expense {
@@ -205,14 +206,12 @@ export default function ExpensePage() {
 
       {/* 月次サマリー */}
       <div className="today-summary">
-        <div className="summary-card">
-          <div className="summary-number" style={{ fontSize: '1.2rem' }}>¥{summary.totalAmount.toLocaleString()}</div>
-          <div className="summary-label">合計金額</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-number">{summary.count}</div>
-          <div className="summary-label">件数</div>
-        </div>
+        <SummaryCard
+          value={`¥${summary.totalAmount.toLocaleString()}`}
+          label="合計金額"
+          valueClassName="text-[1.2rem]"
+        />
+        <SummaryCard value={summary.count} label="件数" />
       </div>
 
       {/* カテゴリ別サマリー */}

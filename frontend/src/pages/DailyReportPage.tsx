@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api } from '../api/client';
 import { showToast } from '../components/molecules/Toast';
 import { Button } from '../components/atoms/Button';
+import { SummaryCard } from '../components/molecules/SummaryCard';
 import type { DailyReport, DailyReportSummary, MenuItem, DailyReportItem, InventoryItem } from '../types/api';
 import { todayJST } from '../lib/dateUtils';
 import { EmptyState } from '../components/molecules/EmptyState';
@@ -284,22 +285,14 @@ export default function DailyReportPage() {
 
       {/* 月次サマリー */}
       <div className="today-summary">
-        <div className="summary-card">
-          <div className="summary-number" style={{ fontSize: '1.2rem' }}>¥{summary.totalSales.toLocaleString()}</div>
-          <div className="summary-label">売上合計</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-number">{summary.totalCustomers}</div>
-          <div className="summary-label">来客合計</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-number">{summary.avgCustomers}</div>
-          <div className="summary-label">平均来客数</div>
-        </div>
-        <div className="summary-card">
-          <div className="summary-number">{summary.reportCount}</div>
-          <div className="summary-label">記録日数</div>
-        </div>
+        <SummaryCard
+          value={`¥${summary.totalSales.toLocaleString()}`}
+          label="売上合計"
+          valueClassName="text-[1.2rem]"
+        />
+        <SummaryCard value={summary.totalCustomers} label="来客合計" />
+        <SummaryCard value={summary.avgCustomers} label="平均来客数" />
+        <SummaryCard value={summary.reportCount} label="記録日数" />
       </div>
 
       {/* 一覧 */}

@@ -9,6 +9,8 @@ export interface SummaryCardProps extends Omit<HTMLAttributes<HTMLDivElement>, '
   value: ReactNode;
   /** カード下段に表示するラベル。 */
   label: ReactNode;
+  /** 数値表示部に追加で適用するクラス（フォントサイズや色のオーバーライド用）。 */
+  valueClassName?: string;
 }
 
 // バリアント別の左ボーダー色（旧 .summary-card.* と一致）
@@ -38,6 +40,7 @@ export const SummaryCard = ({
   value,
   label,
   className,
+  valueClassName,
   ...props
 }: SummaryCardProps) => (
   <div
@@ -52,6 +55,7 @@ export const SummaryCard = ({
       className={cn(
         'text-[1.8rem] font-bold leading-tight tabular-nums',
         variantNumberColor[variant],
+        valueClassName,
       )}
     >
       {value}
