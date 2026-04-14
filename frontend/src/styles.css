@@ -501,98 +501,9 @@ body {
 
 /* .save-btn was unused; removed. */
 
-/* ===== Store ID Banner ===== */
-.store-id-banner {
-  background: white;
-  border: 2px dashed #d4d9df;
-  border-radius: 12px;
-  padding: 16px 20px;
-  margin-bottom: 16px;
-}
-
-.store-id-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #888;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.store-id-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-
-.store-id-value {
-  flex: 1;
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  font-size: 0.85rem;
-  color: #1a1a1a;
-  background: #f7f8fa;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
-  word-break: break-all;
-  user-select: all;
-}
-
-.store-id-copy {
-  padding: 8px 16px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-family: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s;
-}
-
-.store-id-copy:hover {
-  background: #1d4ed8;
-}
-
-.store-id-edit-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 2px solid #2563eb;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-family: inherit;
-  color: #1a1a1a;
-}
-
-.store-id-edit-input:focus {
-  outline: none;
-}
-
-.store-id-cancel {
-  padding: 8px 14px;
-  background: white;
-  color: #666;
-  border: 1px solid #d4d9df;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-family: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s;
-}
-
-.store-id-cancel:hover {
-  background: #f0f2f5;
-}
-
-.store-id-hint {
-  font-size: 0.78rem;
-  color: #999;
-}
+/* .store-id-banner / .store-id-label / .store-id-row / .store-id-value /
+ * .store-id-copy / .store-id-edit-input / .store-id-cancel / .store-id-hint
+ *   migrated to inline Tailwind constants in StaffPage.tsx. */
 
 /* ===== Invite Action Buttons ===== */
 .invite-action-btn {
@@ -1110,15 +1021,7 @@ body {
    * migrated to SummaryCard / Toast molecules (Tailwind responsive). */
 
 
-  .store-id-row {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .store-id-copy {
-    width: 100%;
-    text-align: center;
-  }
+  /* .store-id-* mobile overrides migrated to inline Tailwind in StaffPage. */
 
   .staff-item {
     flex-wrap: wrap;

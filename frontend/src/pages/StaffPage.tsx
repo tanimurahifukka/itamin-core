@@ -8,6 +8,22 @@ import { ErrorMessage } from '../components/atoms/ErrorMessage';
 import { Modal } from '../components/molecules/Modal';
 import type { StaffMember, Invitation, AuditLogEntry } from '../types/api';
 
+// 旧 .store-id-banner / .store-id-* 系を Tailwind に移植。
+const BANNER =
+  'mb-4 rounded-xl border-2 border-dashed border-border bg-surface px-5 py-4';
+const BANNER_LABEL =
+  'mb-2 text-[0.8rem] font-semibold uppercase tracking-[0.5px] text-[#888]';
+const BANNER_ROW = 'mb-1.5 flex items-center gap-2.5';
+const BANNER_VALUE =
+  'flex-1 select-all rounded-md border border-border-light bg-bg px-3 py-2 font-mono text-[0.85rem] text-text break-all';
+const BANNER_EDIT_INPUT =
+  'flex-1 rounded-md border-2 border-primary px-3 py-2 text-[0.9rem] text-text font-sans focus:outline-none';
+const BANNER_PRIMARY_BTN =
+  'cursor-pointer whitespace-nowrap rounded-md border-none bg-primary px-4 py-2 text-[0.8rem] font-semibold text-white font-sans transition-colors hover:bg-primary-hover';
+const BANNER_GHOST_BTN =
+  'cursor-pointer whitespace-nowrap rounded-md border border-border bg-surface px-3.5 py-2 text-[0.8rem] font-medium text-text-muted font-sans transition-colors hover:bg-[#f0f2f5]';
+const BANNER_HINT = 'text-[0.78rem] text-text-subtle';
+
 const roleLabels: Record<string, string> = {
   owner: 'オーナー',
   manager: 'マネージャー',
@@ -389,44 +405,45 @@ export default function StaffPage() {
   return (
     <div className="main-content">
       {/* 初期パスワード表示 */}
-      <div className="store-id-banner">
-        <div className="store-id-label">初期パスワード</div>
+      <div className={BANNER}>
+        <div className={BANNER_LABEL}>初期パスワード</div>
         {editingPassword ? (
-          <div className="store-id-row">
+          <div className={BANNER_ROW}>
             <input
               type="text"
-              className="store-id-edit-input"
+              className={BANNER_EDIT_INPUT}
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
-              placeholder="新しい初期パスワード（6文字以上）"
+              placeholder="新しい初期パスワード(6文字以上)"
               autoFocus
             />
-            <button className="store-id-copy" onClick={handleSavePassword}>保存</button>
-            <button className="store-id-cancel" onClick={() => { setEditingPassword(false); setNewPassword(''); }}>取消</button>
+            <button type="button" className={BANNER_PRIMARY_BTN} onClick={handleSavePassword}>保存</button>
+            <button type="button" className={BANNER_GHOST_BTN} onClick={() => { setEditingPassword(false); setNewPassword(''); }}>取消</button>
           </div>
         ) : (
-          <div className="store-id-row">
-            <code className="store-id-value">{initialPassword}</code>
-            <button className="store-id-copy" onClick={handleCopyId}>
+          <div className={BANNER_ROW}>
+            <code className={BANNER_VALUE}>{initialPassword}</code>
+            <button type="button" className={BANNER_PRIMARY_BTN} onClick={handleCopyId}>
               {copied ? '✓' : 'コピー'}
             </button>
-            <button className="store-id-cancel" onClick={() => { setEditingPassword(true); setNewPassword(initialPassword); }}>変更</button>
+            <button type="button" className={BANNER_GHOST_BTN} onClick={() => { setEditingPassword(true); setNewPassword(initialPassword); }}>変更</button>
           </div>
         )}
-        <p className="store-id-hint">
+        <p className={BANNER_HINT}>
           スタッフ追加時にこのパスワードでアカウントが作成されます。初回ログイン時に変更を求められます。
         </p>
       </div>
 
       {/* 登録リンク */}
-      <div className="store-id-banner" style={{ marginBottom: 12 }}>
-        <div className="store-id-label">スタッフ登録リンク</div>
-        <div className="store-id-row">
-          <code className="store-id-value" style={{ fontSize: '0.75rem', wordBreak: 'break-all' }}>
+      <div className={`${BANNER} mb-3`}>
+        <div className={BANNER_LABEL}>スタッフ登録リンク</div>
+        <div className={BANNER_ROW}>
+          <code className={`${BANNER_VALUE} text-[0.75rem] break-all`}>
             {`${window.location.origin}?join=${selectedStore?.id}`}
           </code>
           <button
-            className="store-id-copy"
+            type="button"
+            className={BANNER_PRIMARY_BTN}
             onClick={() => {
               navigator.clipboard.writeText(`${window.location.origin}?join=${selectedStore?.id}`);
               showToast('登録リンクをコピーしました', 'info');
@@ -435,7 +452,7 @@ export default function StaffPage() {
             コピー
           </button>
         </div>
-        <p className="store-id-hint">
+        <p className={BANNER_HINT}>
           このリンクを共有すると、スタッフが自分で名前・メール・パスワードを入力して登録できます。
         </p>
       </div>
